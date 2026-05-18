@@ -4,6 +4,26 @@ import { useGame } from '@/lib/gameState.jsx';
 const CAFE_W = 740;
 const CAFE_H = 500;
 
+const FURNITURE_SIZES = {
+  plant: { w: 32, h: 32 },
+  table: { w: 80, h: 50 },
+  shelf: { w: 80, h: 100 },
+  window: { w: 80, h: 45 },
+  fireplace: { w: 60, h: 50 },
+  counter: { w: 160, h: 50 },
+  brewing: { w: 50, h: 45 },
+};
+
+function findFurnitureAt(furniture, x, y) {
+  for (let i = furniture.length - 1; i >= 0; i -= 1) {
+    const f = furniture[i];
+    if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) {
+      return f;
+    }
+  }
+  return null;
+}
+
 const COLORS = {
   floor: '#1a1833',
   floorTile: '#201e40',
@@ -286,12 +306,52 @@ export default function CafeCanvas() {
     return () => clearInterval(interval);
   }, [state.npcs.rabbits, dispatch]);
   
+  const handleCanvasClick = (event) => {
+    if (!state.cafe.decorateMode) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CAFE_W / rect.width;
+    const scaleY = CAFE_H / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+
+    if (state.cafe.decorateTool === 'remove') {
+      const hit = findFurnitureAt(state.cafe.furniture, x, y);
+      if (hit) dispatch({ type: 'REMOVE_FURNITURE', payload: hit.id });
+      return;
+    }
+
+    const type = state.cafe.placeFurnitureType || 'plant';
+    const size = FURNITURE_SIZES[type] ?? FURNITURE_SIZES.plant;
+
+    dispatch({
+      type: 'ADD_FURNITURE',
+      payload: {
+        id: `furn-${Date.now()}`,
+        type,
+        x: Math.max(0, Math.min(CAFE_W - size.w, x - size.w / 2)),
+        y: Math.max(50, Math.min(CAFE_H - size.h, y - size.h / 2)),
+        w: size.w,
+        h: size.h,
+      },
+    });
+  };
+
   return (
     <canvas
       ref={canvasRef}
       width={CAFE_W}
       height={CAFE_H}
-      className="rounded-xl border border-border/50 shadow-2xl"
+      onClick={handleCanvasClick}
+      className={`rounded-xl border shadow-2xl ${
+        state.cafe.decorateMode
+          ? state.cafe.decorateTool === 'remove'
+            ? 'border-destructive cursor-pointer ring-2 ring-destructive/40'
+            : 'border-primary cursor-crosshair ring-2 ring-primary/40'
+          : 'border-border/50'
+      }`}
       style={{ imageRendering: 'pixelated', maxWidth: '100%' }}
     />
   );

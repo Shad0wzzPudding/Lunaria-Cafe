@@ -51,7 +51,7 @@ export default function FocusTimer({ compact = false }) {
           </Button>
         )}
         {status === 'paused' && (
-          <Button size="sm" onClick={() => dispatch({ type: 'START_FOCUS' })}>
+          <Button size="sm" onClick={() => dispatch({ type: 'RESUME_FOCUS' })}>
             Resume
           </Button>
         )}

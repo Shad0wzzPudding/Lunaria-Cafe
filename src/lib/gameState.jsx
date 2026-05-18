@@ -1,7 +1,9 @@
-import { createContext, useContext, useReducer, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useState, useRef } from 'react';
 import { getChaosStage } from '@/lib/aiIntegration';
+import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from '@/lib/saveService';
+import { pushPopup } from '@/lib/feedbackHelpers';
 
-const initialState = {
+export const initialState = {
   phase: 'menu',
   coins: 0,
   reputation: 0,
@@ -9,17 +11,20 @@ const initialState = {
     name: 'Lunaria Cafe',
     currentCustomers: 0,
     maxCustomers: 8,
+    decorateMode: false,
+    decorateTool: 'place',
+    placeFurnitureType: 'plant',
     furniture: [
-      { type: 'counter',    x: 50,  y: 80,  w: 160, h: 50 },
-    { type: 'brewing',    x: 230, y: 85,  w: 50,  h: 45 },
-    { type: 'table',      x: 100, y: 220, w: 80,  h: 50 },
-    { type: 'table',      x: 300, y: 280, w: 80,  h: 50 },
-    { type: 'table',      x: 500, y: 220, w: 80,  h: 50 },
-    { type: 'shelf',      x: 620, y: 70,  w: 80,  h: 100 },
-    { type: 'plant',      x: 30,  y: 380, w: 32,  h: 32 },
-    { type: 'window',     x: 200, y: 5,   w: 80,  h: 45 },
-    { type: 'window',     x: 460, y: 5,   w: 80,  h: 45 },
-    { type: 'fireplace',  x: 340, y: 60,  w: 60,  h: 50 },
+      { id: 'built-counter', type: 'counter', x: 50, y: 80, w: 160, h: 50 },
+      { id: 'built-brewing', type: 'brewing', x: 230, y: 85, w: 50, h: 45 },
+      { id: 'built-table-1', type: 'table', x: 100, y: 220, w: 80, h: 50 },
+      { id: 'built-table-2', type: 'table', x: 300, y: 280, w: 80, h: 50 },
+      { id: 'built-table-3', type: 'table', x: 500, y: 220, w: 80, h: 50 },
+      { id: 'built-shelf', type: 'shelf', x: 620, y: 70, w: 80, h: 100 },
+      { id: 'built-plant', type: 'plant', x: 30, y: 380, w: 32, h: 32 },
+      { id: 'built-window-1', type: 'window', x: 200, y: 5, w: 80, h: 45 },
+      { id: 'built-window-2', type: 'window', x: 460, y: 5, w: 80, h: 45 },
+      { id: 'built-fireplace', type: 'fireplace', x: 340, y: 60, w: 60, h: 50 },
     ],
   },
   focus: {
@@ -71,6 +76,10 @@ const initialState = {
     dailyGoal: 60,
     weeklyData: [0, 0, 0, 0, 0, 0, 0],
   },
+  ui: {
+    popups: [],
+    coinFloat: null,
+  },
 };
 
 function gameReducer(state, action) {
@@ -104,30 +113,124 @@ function gameReducer(state, action) {
         focus: { ...state.focus, status: 'paused' },
       };
 
-    case 'TICK_FOCUS':
-      if (state.focus.status !== 'active') return state;
+    case 'RESUME_FOCUS':
       return {
         ...state,
-        focus: { ...state.focus, elapsed: state.focus.elapsed + 1 },
+        focus: { ...state.focus, status: 'active' },
+      };
+
+    case 'END_FOCUS': {
+      if (state.focus.status !== 'active' && state.focus.status !== 'paused') {
+        return state;
+      }
+      const tickedMins = Math.floor(state.focus.elapsed / 60);
+      const sessionMins = Math.max(state.focus.elapsed >= 30 ? 1 : 0, Math.ceil(state.focus.elapsed / 60));
+      const extraMins = Math.max(0, sessionMins - tickedMins);
+      const weeklyData = [...state.stats.weeklyData];
+      const todayIdx = (new Date().getDay() + 6) % 7;
+      if (extraMins > 0) weeklyData[todayIdx] += extraMins;
+      const coinsEarned =
+        sessionMins > 0
+          ? Math.max(1, Math.floor(sessionMins * 2 * (state.attention.score / 100)))
+          : 0;
+      const repGain = sessionMins > 0 ? Math.min(3, Math.floor(sessionMins / 2)) : 0;
+      let next = {
+        ...state,
+        phase: 'management',
+        focus: { ...state.focus, status: 'idle', elapsed: 0 },
+        coins: state.coins + coinsEarned,
+        reputation: Math.min(100, state.reputation + repGain),
+        stats: {
+          ...state.stats,
+          totalSessions: state.stats.totalSessions + (sessionMins > 0 ? 1 : 0),
+          totalMinutes: state.stats.totalMinutes + extraMins,
+          totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
+          todayMinutes: state.stats.todayMinutes + extraMins,
+          weeklyData,
+          coinsEarned: state.stats.coinsEarned + coinsEarned,
+          currentStreak: sessionMins > 0 ? state.stats.currentStreak + 1 : state.stats.currentStreak,
+        },
+      };
+      if (coinsEarned > 0) {
+        next = {
+          ...next,
+          ui: pushPopup(
+            next,
+            `Focus ended · +${coinsEarned} coins`,
+            coinsEarned,
+          ),
+        };
+      }
+      return next;
+    }
+
+    case 'TICK_FOCUS': {
+      if (state.focus.status !== 'active') return state;
+      const nextElapsed = state.focus.elapsed + 1;
+      const base = {
+        ...state,
+        focus: { ...state.focus, elapsed: nextElapsed },
         cafe: {
           ...state.cafe,
           currentCustomers: state.npcs.customers.length,
         },
       };
+      if (nextElapsed > 0 && nextElapsed % 60 === 0) {
+        const weeklyData = [...state.stats.weeklyData];
+        const todayIdx = (new Date().getDay() + 6) % 7;
+        weeklyData[todayIdx] += 1;
+        return {
+          ...base,
+          stats: {
+            ...state.stats,
+            totalMinutes: state.stats.totalMinutes + 1,
+            totalFocusMinutes: state.stats.totalFocusMinutes + 1,
+            todayMinutes: state.stats.todayMinutes + 1,
+            weeklyData,
+          },
+        };
+      }
+      return base;
+    }
 
     case 'COMPLETE_FOCUS': {
-      const mins = Math.floor(state.focus.elapsed / 60);
-      const coinsEarned = Math.max(1, Math.floor(mins * 2 * (state.attention.score / 100)));
-      return {
+      const tickedMins = Math.floor(state.focus.elapsed / 60);
+      const sessionMins = Math.max(1, Math.ceil(state.focus.elapsed / 60));
+      const extraMins = Math.max(0, sessionMins - tickedMins);
+      const weeklyData = [...state.stats.weeklyData];
+      const todayIdx = (new Date().getDay() + 6) % 7;
+      if (extraMins > 0) {
+        weeklyData[todayIdx] += extraMins;
+      }
+      const coinsEarned = Math.max(1, Math.floor(sessionMins * 2 * (state.attention.score / 100)));
+      const repGain = Math.min(5, Math.floor(sessionMins / 2));
+      const sessionChaos = state.attention.chaosEvents.length;
+      const servedCount = state.npcs.customers.length;
+      let next = {
         ...state,
         focus: { ...state.focus, status: 'completed' },
         coins: state.coins + coinsEarned,
+        reputation: Math.min(100, state.reputation + repGain),
         stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + 1,
-          totalMinutes: state.stats.totalMinutes + mins,
+          totalMinutes: state.stats.totalMinutes + extraMins,
+          totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
+          todayMinutes: state.stats.todayMinutes + extraMins,
+          weeklyData,
+          coinsEarned: state.stats.coinsEarned + coinsEarned,
+          customersTotal: state.stats.customersTotal + servedCount,
+          chaosEvents: state.stats.chaosEvents + sessionChaos,
+          currentStreak: state.stats.currentStreak + 1,
+          bestStreak: Math.max(state.stats.bestStreak, state.stats.currentStreak + 1),
         },
+        ui: pushPopup(
+          state,
+          `Session complete! +${coinsEarned} coins · reputation +${repGain}%`,
+          coinsEarned,
+        ),
       };
+      return next;
     }
 
     case 'RESET_FOCUS':
@@ -184,6 +287,76 @@ function gameReducer(state, action) {
           ...state.attention,
           chaosEvents: [...state.attention.chaosEvents.slice(-9), action.payload],
         },
+        stats: {
+          ...state.stats,
+          chaosEvents: state.stats.chaosEvents + 1,
+        },
+      };
+
+    case 'SET_DECORATE_MODE':
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          decorateMode: action.payload,
+          decorateTool: 'place',
+        },
+      };
+
+    case 'SET_DECORATE_TOOL':
+      return {
+        ...state,
+        cafe: { ...state.cafe, decorateTool: action.payload },
+      };
+
+    case 'SET_PLACE_FURNITURE':
+      return {
+        ...state,
+        cafe: { ...state.cafe, placeFurnitureType: action.payload, decorateTool: 'place' },
+      };
+
+    case 'ADD_FURNITURE':
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          furniture: [
+            ...state.cafe.furniture,
+            {
+              ...action.payload,
+              id: action.payload.id ?? `furn-${Date.now()}`,
+            },
+          ],
+        },
+      };
+
+    case 'REMOVE_FURNITURE': {
+      const target = state.cafe.furniture.find((f) => f.id === action.payload);
+      if (!target || target.type === 'counter' || target.type === 'brewing') {
+        return state;
+      }
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
+        },
+      };
+    }
+
+    case 'DISMISS_UI_POPUP':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          popups: state.ui.popups.filter((p) => p.id !== action.payload),
+        },
+      };
+
+    case 'CLEAR_COIN_FLOAT':
+      return {
+        ...state,
+        ui: { ...state.ui, coinFloat: null },
       };
 
     case 'ADD_CUSTOMER':
@@ -199,21 +372,33 @@ function gameReducer(state, action) {
         },
       };
 
-    case 'REMOVE_CUSTOMER':
-      return {
+    case 'SERVE_CUSTOMER':
+    case 'REMOVE_CUSTOMER': {
+      const customer = state.npcs.customers.find((c) => c.id === action.payload);
+      const remaining = state.npcs.customers.filter((c) => c.id !== action.payload);
+      const coinsGain = customer ? 8 + Math.floor(Math.random() * 7) : 0;
+      const repGain = customer ? 2 : 0;
+      const emoji = customer?.emoji ?? '☕';
+      let next = {
         ...state,
-        npcs: {
-          ...state.npcs,
-          customers: state.npcs.customers.filter((c) => c.id !== action.payload),
-        },
-        cafe: {
-          ...state.cafe,
-          currentCustomers: Math.max(
-            0,
-            state.npcs.customers.filter((c) => c.id !== action.payload).length,
-          ),
+        npcs: { ...state.npcs, customers: remaining },
+        cafe: { ...state.cafe, currentCustomers: remaining.length },
+        coins: state.coins + coinsGain,
+        reputation: Math.min(100, state.reputation + repGain),
+        stats: {
+          ...state.stats,
+          customersTotal: state.stats.customersTotal + 1,
+          coinsEarned: state.stats.coinsEarned + coinsGain,
         },
       };
+      if (customer) {
+        next = {
+          ...next,
+          ui: pushPopup(next, `${emoji} Customer served!`, coinsGain),
+        };
+      }
+      return next;
+    }
 
     case 'SET_AUDIO':
       return {
@@ -221,10 +406,13 @@ function gameReducer(state, action) {
         audio: { ...state.audio, ...action.payload },
       };
 
+    case 'HYDRATE':
+      return { ...action.payload, ui: initialState.ui };
+
     case 'RESET':
       return initialState;
 
-      case 'UPDATE_RABBIT': {
+    case 'UPDATE_RABBIT': {
       return {
         ...state,
         npcs: {
@@ -243,15 +431,92 @@ function gameReducer(state, action) {
 
 const GameContext = createContext(null);
 
-export function GameProvider({ children }) {
+export function GameProvider({ children, userId }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [ready, setReady] = useState(!userId);
+  const [saveError, setSaveError] = useState(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const processAIEvent = useCallback((event) => {
     dispatch({ type: 'PROCESS_AI_EVENT', payload: event });
   }, []);
 
+  const saveNow = useCallback(async () => {
+    if (!userId) return;
+    try {
+      await savePlayerSave(userId, stateRef.current);
+      setSaveError(null);
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveError(err.message ?? 'Save failed');
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setReady(false);
+
+    loadPlayerSave(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const hydrated = mergeLoadedSave(data, initialState);
+        if (hydrated) {
+          dispatch({ type: 'HYDRATE', payload: hydrated });
+        }
+      })
+      .catch((err) => {
+        console.error('Load save failed:', err);
+        if (!cancelled) setSaveError(err.message ?? 'Load failed');
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !ready) return;
+
+    const interval = setInterval(() => {
+      savePlayerSave(userId, stateRef.current).catch((err) => {
+        console.error('Auto-save failed:', err);
+        setSaveError(err.message ?? 'Auto-save failed');
+      });
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [userId, ready]);
+
+  useEffect(() => {
+    if (!userId || !ready) return;
+
+    const handleBeforeUnload = () => {
+      savePlayerSave(userId, stateRef.current).catch(() => {});
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [userId, ready]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground font-body">Loading your cafe…</p>
+      </div>
+    );
+  }
+
   return (
-    <GameContext.Provider value={{ state, dispatch, processAIEvent }}>
+    <GameContext.Provider value={{ state, dispatch, processAIEvent, saveNow, saveError }}>
       {children}
     </GameContext.Provider>
   );

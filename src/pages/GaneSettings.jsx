@@ -3,13 +3,14 @@ import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut } from 'lucide-react';
 import {
   getAIConfig,
   setAIConfig,
   checkAIHealth,
   onConnectionStatus,
 } from '@/lib/aiIntegration';
+import { useAuth } from '@/lib/AuthProvider';
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
@@ -19,8 +20,8 @@ function AudioSlider({ icon: Icon, label, value, onChange }) {
         <span className="text-sm text-foreground/80 font-body">{label}</span>
       </span>
       <Slider
-        value={[value * 100]}
-        onValueChange={([v]) => onChange(v / 100)}
+        value={Math.round(value * 100)}
+        onValueChange={(v) => onChange((Array.isArray(v) ? v[0] : v) / 100)}
         max={100}
         step={1}
         className="flex-1"
@@ -46,7 +47,8 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
 }
 
 export default function GameSettings() {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, saveNow, saveError } = useGame();
+  const { signOut, user } = useAuth();
   const { audio } = state;
   const [aiConfig, setAiConfigState] = useState(getAIConfig);
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
@@ -61,6 +63,14 @@ export default function GameSettings() {
     const r = await checkAIHealth(aiConfig.apiUrl);
     setAiTesting(false);
     setAiStatus(r.ok ? { status: 'live', detail: 'Server reachable' } : { status: 'error', detail: r.error });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await saveNow();
+    } finally {
+      await signOut();
+    }
   };
 
   return (
@@ -106,9 +116,10 @@ export default function GameSettings() {
             <Sparkles className="w-4 h-4 text-primary" /> AI Integration
           </h2>
           <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-4">
-            <p className="text-sm text-muted-foreground font-body">
-              Start the Python server in ai-server/, enable live AI, then run a focus session.
-            </p>
+          <p className="text-sm text-muted-foreground font-body">
+            Click anywhere once to unlock audio. Music plays a cozy track; toggles control rain, fire, and chatter.
+            Start the Python server in ai-server/ for live AI focus tracking.
+          </p>
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground">API URL</span>
               <input
@@ -128,6 +139,30 @@ export default function GameSettings() {
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
               {`Status: ${aiStatus.status}\n${aiStatus.detail || ''}\n\nuvicorn focus_api:app --host 127.0.0.1 --port 8000`}
             </pre>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="font-display text-base text-foreground flex items-center gap-2">
+            <LogOut className="w-4 h-4 text-primary" /> Account
+          </h2>
+          <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-4">
+            {user?.email && (
+              <p className="text-sm text-muted-foreground font-body">
+                Signed in as <span className="text-foreground">{user.email}</span>
+              </p>
+            )}
+            {saveError && (
+              <p className="text-sm text-amber-400">Save issue: {saveError}</p>
+            )}
+            <p className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
+                Save now
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
+                Log out
+              </Button>
+            </p>
           </div>
         </section>
       </main>
