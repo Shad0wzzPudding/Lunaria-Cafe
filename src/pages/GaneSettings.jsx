@@ -3,12 +3,13 @@ import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Monitor, Cpu } from 'lucide-react';
 import {
   getAIConfig,
   setAIConfig,
   checkAIHealth,
   onConnectionStatus,
+  isBrowserAISupported,
 } from '@/lib/aiIntegration';
 import { useAuth } from '@/lib/AuthProvider';
 
@@ -116,28 +117,93 @@ export default function GameSettings() {
             <Sparkles className="w-4 h-4 text-primary" /> AI Integration
           </h2>
           <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-4">
-          <p className="text-sm text-muted-foreground font-body">
-            Click anywhere once to unlock audio. Music plays a cozy track; toggles control rain, fire, and chatter.
-            Start the Python server in ai-server/ for live AI focus tracking.
-          </p>
-            <label className="block space-y-1">
-              <span className="text-xs text-muted-foreground">API URL</span>
-              <input
-                type="url"
-                value={aiConfig.apiUrl}
-                onChange={(e) => saveAi({ apiUrl: e.target.value })}
-                className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm">Use live AI camera</span>
-              <Switch checked={aiConfig.useLiveAI} onCheckedChange={(v) => saveAi({ useLiveAI: v })} />
+            <p className="text-sm text-muted-foreground font-body">
+              Choose how the AI attention system tracks your focus during study sessions.
+            </p>
+
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground">AI Mode</span>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => saveAi({ aiMode: 'simulation', useLiveAI: false })}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    aiConfig.aiMode === 'simulation'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border/40 bg-background text-muted-foreground hover:border-border'
+                  }`}
+                >
+                  <Cpu className="w-4 h-4 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-body">Simulation</span>
+                    <span className="block text-xs text-muted-foreground">Simulated attention events (no camera needed)</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => saveAi({ aiMode: 'browser', useLiveAI: false })}
+                  disabled={!isBrowserAISupported()}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    aiConfig.aiMode === 'browser'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border/40 bg-background text-muted-foreground hover:border-border'
+                  } ${!isBrowserAISupported() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Camera className="w-4 h-4 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-body">Browser AI</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {isBrowserAISupported()
+                        ? 'Real webcam tracking using MediaPipe + COCO-SSD (no server needed)'
+                        : 'Not supported in this browser (camera access required)'}
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => saveAi({ aiMode: 'live', useLiveAI: true })}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    aiConfig.aiMode === 'live'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border/40 bg-background text-muted-foreground hover:border-border'
+                  }`}
+                >
+                  <Monitor className="w-4 h-4 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-body">Local Python Server</span>
+                    <span className="block text-xs text-muted-foreground">Connect to ai-server/ running on your machine</span>
+                  </span>
+                </button>
+              </div>
             </div>
-            <Button type="button" variant="secondary" size="sm" onClick={testAi} disabled={aiTesting}>
-              {aiTesting ? 'Testing…' : 'Test connection'}
-            </Button>
+
+            {aiConfig.aiMode === 'live' && (
+              <div className="space-y-3 pt-2 border-t border-border/20">
+                <label className="block space-y-1">
+                  <span className="text-xs text-muted-foreground">API URL</span>
+                  <input
+                    type="url"
+                    value={aiConfig.apiUrl}
+                    onChange={(e) => saveAi({ apiUrl: e.target.value })}
+                    className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
+                  />
+                </label>
+                <Button type="button" variant="secondary" size="sm" onClick={testAi} disabled={aiTesting}>
+                  {aiTesting ? 'Testing…' : 'Test connection'}
+                </Button>
+              </div>
+            )}
+
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
-              {`Status: ${aiStatus.status}\n${aiStatus.detail || ''}\n\nuvicorn focus_api:app --host 127.0.0.1 --port 8000`}
+              {`Status: ${aiStatus.status}${aiStatus.detail ? `\n${aiStatus.detail}` : ''}${
+                aiConfig.aiMode === 'live'
+                  ? '\n\nuvicorn focus_api:app --host 127.0.0.1 --port 8000'
+                  : aiConfig.aiMode === 'browser'
+                    ? '\n\nBrowser AI uses your webcam directly.\nCamera permission will be requested when you start a focus session.'
+                    : '\n\nSimulation mode — no camera or server needed.'
+              }`}
             </pre>
           </div>
         </section>

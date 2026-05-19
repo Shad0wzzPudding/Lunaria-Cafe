@@ -119,7 +119,7 @@ export default function CafeView() {
           <ChaosEventLog />
           <GameFeedback />
           <DecoratePanel />
-          {isFocusing && getAIConfig().useLiveAI && <AttentionCamera />}
+          {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().aiMode === 'live' || getAIConfig().useLiveAI) && <AttentionCamera />}
         </motion.div>
       </main>
 
