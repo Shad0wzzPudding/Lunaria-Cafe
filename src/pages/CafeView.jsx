@@ -1,4 +1,3 @@
-import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import React, { useEffect } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
