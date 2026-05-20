@@ -1,5 +1,7 @@
+import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import React, { useEffect } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
+import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import {
   startAttentionFeed,
   stopAttentionFeed,
@@ -41,25 +43,31 @@ export default function CafeView() {
     startAttentionFeed();
 
     const customerInterval = setInterval(() => {
-      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
-        dispatch({
-          type: 'ADD_CUSTOMER',
-          payload: {
-            id: `cust-${Date.now()}`,
-            x: 80 + Math.random() * 580,
-            y: 150 + Math.random() * 300,
-            color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
-            emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
-            arrivedAt: Date.now(),
-          },
-        });
-      }
+  if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
+    const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
+    const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
+    const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
+    const cat = freeSeat ? FURNITURE_CATALOG[freeSeat.type] : null;
 
-      if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
-        const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
-        if (leaving) dispatch({ type: 'SERVE_CUSTOMER', payload: leaving.id });
-      }
-    }, 4000);
+    dispatch({
+      type: 'ADD_CUSTOMER',
+      payload: {
+        id: `cust-${Date.now()}`,
+        x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : 80 + Math.random() * 580,
+        y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : 150 + Math.random() * 300,
+        seatedAt: freeSeat?.id ?? null,
+        color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
+        emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
+        arrivedAt: Date.now(),
+      },
+    });
+  }
+
+  if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
+    const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
+    if (leaving) dispatch({ type: 'SERVE_CUSTOMER', payload: leaving.id });
+  }
+}, 4000);
 
     const chaosInterval = setInterval(() => {
       if (state.attention.chaosLevel > 0 && Math.random() < 0.2 * state.attention.chaosLevel) {
@@ -73,8 +81,7 @@ export default function CafeView() {
       clearInterval(customerInterval);
       clearInterval(chaosInterval);
     };
-  }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.attention.chaosLevel, dispatch]);
-
+ }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const startFocusSession = () => {
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });

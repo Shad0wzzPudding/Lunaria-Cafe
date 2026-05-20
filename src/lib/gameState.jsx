@@ -16,17 +16,23 @@ export const initialState = {
     decorateTool: 'place',
     placeFurnitureType: 'plant',
     furniture: [
-      { id: 'built-counter', type: 'counter', x: 50, y: 80, w: 160, h: 50 },
-      { id: 'built-brewing', type: 'brewing', x: 230, y: 85, w: 50, h: 45 },
-      { id: 'built-table-1', type: 'table', x: 100, y: 220, w: 80, h: 50 },
-      { id: 'built-table-2', type: 'table', x: 300, y: 280, w: 80, h: 50 },
-      { id: 'built-table-3', type: 'table', x: 500, y: 220, w: 80, h: 50 },
-      { id: 'built-shelf', type: 'shelf', x: 620, y: 70, w: 80, h: 100 },
-      { id: 'built-plant', type: 'plant', x: 30, y: 380, w: 32, h: 32 },
-      { id: 'built-window-1', type: 'window', x: 200, y: 5, w: 80, h: 45 },
-      { id: 'built-window-2', type: 'window', x: 460, y: 5, w: 80, h: 45 },
-      { id: 'built-fireplace', type: 'fireplace', x: 340, y: 60, w: 60, h: 50 },
-    ],
+  { id: 'built-counter',   type: 'bar_counter1',       x: 30,  y: 75,  w: 160, h: 70 },
+  { id: 'built-counter2',  type: 'bar_counter2',        x: 210, y: 75,  w: 160, h: 70 },
+  { id: 'built-fireplace', type: 'fireplace',           x: 320, y: 60,  w: 100, h: 80 },
+  { id: 'built-bookcase',  type: 'bookcase_small',      x: 630, y: 65,  w: 70,  h: 90 },
+  { id: 'built-table-1',   type: 'table_square',        x: 80,  y: 210, w: 80,  h: 80 },
+  { id: 'built-chair-1',   type: 'chair_blue',          x: 65,  y: 270, w: 40,  h: 45 },
+  { id: 'built-chair-2',   type: 'chair_red',           x: 145, y: 270, w: 40,  h: 45 },
+  { id: 'built-table-2',   type: 'table_round',         x: 290, y: 250, w: 90,  h: 90 },
+  { id: 'built-chair-3',   type: 'chair_blue',          x: 275, y: 315, w: 40,  h: 45 },
+  { id: 'built-chair-4',   type: 'chair_red',           x: 365, y: 315, w: 40,  h: 45 },
+  { id: 'built-table-3',   type: 'table_square',        x: 490, y: 210, w: 80,  h: 80 },
+  { id: 'built-chair-5',   type: 'chair_blue',          x: 475, y: 270, w: 40,  h: 45 },
+  { id: 'built-chair-6',   type: 'chair_red',           x: 555, y: 270, w: 40,  h: 45 },
+  { id: 'built-sofa',      type: 'sofa_blue',           x: 80,  y: 370, w: 110, h: 60 },
+  { id: 'built-carpet',    type: 'red_carpet',          x: 270, y: 365, w: 120, h: 70 },
+  { id: 'built-plant',     type: 'plant_big',           x: 660, y: 360, w: 40,  h: 50 },
+],
   },
   focus: {
     status: 'idle',
@@ -332,18 +338,16 @@ function gameReducer(state, action) {
       };
 
     case 'REMOVE_FURNITURE': {
-      const target = state.cafe.furniture.find((f) => f.id === action.payload);
-      if (!target || target.type === 'counter' || target.type === 'brewing') {
-        return state;
-      }
-      return {
-        ...state,
-        cafe: {
-          ...state.cafe,
-          furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
-        },
-      };
-    }
+  const target = state.cafe.furniture.find((f) => f.id === action.payload);
+  if (!target || target.id === 'built-counter') return state; // only protect main counter
+  return {
+    ...state,
+    cafe: {
+      ...state.cafe,
+      furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
+    },
+  };
+}
 
     case 'DISMISS_UI_POPUP':
       return {
