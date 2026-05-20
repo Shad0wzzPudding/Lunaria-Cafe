@@ -257,13 +257,6 @@ export default function CafeCanvas() {
   const animRef = useRef(null);
   const { state, dispatch } = useGame();
   
-  const draw = useCallback((time) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, CAFE_W, CAFE_H);
-  
-  //change from draw layer to png bg.
   const bgImages = useRef({ day: null, night: null });
 
   useEffect(() => {
@@ -275,6 +268,21 @@ export default function CafeCanvas() {
   night.src = '/C_Nightfall.png';
   night.onload = () => { bgImages.current.night = night; };
 }, []);
+
+  const draw = useCallback((time) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, CAFE_W, CAFE_H);
+  
+  //change from draw layer to png bg.
+  const bg = bgImages.current[state.cafe.timeOfDay ?? 'night'];
+if (bg) {
+  ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H);
+} else {
+  ctx.fillStyle = '#1a1833';
+  ctx.fillRect(0, 0, CAFE_W, CAFE_H);
+}
     
     // Furniture
     state.cafe.furniture.forEach(f => drawFurniture(ctx, f, time));
