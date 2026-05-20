@@ -129,6 +129,17 @@ export default function CafeView() {
           <div className="flex flex-wrap gap-2 ml-auto">
             {isManagement && !state.cafe.decorateMode && (
               <>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 font-pixel text-xs"
+                onClick={() => dispatch({
+                  type: 'SET_TIME_OF_DAY',
+                  payload: state.cafe.timeOfDay === 'day' ? 'night' : 'day',
+                })}
+              >
+                {state.cafe.timeOfDay === 'day' ? '🌙 Night' : '☀️ Day'}
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"

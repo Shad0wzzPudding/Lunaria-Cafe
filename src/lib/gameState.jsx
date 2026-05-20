@@ -11,6 +11,7 @@ export const initialState = {
     name: 'Lunaria Cafe',
     currentCustomers: 0,
     maxCustomers: 8,
+    timeOfDay: 'night',
     decorateMode: false,
     decorateTool: 'place',
     placeFurnitureType: 'plant',
@@ -423,7 +424,12 @@ function gameReducer(state, action) {
         },
       };
     }
-    
+    case 'SET_TIME_OF_DAY':
+    return {
+    ...state,
+    cafe: { ...state.cafe, timeOfDay: action.payload },
+    };
+
     default:
       return state;
   }
