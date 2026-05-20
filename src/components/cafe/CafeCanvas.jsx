@@ -262,11 +262,19 @@ export default function CafeCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, CAFE_W, CAFE_H);
-    
-    // Draw layers
-    drawFloor(ctx);
-    drawWalls(ctx);
-    drawAmbientLight(ctx, time);
+  
+  //change from draw layer to png bg.
+  const bgImages = useRef({ day: null, night: null });
+
+  useEffect(() => {
+  const day = new Image();
+  day.src = '/C_Daylight.png';
+  day.onload = () => { bgImages.current.day = day; };
+
+  const night = new Image();
+  night.src = '/C_Nightfall.png';
+  night.onload = () => { bgImages.current.night = night; };
+}, []);
     
     // Furniture
     state.cafe.furniture.forEach(f => drawFurniture(ctx, f, time));
@@ -287,7 +295,7 @@ export default function CafeCanvas() {
     }
     
     animRef.current = requestAnimationFrame(draw);
-  }, [state.cafe.furniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel]);
+ }, [state.cafe.furniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
   
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
