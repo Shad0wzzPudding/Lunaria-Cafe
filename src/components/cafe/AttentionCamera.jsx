@@ -22,21 +22,25 @@ export default function AttentionCamera() {
     let cancelled = false;
 
     const tryBrowserAI = () => {
-      const browserVideo = getBrowserVideoElement();
-      const status = getBrowserAIStatus();
+  const browserVideo = getBrowserVideoElement();
+  const status = getBrowserAIStatus();
 
-      if (status === 'active' && browserVideo?.srcObject) {
-        if (!streamSetRef.current || videoRef.current.srcObject !== browserVideo.srcObject) {
-          videoRef.current.srcObject = browserVideo.srcObject;
-          videoRef.current.play().then(() => {
-            if (!cancelled) { setIsReady(true); setError(null); }
-          }).catch(() => {});
-          streamSetRef.current = true;
-        }
-        return true; // handled
-      }
-      return false;
-    };
+  if (status === 'active' && browserVideo?.srcObject) {
+    // ← Only reassign if not already playing the same stream
+    const alreadyPlaying = streamSetRef.current && 
+                           videoRef.current.srcObject === browserVideo.srcObject &&
+                           !videoRef.current.paused;
+    if (!alreadyPlaying) {
+      videoRef.current.srcObject = browserVideo.srcObject;
+      videoRef.current.play().then(() => {
+        if (!cancelled) { setIsReady(true); setError(null); }
+      }).catch(() => {});
+      streamSetRef.current = true;
+    }
+    return true;
+  }
+  return false;
+};
 
     // 👇 fallback: request webcam directly if browserAI not ready
     const tryDirectWebcam = async () => {
@@ -61,8 +65,11 @@ export default function AttentionCamera() {
     }
 
     const interval = setInterval(() => {
-      if (!cancelled) tryBrowserAI();
-    }, 500);
+    if (!cancelled) {
+    const success = tryBrowserAI();
+    if (success) clearInterval(interval); // ← stop polling once stream is live
+  }
+}, 500);
 
     return () => {
       cancelled = true;
