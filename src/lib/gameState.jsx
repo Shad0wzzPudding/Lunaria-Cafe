@@ -14,7 +14,7 @@ export const initialState = {
     timeOfDay: 'day',
     decorateMode: false,
     decorateTool: 'place',
-    placeFurnitureType: 'plant',
+    placeFurnitureType: 'plant_big',
     furniture: [
   { id: 'built-counter',   type: 'bar_counter1',      x: 36.68463611859838, y: 158.72509960159363, w: 160,  h: 70 },
   { id: 'built-counter2',   type: 'bar_counter2',      x: 204.23180592991912, y: 159.72111553784862, w: 160,  h: 70 },

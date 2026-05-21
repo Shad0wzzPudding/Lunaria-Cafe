@@ -47,27 +47,48 @@ export default function DecoratePanel() {
   const [pos, setPos] = useState({ x: null, y: null }); // null = use default centered position
   const isDragging = useRef(false);
 
-  const handleMouseDown = (e) => {
+  const startDrag = (clientX, clientY) => {
     isDragging.current = true;
     const rect = panelRef.current.getBoundingClientRect();
-    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    dragOffset.current = { x: clientX - rect.left, y: clientY - rect.top };
+  };
 
-    const onMouseMove = (e) => {
-      if (!isDragging.current) return;
-      setPos({
-        x: Math.max(0, Math.min(window.innerWidth - rect.width, e.clientX - dragOffset.current.x)),
-        y: Math.max(0, Math.min(window.innerHeight - rect.height, e.clientY - dragOffset.current.y)),
-      });
-    };
+  const moveDrag = (clientX, clientY) => {
+    if (!isDragging.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    setPos({
+      x: Math.max(0, Math.min(window.innerWidth - rect.width, clientX - dragOffset.current.x)),
+      y: Math.max(0, Math.min(window.innerHeight - rect.height, clientY - dragOffset.current.y)),
+    });
+  };
 
+  const stopDrag = () => { isDragging.current = false; };
+
+  // Mouse
+  const handleMouseDown = (e) => {
+    startDrag(e.clientX, e.clientY);
+
+    const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
     const onMouseUp = () => {
-      isDragging.current = false;
+      stopDrag();
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Touch (iPad / mobile)
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    startDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault(); // prevent page scroll while dragging
+    const touch = e.touches[0];
+    moveDrag(touch.clientX, touch.clientY);
   };
 
   if (!cafe.decorateMode) return null;
@@ -85,7 +106,10 @@ export default function DecoratePanel() {
       {/* Drag handle */}
       <div
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-center py-1.5 cursor-grab active:cursor-grabbing border-b border-border/30 hover:bg-secondary/30 rounded-t-xl transition-colors"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={stopDrag}
+        className="flex items-center justify-center py-1.5 cursor-grab active:cursor-grabbing border-b border-border/30 hover:bg-secondary/30 rounded-t-xl transition-colors touch-none"
       >
         <GripHorizontal className="w-5 h-5 text-muted-foreground/50" />
       </div>
