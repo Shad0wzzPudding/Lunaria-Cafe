@@ -30,7 +30,7 @@ function GameRouter() {
 }
 
 function AppShell() {
-  const { user, loading } = useAuth()
+  const { user, loading, isGuest } = useAuth()
 
   if (loading) {
     return (
@@ -40,13 +40,13 @@ function AppShell() {
     )
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return <Login />
   }
 
   return (
     <QueryClientProvider client={queryClientInstance}>
-      <GameProvider userId={user.id}>
+      <GameProvider userId={isGuest ? null : user?.id}>
         <main className="dark min-h-screen">
           <GameRouter />
         </main>

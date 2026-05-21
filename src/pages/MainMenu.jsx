@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
+import { useAuth } from '@/lib/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Play, BarChart3, Settings, Rabbit, Moon, Sparkles } from 'lucide-react';
+import { Play, BarChart3, Settings, Rabbit, Moon, Sparkles, UserX } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 function FloatingParticle({ delay, x, y, size }) {
@@ -21,6 +22,12 @@ function FloatingParticle({ delay, x, y, size }) {
 
 export default function MainMenu() {
   const { dispatch } = useGame();
+  const { isGuest, signInAsGuest } = useAuth();
+
+  const handlePlayAsGuest = () => {
+    signInAsGuest();
+    dispatch({ type: 'SET_PHASE', payload: 'management' });
+  };
   
   const particles = useMemo(() => 
     Array.from({ length: 25 }, (_, i) => ({
@@ -133,6 +140,17 @@ export default function MainMenu() {
             <Settings className="w-4 h-4" />
             Settings
           </Button>
+
+          {!isGuest && (
+            <Button
+              onClick={handlePlayAsGuest}
+              variant="ghost"
+              className="h-11 font-pixel text-xs tracking-wide gap-2 text-muted-foreground/60 hover:text-muted-foreground border border-dashed border-border/30 hover:border-border/60"
+            >
+              <UserX className="w-4 h-4" />
+              Play as Guest
+            </Button>
+          )}
         </motion.div>
         
         <motion.p 
