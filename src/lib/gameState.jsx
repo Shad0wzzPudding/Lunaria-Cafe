@@ -11,7 +11,7 @@ export const initialState = {
     name: 'Lunaria Cafe',
     currentCustomers: 0,
     maxCustomers: 8,
-    timeOfDay: 'night',
+    timeOfDay: 'day',
     decorateMode: false,
     decorateTool: 'place',
     placeFurnitureType: 'plant',
