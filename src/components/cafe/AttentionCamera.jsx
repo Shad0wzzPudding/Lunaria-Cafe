@@ -13,75 +13,47 @@ export default function AttentionCamera() {
   const isBrowserMode = aiMode === 'browser';
 
   useEffect(() => {
-    if (!isBrowserMode || !videoRef.current) {
-      setIsReady(false);
-      setError(null);
-      return;
-    }
+  if (!isBrowserMode || !videoRef.current) return;
 
-    let cancelled = false;
+  let cancelled = false;
 
-    const tryBrowserAI = () => {
-  const browserVideo = getBrowserVideoElement();
-  const status = getBrowserAIStatus();
+  const startDisplayCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: false 
+      });
+      
+      if (cancelled) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
 
-  if (status === 'active' && browserVideo?.srcObject) {
-    // ← Only reassign if not already playing the same stream
-    const alreadyPlaying = streamSetRef.current && 
-                           videoRef.current.srcObject === browserVideo.srcObject &&
-                           !videoRef.current.paused;
-    if (!alreadyPlaying) {
-      videoRef.current.srcObject = browserVideo.srcObject;
-      videoRef.current.play().then(() => {
-        if (!cancelled) { setIsReady(true); setError(null); }
-      }).catch(() => {});
-      streamSetRef.current = true;
-    }
-    return true;
-  }
-  return false;
-};
+      localStreamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
 
-    // 👇 fallback: request webcam directly if browserAI not ready
-    const tryDirectWebcam = async () => {
-      if (streamSetRef.current) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        localStreamRef.current = stream;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        streamSetRef.current = true;
+      if (!cancelled) {
         setIsReady(true);
         setError(null);
-      } catch (err) {
-        if (!cancelled) setError('Camera permission denied');
       }
-    };
-
-    // Try browserAI first, fall back to direct webcam
-    if (!tryBrowserAI()) {
-      tryDirectWebcam();
+    } catch (err) {
+      if (!cancelled) setError('Camera permission denied');
     }
+  };
 
-    const interval = setInterval(() => {
-    if (!cancelled) {
-    const success = tryBrowserAI();
-    if (success) clearInterval(interval); // ← stop polling once stream is live
-  }
-}, 500);
+  startDisplayCamera();
 
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      streamSetRef.current = false;
-      // Stop direct webcam stream on unmount
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(t => t.stop());
-        localStreamRef.current = null;
-      }
-    };
-  }, [isBrowserMode]);
+  return () => {
+    cancelled = true;
+    // Stop display stream on unmount
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+    streamSetRef.current = false;
+  };
+}, [isBrowserMode]);
 
   if (!showCamera) return null;
 
