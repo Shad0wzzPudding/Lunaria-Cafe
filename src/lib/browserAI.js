@@ -19,6 +19,7 @@ const GAZE_THRESHOLD = 0.55;
 const PHONE_CONFIDENCE = 0.45;
 const PHONE_CLASS = 'cell phone';
 const NO_FACE_GRACE_MS = 3000;
+const LANDMARK_MATCH_THRESHOLD = 0.6; // 60% of landmarks must match
 
 let lastFaceSeenAt = Date.now();
 let focusScore = 0;
@@ -27,6 +28,11 @@ const SCORE_GAIN = 0.5;
 const SCORE_PENALTY = 1.0;
 const SCORE_TICK_MS = 200;
 let lastScoreTick = Date.now();
+
+// User facial landmark cache for stricter presence detection
+let cachedUserLandmarks = null;
+let landmarkCacheTimestamp = 0;
+const LANDMARK_CACHE_DURATION_MS = 5000; // Cache landmarks for 5 seconds
 
 let _onEvent = null;
 let _onStatusChange = null;
@@ -116,6 +122,61 @@ function detectPhones(predictions) {
   return phones;
 }
 
+// Cache user's facial landmarks for stricter presence detection
+function cacheUserLandmarks(landmarks) {
+  if (!landmarks || landmarks.length === 0) return;
+  
+  // Extract key landmark points (eyes, nose, mouth)
+  const keyLandmarks = [];
+  for (const landmark of landmarks) {
+    keyLandmarks.push({
+      x: landmark.x,
+      y: landmark.y,
+      z: landmark.z,
+    });
+  }
+  
+  cachedUserLandmarks = keyLandmarks;
+  landmarkCacheTimestamp = Date.now();
+}
+
+// Compare current landmarks with cached user landmarks
+function verifyUserPresence(currentLandmarks) {
+  if (!currentLandmarks || currentLandmarks.length === 0) {
+    return false;
+  }
+
+  // If no cached landmarks yet, cache current ones and verify
+  if (!cachedUserLandmarks || Date.now() - landmarkCacheTimestamp > LANDMARK_CACHE_DURATION_MS) {
+    cacheUserLandmarks(currentLandmarks);
+    return true; // First time, assume it's the user
+  }
+
+  // Compare landmark positions
+  let matchCount = 0;
+  const totalLandmarks = Math.min(currentLandmarks.length, cachedUserLandmarks.length);
+  
+  for (let i = 0; i < totalLandmarks; i++) {
+    const current = currentLandmarks[i];
+    const cached = cachedUserLandmarks[i];
+    
+    // Check if landmarks are within reasonable distance (0.1 normalized units)
+    const distance = Math.sqrt(
+      Math.pow(current.x - cached.x, 2) +
+      Math.pow(current.y - cached.y, 2) +
+      Math.pow(current.z - cached.z, 2)
+    );
+    
+    if (distance < 0.1) {
+      matchCount++;
+    }
+  }
+
+  // Require 60% of landmarks to match
+  const matchRatio = matchCount / totalLandmarks;
+  return matchRatio >= LANDMARK_MATCH_THRESHOLD;
+}
+
 function processDetections(faceResult, phonePredictions) {
   const now = Date.now();
 
@@ -124,10 +185,13 @@ function processDetections(faceResult, phonePredictions) {
   const phoneBboxes = detectPhones(phonePredictions);
   const isPhoneDetected = phoneBboxes.length > 0;
 
-  if (hasFace) lastFaceSeenAt = now;
+  // Use stricter user presence detection
+  const isVerifiedUser = hasFace ? verifyUserPresence(faceResult.faceLandmarks[0]) : false;
+
+  if (isVerifiedUser) lastFaceSeenAt = now;
 
   const faceAbsentMs = now - lastFaceSeenAt;
-  const noFaceWarning = !hasFace && faceAbsentMs >= NO_FACE_GRACE_MS;
+  const noFaceWarning = !isVerifiedUser && faceAbsentMs >= NO_FACE_GRACE_MS;
 
   let isUserFocused;
   let warningMessage;
@@ -135,14 +199,14 @@ function processDetections(faceResult, phonePredictions) {
   if (isPhoneDetected) {
     isUserFocused = false;
     warningMessage = 'DISTRACTION DETECTED - PUT YOUR PHONE AWAY!';
-  } else if (!isGazeFocused && hasFace) {
+  } else if (!isGazeFocused && isVerifiedUser) {
     isUserFocused = false;
     warningMessage = 'GAZE DISTRACTED - LOOK AT THE SCREEN!';
   } else if (noFaceWarning) {
     isUserFocused = false;
     warningMessage = 'USER NOT FOCUSED - COME BACK!';
   } else {
-    isUserFocused = hasFace;
+    isUserFocused = isVerifiedUser;
     warningMessage = '';
   }
 
@@ -181,7 +245,7 @@ function processDetections(faceResult, phonePredictions) {
   return {
     phone_detected: isPhoneDetected,
     attention_score: Math.round(currentAttentionScore),
-    user_present: hasFace,
+    user_present: isVerifiedUser,
     timestamp: now,
     warning_message: warningMessage,
     tracker_score: focusScore,
@@ -301,6 +365,8 @@ export function stopBrowserAI() {
   _onEvent = null;
   focusScore = 0;
   currentAttentionScore = 85;
+  cachedUserLandmarks = null;
+  landmarkCacheTimestamp = 0;
   setStatus('idle');
 }
 

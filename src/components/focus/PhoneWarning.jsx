@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,13 +8,19 @@ const WARNING_DURATION_MS = 60000; // 1 minute
 export default function PhoneWarning() {
   const { state, dispatch } = useGame();
   const { phoneWarningStart, phoneDetected } = state.attention;
+  const { sfxVolume, masterVolume } = state.audio;
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [soundPlayed, setSoundPlayed] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!phoneWarningStart || !phoneDetected) {
       setRemainingSeconds(0);
       setSoundPlayed(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       return;
     }
 
@@ -37,20 +43,27 @@ export default function PhoneWarning() {
   }, [phoneWarningStart, phoneDetected, soundPlayed]);
 
   const playWarningSound = () => {
+    // Calculate final volume (master * sfx)
+    const finalVolume = (masterVolume / 100) * (sfxVolume / 100);
+    
+    // If volume is 0, don't play sound
+    if (finalVolume === 0) {
+      return;
+    }
+
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.value = 0.3;
-
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.3);
+      const audio = new Audio('/assets/warning-sound.mp3');
+      audio.volume = finalVolume;
+      audioRef.current = audio;
+      
+      audio.play().catch((err) => {
+        console.warn('Failed to play warning sound:', err);
+      });
     } catch (err) {
       console.warn('Failed to play warning sound:', err);
     }

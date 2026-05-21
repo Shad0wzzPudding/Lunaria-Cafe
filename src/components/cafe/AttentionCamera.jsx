@@ -5,6 +5,7 @@ export default function AttentionCamera() {
   const { aiMode, useLiveAI } = getAIConfig();
   const videoRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState(null);
   const streamSetRef = useRef(false);
 
   const showCamera = aiMode === 'browser' || aiMode === 'live' || useLiveAI;
@@ -13,6 +14,8 @@ export default function AttentionCamera() {
   useEffect(() => {
     if (!isBrowserMode || !videoRef.current) {
       streamSetRef.current = false;
+      setIsReady(false);
+      setError(null);
       return;
     }
 
@@ -20,21 +23,43 @@ export default function AttentionCamera() {
       const browserVideo = getBrowserVideoElement();
       const status = getBrowserAIStatus();
       
+      if (status === 'error') {
+        setError('Camera error');
+        setIsReady(false);
+        return;
+      }
+
       if (browserVideo && browserVideo.srcObject && status === 'active') {
         // Only set srcObject once to avoid permission spam on iOS
         if (!streamSetRef.current || videoRef.current.srcObject !== browserVideo.srcObject) {
           videoRef.current.srcObject = browserVideo.srcObject;
-          videoRef.current.play().catch(() => {});
+          videoRef.current.play()
+            .then(() => {
+              setIsReady(true);
+              setError(null);
+            })
+            .catch((err) => {
+              console.error('Video play error:', err);
+              setError('Failed to play video');
+              setIsReady(false);
+            });
           streamSetRef.current = true;
+        } else if (videoRef.current.readyState >= 2) {
+          // Video is ready to play
+          setIsReady(true);
+          setError(null);
         }
-        setIsReady(true);
+      } else if (status === 'loading') {
+        setIsReady(false);
+        setError(null);
       } else {
         setIsReady(false);
+        setError('Camera not ready');
       }
     };
 
     checkBrowserVideo();
-    const interval = setInterval(checkBrowserVideo, 1000);
+    const interval = setInterval(checkBrowserVideo, 500);
 
     return () => {
       clearInterval(interval);
@@ -52,7 +77,11 @@ export default function AttentionCamera() {
         </p>
         {!isReady ? (
           <div className="flex aspect-video items-center justify-center bg-black/80">
-            <span className="text-[10px] text-muted-foreground">Loading...</span>
+            {error ? (
+              <span className="text-[10px] text-red-400 text-center px-2">{error}</span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Loading...</span>
+            )}
           </div>
         ) : (
           <video

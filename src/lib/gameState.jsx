@@ -49,6 +49,8 @@ export const initialState = {
     warningMessage: '',
     source: 'offline',
     phoneWarningStart: null,
+    phoneFreeSince: null,
+    gazeFocusedSince: null,
   },
   npcs: {
     customers: [],
@@ -258,6 +260,7 @@ function gameReducer(state, action) {
       const nextEvents = [...state.attention.chaosEvents];
       const now = Date.now();
       const WARNING_DURATION_MS = 60000; // 1 minute
+      const CLEAR_CONDITION_MS = 2000; // 2 seconds of continuous good behavior
 
       if (chaos.level > prevLevel && chaos.level > 0 && action.payload.phone_detected) {
         nextEvents.push({
@@ -266,22 +269,54 @@ function gameReducer(state, action) {
         });
       }
 
-      // Phone warning logic
+      // Phone warning logic with strict clearing conditions
       let phoneWarningStart = state.attention.phoneWarningStart;
+      let phoneFreeSince = state.attention.phoneFreeSince;
+      let gazeFocusedSince = state.attention.gazeFocusedSince;
       let newFocusStatus = state.focus.status;
 
+      // Check if user is looking at screen (no gaze distraction warning)
+      const isGazeFocused = !action.payload.warning_message?.includes('GAZE DISTRACTED');
+
       if (action.payload.phone_detected) {
+        // Phone detected - start warning immediately
         if (!phoneWarningStart) {
           phoneWarningStart = now;
         }
+        // Reset clearing conditions
+        phoneFreeSince = null;
+        gazeFocusedSince = null;
         // Only set to distracted after 1 minute of continuous phone detection
         if (now - phoneWarningStart >= WARNING_DURATION_MS) {
           newFocusStatus = 'distracted';
         }
       } else {
-        phoneWarningStart = null;
-        if (state.focus.status === 'distracted') {
-          newFocusStatus = 'active';
+        // No phone detected - track phone-free duration
+        if (!phoneFreeSince) {
+          phoneFreeSince = now;
+        }
+        
+        // Track gaze-focused duration
+        if (isGazeFocused) {
+          if (!gazeFocusedSince) {
+            gazeFocusedSince = now;
+          }
+        } else {
+          gazeFocusedSince = null;
+        }
+
+        // Strict clearing: both conditions must be met for 2 seconds
+        const phoneFreeDuration = phoneFreeSince ? now - phoneFreeSince : 0;
+        const gazeFocusedDuration = gazeFocusedSince ? now - gazeFocusedSince : 0;
+
+        if (phoneFreeDuration >= CLEAR_CONDITION_MS && gazeFocusedDuration >= CLEAR_CONDITION_MS) {
+          // Both conditions met - clear warning
+          phoneWarningStart = null;
+          phoneFreeSince = null;
+          gazeFocusedSince = null;
+          if (state.focus.status === 'distracted') {
+            newFocusStatus = 'active';
+          }
         }
       }
 
@@ -297,6 +332,8 @@ function gameReducer(state, action) {
           source: action.payload.source ?? state.attention.source,
           chaosEvents: nextEvents.slice(-10),
           phoneWarningStart,
+          phoneFreeSince,
+          gazeFocusedSince,
         },
         focus: {
           ...state.focus,
