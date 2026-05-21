@@ -22,10 +22,10 @@ let inferenceTimeoutId = null;
 // --- Config ---
 const FPS_INFERENCE = 15; // Inference runs at 15 FPS to prevent UI lag
 const GAZE_THRESHOLD = 0.55;
-const PHONE_CONFIDENCE = 0.45;
+const PHONE_CONFIDENCE = 0.55; // Was 0.45, makes detection stricter
 const PHONE_CLASS = 'cell phone';
 const NO_FACE_GRACE_MS = 3000;
-const PHONE_GRACE_MS = 1000; // Temporal smoothing for phone flicker
+const PHONE_GRACE_MS = 500; // Was 1000
 const LANDMARK_MATCH_THRESHOLD = 0.6; // 60% of landmarks must match
 
 // --- State Variables ---
