@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthProvider';
 import { Button } from '@/components/ui/button';
+import { UserX } from 'lucide-react';
 
 export default function Login() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInAsGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
@@ -48,6 +49,21 @@ export default function Login() {
           onClick={() => setIsSignUp(!isSignUp)}
         >
           {isSignUp ? 'Already have an account? Log in' : 'New here? Sign up'}
+        </button>
+
+        <div className="flex items-center gap-3 pt-1">
+          <div className="flex-1 h-px bg-border/30" />
+          <span className="text-xs text-muted-foreground/40">or</span>
+          <div className="flex-1 h-px bg-border/30" />
+        </div>
+
+        <button
+          type="button"
+          onClick={signInAsGuest}
+          className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50 hover:text-muted-foreground w-full transition-colors"
+        >
+          <UserX className="w-3 h-3" />
+          Play as Guest
         </button>
       </form>
     </div>
