@@ -14,7 +14,7 @@ let videoElement = null;
 let animFrameId = null;
 let lastProcessTime = 0;
 
-const PROCESS_INTERVAL_MS = 500;
+const PROCESS_INTERVAL_MS = 800; // Increased from 500ms to reduce CPU load
 const GAZE_THRESHOLD = 0.55;
 const PHONE_CONFIDENCE = 0.45;
 const PHONE_CLASS = 'cell phone';
@@ -22,9 +22,10 @@ const NO_FACE_GRACE_MS = 3000;
 
 let lastFaceSeenAt = Date.now();
 let focusScore = 0;
-const SCORE_GAIN = 1.0;
-const SCORE_PENALTY = 2.0;
-const SCORE_TICK_MS = 500;
+let currentAttentionScore = 85;
+const SCORE_GAIN = 0.5;
+const SCORE_PENALTY = 1.0;
+const SCORE_TICK_MS = 200;
 let lastScoreTick = Date.now();
 
 let _onEvent = null;
@@ -74,7 +75,7 @@ async function loadCocoSSD() {
 
 async function getWebcamStream() {
   return navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+    video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
     audio: false,
   });
 }
@@ -154,21 +155,32 @@ function processDetections(faceResult, phonePredictions) {
     }
   }
 
-  let attentionScore = 85;
+  // Gradual score changes instead of preset patterns
+  let targetScore = 85;
   if (isPhoneDetected) {
-    attentionScore = 22;
+    targetScore = 22;
   } else if (!hasFace && noFaceWarning) {
-    attentionScore = 38;
+    targetScore = 38;
   } else if (!isGazeFocused) {
-    attentionScore = 52;
+    targetScore = 52;
   } else if (isUserFocused) {
     const bonus = Math.min(30, Math.log1p(focusScore) * 4);
-    attentionScore = Math.min(100, 70 + bonus);
+    targetScore = Math.min(100, 70 + bonus);
   }
+
+  // Gradually move current score toward target
+  const scoreDiff = targetScore - currentAttentionScore;
+  const maxChange = 2.0; // Maximum change per tick
+  if (Math.abs(scoreDiff) <= maxChange) {
+    currentAttentionScore = targetScore;
+  } else {
+    currentAttentionScore += Math.sign(scoreDiff) * maxChange;
+  }
+  currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
 
   return {
     phone_detected: isPhoneDetected,
-    attention_score: Math.round(attentionScore),
+    attention_score: Math.round(currentAttentionScore),
     user_present: hasFace,
     timestamp: now,
     warning_message: warningMessage,
@@ -245,6 +257,7 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     }
     videoElement.srcObject = stream;
     videoElement.setAttribute('playsinline', '');
+    videoElement.setAttribute('autoplay', '');
     videoElement.muted = true;
     await videoElement.play();
 
@@ -287,6 +300,7 @@ export function stopBrowserAI() {
 
   _onEvent = null;
   focusScore = 0;
+  currentAttentionScore = 85;
   setStatus('idle');
 }
 

@@ -14,6 +14,7 @@ import ChaosEventLog from '@/components/cafe/ChaosEventLog';
 import ParticleOverlay from '@/components/cafe/ParticleOverlay';
 import NPCPanel from '@/components/cafe/NPCPanel';
 import FocusTimer from '@/components/focus/FocusTimer';
+import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,7 @@ export default function CafeView() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
+      {isFocusing && <PhoneWarning />}
       <header className="shrink-0 z-20 flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card/40 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Button

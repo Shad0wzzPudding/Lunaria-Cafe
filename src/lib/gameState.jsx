@@ -41,6 +41,7 @@ export const initialState = {
     chaosEvents: [],
     warningMessage: '',
     source: 'offline',
+    phoneWarningStart: null,
   },
   npcs: {
     customers: [],
@@ -248,12 +249,33 @@ function gameReducer(state, action) {
       const chaos = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const nextEvents = [...state.attention.chaosEvents];
+      const now = Date.now();
+      const WARNING_DURATION_MS = 60000; // 1 minute
 
       if (chaos.level > prevLevel && chaos.level > 0 && action.payload.phone_detected) {
         nextEvents.push({
           message: action.payload.warning_message || `Chaos level: ${chaos.name}`,
           timestamp: Date.now(),
         });
+      }
+
+      // Phone warning logic
+      let phoneWarningStart = state.attention.phoneWarningStart;
+      let newFocusStatus = state.focus.status;
+
+      if (action.payload.phone_detected) {
+        if (!phoneWarningStart) {
+          phoneWarningStart = now;
+        }
+        // Only set to distracted after 1 minute of continuous phone detection
+        if (now - phoneWarningStart >= WARNING_DURATION_MS) {
+          newFocusStatus = 'distracted';
+        }
+      } else {
+        phoneWarningStart = null;
+        if (state.focus.status === 'distracted') {
+          newFocusStatus = 'active';
+        }
       }
 
       return {
@@ -267,15 +289,11 @@ function gameReducer(state, action) {
           warningMessage: action.payload.warning_message ?? '',
           source: action.payload.source ?? state.attention.source,
           chaosEvents: nextEvents.slice(-10),
+          phoneWarningStart,
         },
         focus: {
           ...state.focus,
-          status:
-            action.payload.phone_detected && state.focus.status === 'active'
-              ? 'distracted'
-              : state.focus.status === 'distracted' && !action.payload.phone_detected
-                ? 'active'
-                : state.focus.status,
+          status: newFocusStatus,
         },
       };
     }

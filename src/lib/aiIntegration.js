@@ -30,6 +30,7 @@ let pollInterval = null;
 let browserAIActive = false;
 let browserVideoElement = null;
 let connectionStatus = 'offline'; // offline | connecting | live | error
+let liveAttentionScore = 85;
 
 // aiMode: 'simulation' | 'live' | 'browser'
 function loadConfig() {
@@ -88,22 +89,32 @@ export function mapTrackerStateToEvent(trackerState) {
     warning_message,
   } = trackerState;
 
-  let attention_score = 85;
-
+  // Gradual score changes instead of preset patterns
+  let targetScore = 85;
   if (is_phone_detected) {
-    attention_score = 22;
+    targetScore = 22;
   } else if (!is_face_detected) {
-    attention_score = 38;
+    targetScore = 38;
   } else if (!is_user_focused) {
-    attention_score = 52;
+    targetScore = 52;
   } else {
     const bonus = Math.min(30, Math.log1p(focus_score) * 4);
-    attention_score = Math.min(100, 70 + bonus);
+    targetScore = Math.min(100, 70 + bonus);
   }
+
+  // Gradually move current score toward target
+  const scoreDiff = targetScore - liveAttentionScore;
+  const maxChange = 2.0; // Maximum change per tick
+  if (Math.abs(scoreDiff) <= maxChange) {
+    liveAttentionScore = targetScore;
+  } else {
+    liveAttentionScore += Math.sign(scoreDiff) * maxChange;
+  }
+  liveAttentionScore = Math.max(0, Math.min(100, liveAttentionScore));
 
   return {
     phone_detected: Boolean(is_phone_detected),
-    attention_score: Math.round(attention_score),
+    attention_score: Math.round(liveAttentionScore),
     user_present: Boolean(is_face_detected),
     timestamp: Date.now(),
     warning_message: warning_message || '',
@@ -171,6 +182,7 @@ export function stopLiveTracking() {
     clearInterval(pollInterval);
     pollInterval = null;
   }
+  liveAttentionScore = 85;
   if (!simulationInterval) setConnectionStatus('offline');
 }
 
