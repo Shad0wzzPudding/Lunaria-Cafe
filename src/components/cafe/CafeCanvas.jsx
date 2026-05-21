@@ -4,221 +4,101 @@ import { useGame } from '@/lib/gameState.jsx';
 const CAFE_W = 740;
 const CAFE_H = 500;
 
-const FURNITURE_SIZES = {
-  plant: { w: 32, h: 32 },
-  table: { w: 80, h: 50 },
-  shelf: { w: 80, h: 100 },
-  window: { w: 80, h: 45 },
-  fireplace: { w: 60, h: 50 },
-  counter: { w: 160, h: 50 },
-  brewing: { w: 50, h: 45 },
+export const FURNITURE_CATALOG = {
+  baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false },
+  bar_counter1:       { file: '02_bar_counter1.png',       w: 160, h: 70,  sittable: false },
+  bar_counter2:       { file: '03_bar_counter2 .png',      w: 160, h: 70,  sittable: false },
+  barrel:             { file: '04_barrel.png',             w: 35,  h: 45,  sittable: false },
+  bench:              { file: '05_bench.png',              w: 120, h: 50,  sittable: true,  seatDx: 0, seatDy: 10 },
+  bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false },
+  cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
+  candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
+  chair:              { file: '09_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair_blue:         { file: '11_chair_blue.png',         w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false },
+  dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false },
+  fireplace:          { file: '15_fireplace.png',          w: 100, h: 80,  sittable: false },
+  lantern:            { file: '16_lantern.png',            w: 30,  h: 40,  sittable: false },
+  long_table:         { file: '17_long_table.png',         w: 120, h: 60,  sittable: false },
+  nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false },
+  painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false },
+  plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false },
+  plant_blue:         { file: '21_plant_blue.png',         w: 35,  h: 45,  sittable: false },
+  plant_small:        { file: '22_plant_small.png',        w: 30,  h: 40,  sittable: false },
+  red_carpet:         { file: '23_red_carpet .png',        w: 120, h: 70,  sittable: false },
+  sofa_blue:          { file: '24_sofa_blue.png',          w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 },
+  sofa_red:           { file: '25_sofa_red.png',           w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 },
+  table_long:         { file: '26_table_long.png',         w: 130, h: 90,  sittable: false },
+  table_round:        { file: '27_table_round.png',        w: 90,  h: 90,  sittable: false },
+  table_square:       { file: '28_table_square.png',       w: 80,  h: 80,  sittable: false },
+  table_square_plant: { file: '29_table_square_plant.png', w: 80,  h: 80,  sittable: false },
+  wardrobe:           { file: '30_wardrobe.png',           w: 60,  h: 80,  sittable: false },
 };
 
+export const FURNITURE_SIZES = Object.fromEntries(
+  Object.entries(FURNITURE_CATALOG).map(([k, v]) => [k, { w: v.w, h: v.h }])
+);
+
 function findFurnitureAt(furniture, x, y) {
-  for (let i = furniture.length - 1; i >= 0; i -= 1) {
+  for (let i = furniture.length - 1; i >= 0; i--) {
     const f = furniture[i];
-    if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) {
-      return f;
-    }
+    if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) return f;
   }
   return null;
 }
 
-const COLORS = {
-  floor: '#1a1833',
-  floorTile: '#201e40',
-  wall: '#14122a',
-  wallAccent: '#2a2650',
-  counter: '#5c4a3a',
-  counterTop: '#8b7355',
-  table: '#4a3c2e',
-  tableTop: '#6b5740',
-  brewing: '#3a4a5c',
-  brewGlow: '#cc7ada',
-  shelf: '#3a2e22',
-  plant: '#2d5a3a',
-  plantPot: '#5c4a3a',
-  window: '#1a2a4a',
-  windowGlow: '#3a5a8a',
-  moonlight: 'rgba(140, 170, 220, 0.08)',
-  fireplace: '#5a3a1a',
-  fireGlow: '#e8a040',
-  rabbit: '#e8ddd0',
-  rabbitEar: '#d4c4b0',
-  customer: '#6b7db3',
-  particle: 'rgba(200, 180, 255, 0.5)',
-  warmLight: 'rgba(230, 190, 100, 0.06)',
-};
-
-function drawFloor(ctx) {
-  ctx.fillStyle = COLORS.floor;
-  ctx.fillRect(0, 0, CAFE_W, CAFE_H);
-  // Tile pattern
-  ctx.fillStyle = COLORS.floorTile;
-  for (let x = 0; x < CAFE_W; x += 40) {
-    for (let y = 50; y < CAFE_H; y += 40) {
-      if ((Math.floor(x / 40) + Math.floor(y / 40)) % 2 === 0) {
-        ctx.fillRect(x, y, 40, 40);
-      }
-    }
-  }
-}
-
-function drawWalls(ctx) {
-  ctx.fillStyle = COLORS.wall;
-  ctx.fillRect(0, 0, CAFE_W, 55);
-  ctx.fillStyle = COLORS.wallAccent;
-  ctx.fillRect(0, 50, CAFE_W, 5);
-}
-
-function drawFurniture(ctx, item, time) {
-  const { type, x, y, w, h } = item;
-  
-  switch (type) {
-    case 'counter':
-      ctx.fillStyle = COLORS.counter;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = COLORS.counterTop;
-      ctx.fillRect(x, y, w, 8);
-      // Items on counter
-      ctx.fillStyle = '#e8a040';
-      ctx.beginPath(); ctx.arc(x + 30, y + 4, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8bc5a0';
-      ctx.beginPath(); ctx.arc(x + 80, y + 4, 4, 0, Math.PI * 2); ctx.fill();
-      break;
-    case 'table':
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.fillRect(x + 3, y + 3, w, h);
-      ctx.fillStyle = COLORS.table;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = COLORS.tableTop;
-      ctx.fillRect(x + 2, y + 2, w - 4, 6);
-      // Cup on table
-      ctx.fillStyle = '#d4c4b0';
-      ctx.fillRect(x + w/2 - 4, y + 4, 8, 6);
-      break;
-    case 'brewing':
-      ctx.fillStyle = COLORS.brewing;
-      ctx.fillRect(x, y, w, h);
-      // Glow bubble
-      const glowAlpha = 0.3 + Math.sin(time * 0.003) * 0.2;
-      ctx.fillStyle = `rgba(204, 122, 218, ${glowAlpha})`;
-      ctx.beginPath(); ctx.arc(x + w/2, y + 15, 8, 0, Math.PI * 2); ctx.fill();
-      // Steam
-      ctx.fillStyle = `rgba(200, 180, 255, ${0.2 + Math.sin(time * 0.005) * 0.15})`;
-      ctx.beginPath();
-      ctx.arc(x + w/2, y - 5 + Math.sin(time * 0.002) * 3, 4, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    case 'shelf':
-      ctx.fillStyle = COLORS.shelf;
-      ctx.fillRect(x, y, w, h);
-      for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = '#6b5740';
-        ctx.fillRect(x, y + i * 32, w, 3);
-        ctx.fillStyle = ['#cc7ada', '#7ec8a0', '#e8a040'][i];
-        ctx.fillRect(x + 8, y + i * 32 + 6, 10, 14);
-        ctx.fillRect(x + 24, y + i * 32 + 8, 10, 12);
-      }
-      break;
-    case 'plant':
-      ctx.fillStyle = COLORS.plantPot;
-      ctx.fillRect(x + 4, y + 14, 24, 18);
-      ctx.fillStyle = COLORS.plant;
-      ctx.beginPath(); ctx.arc(x + 16, y + 10, 12, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4a8a5a';
-      ctx.beginPath(); ctx.arc(x + 12, y + 6, 6, 0, Math.PI * 2); ctx.fill();
-      break;
-    case 'window':
-      ctx.fillStyle = COLORS.window;
-      ctx.fillRect(x, y, w, h);
-      // Moonlight through window
-      ctx.fillStyle = COLORS.windowGlow;
-      ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
-      // Rain effect
-      ctx.fillStyle = 'rgba(140, 170, 220, 0.3)';
-      for (let i = 0; i < 5; i++) {
-        const rx = x + 8 + (i * 14);
-        const ry = y + 6 + ((time * 0.05 + i * 7) % (h - 12));
-        ctx.fillRect(rx, ry, 1, 4);
-      }
-      // Frame
-      ctx.strokeStyle = '#4a4070';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, w, h);
-      ctx.beginPath(); ctx.moveTo(x + w/2, y); ctx.lineTo(x + w/2, y + h); ctx.stroke();
-      break;
-    case 'fireplace':
-      ctx.fillStyle = COLORS.fireplace;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = '#3a2a12';
-      ctx.fillRect(x + 8, y + 12, w - 16, h - 12);
-      // Fire
-      const fireFlicker = Math.sin(time * 0.01) * 3;
-      ctx.fillStyle = COLORS.fireGlow;
-      ctx.beginPath(); ctx.arc(x + w/2, y + 28 + fireFlicker, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f0d060';
-      ctx.beginPath(); ctx.arc(x + w/2, y + 25 + fireFlicker, 6, 0, Math.PI * 2); ctx.fill();
-      // Warm glow
-      const grad = ctx.createRadialGradient(x + w/2, y + h, 5, x + w/2, y + h, 80);
-      grad.addColorStop(0, 'rgba(230, 190, 100, 0.12)');
-      grad.addColorStop(1, 'rgba(230, 190, 100, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x - 60, y, w + 120, 120);
-      break;
-  }
-}
+const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3' };
 
 function drawRabbit(ctx, rabbit, time) {
   const { x, y, mood } = rabbit;
   const bobY = Math.sin(time * 0.003 + x) * 2;
-  
-  // Body
   ctx.fillStyle = COLORS.rabbit;
   ctx.beginPath(); ctx.ellipse(x, y + bobY, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
-  // Head
   ctx.beginPath(); ctx.arc(x, y - 8 + bobY, 7, 0, Math.PI * 2); ctx.fill();
-  // Ears
-  ctx.fillStyle = COLORS.rabbitEar;
+  ctx.fillStyle = '#d4c4b0';
   ctx.beginPath(); ctx.ellipse(x - 4, y - 18 + bobY, 3, 8, -0.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(x + 4, y - 18 + bobY, 3, 8, 0.2, 0, Math.PI * 2); ctx.fill();
-  // Inner ears
   ctx.fillStyle = '#d4a0b0';
   ctx.beginPath(); ctx.ellipse(x - 4, y - 17 + bobY, 1.5, 4, -0.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(x + 4, y - 17 + bobY, 1.5, 4, 0.2, 0, Math.PI * 2); ctx.fill();
-  // Eyes
   ctx.fillStyle = '#2a2040';
   ctx.beginPath(); ctx.arc(x - 3, y - 9 + bobY, 1.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(x + 3, y - 9 + bobY, 1.5, 0, Math.PI * 2); ctx.fill();
-  // Blush
   if (mood === 'happy') {
     ctx.fillStyle = 'rgba(220, 140, 140, 0.4)';
     ctx.beginPath(); ctx.arc(x - 6, y - 6 + bobY, 2, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(x + 6, y - 6 + bobY, 2, 0, Math.PI * 2); ctx.fill();
   }
   if (mood === 'sleepy') {
-    ctx.fillStyle = '#eee';
-    ctx.font = '8px sans-serif';
+    ctx.fillStyle = '#eee'; ctx.font = '8px sans-serif';
     ctx.fillText('z', x + 10, y - 18 + bobY + Math.sin(time * 0.002) * 3);
     ctx.fillText('z', x + 15, y - 22 + bobY + Math.sin(time * 0.002 + 1) * 3);
   }
 }
 
-function drawCustomer(ctx, customer, time) {
-  const { x, y, color, emoji } = customer;
-  const bobY = Math.sin(time * 0.002 + x * 0.1) * 1;
-  
-  // Body
+export function getCustomerDrawPos(customer, furniture) {
+  if (customer.seatedAt) {
+    const seat = furniture.find(f => f.id === customer.seatedAt);
+    if (seat) {
+      const cat = FURNITURE_CATALOG[seat.type];
+      return { x: seat.x + seat.w / 2 + (cat?.seatDx ?? 0), y: seat.y + seat.h / 2 + (cat?.seatDy ?? 0), seated: true };
+    }
+  }
+  return { x: customer.x, y: customer.y, seated: false };
+}
+
+function drawCustomer(ctx, customer, time, furniture) {
+  const { color, emoji } = customer;
+  const { x, y, seated } = getCustomerDrawPos(customer, furniture);
+  const bobY = seated ? 0 : Math.sin(time * 0.002 + x * 0.1) * 1;
   ctx.fillStyle = color || COLORS.customer;
-  ctx.beginPath(); ctx.ellipse(x, y + bobY, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
-  // Head
-  ctx.beginPath(); ctx.arc(x, y - 12 + bobY, 8, 0, Math.PI * 2); ctx.fill();
-  // Face
+  ctx.beginPath(); ctx.ellipse(x, y + bobY, 9, seated ? 8 : 12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y - (seated ? 8 : 12) + bobY, 8, 0, Math.PI * 2); ctx.fill();
   if (emoji) {
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(emoji, x, y - 8 + bobY);
+    ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(emoji, x, y - (seated ? 4 : 8) + bobY);
   }
 }
 
@@ -233,68 +113,86 @@ function drawParticles(ctx, time) {
   }
 }
 
-function drawAmbientLight(ctx, time) {
-  // Moonlight from windows
-  const windows = [{ x: 220, y: 10 }, { x: 540, y: 10 }];
-  windows.forEach(w => {
-    const grad = ctx.createRadialGradient(w.x, w.y + 30, 5, w.x, w.y + 80, 100);
-    grad.addColorStop(0, 'rgba(140, 170, 220, 0.08)');
-    grad.addColorStop(1, 'rgba(140, 170, 220, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(w.x - 100, w.y, 200, 180);
-  });
-  
-  // Overall warm ambient
-  const grad2 = ctx.createRadialGradient(CAFE_W/2, CAFE_H/2, 50, CAFE_W/2, CAFE_H/2, 400);
-  grad2.addColorStop(0, 'rgba(230, 190, 100, 0.03)');
-  grad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = grad2;
-  ctx.fillRect(0, 0, CAFE_W, CAFE_H);
-}
-
 export default function CafeCanvas() {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
+  const bgImages = useRef({ day: null, night: null });
+  const furnitureImages = useRef({});
   const { state, dispatch } = useGame();
-  
+
+  useEffect(() => {
+    const day = new Image(); day.src = '/C_Daylight.png';
+    day.onload = () => { bgImages.current.day = day; };
+    const night = new Image(); night.src = '/C_Nightfall.png';
+    night.onload = () => { bgImages.current.night = night; };
+  }, []);
+
+  useEffect(() => {
+    Object.entries(FURNITURE_CATALOG).forEach(([type, info]) => {
+      const img = new Image();
+      img.src = `/assets/decoration/${info.file}`;
+      img.onload = () => { furnitureImages.current[type] = img; };
+    });
+  }, []);
+
   const draw = useCallback((time) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, CAFE_W, CAFE_H);
-    
-    // Draw layers
-    drawFloor(ctx);
-    drawWalls(ctx);
-    drawAmbientLight(ctx, time);
-    
-    // Furniture
-    state.cafe.furniture.forEach(f => drawFurniture(ctx, f, time));
-    
-    // Rabbits
-    state.npcs.rabbits.forEach(r => drawRabbit(ctx, r, time));
-    
-    // Customers (during focus phase)
-    state.npcs.customers.forEach(c => drawCustomer(ctx, c, time));
-    
-    // Particles
+
+    const bg = bgImages.current[state.cafe.timeOfDay ?? 'night'];
+    if (bg) { ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H); }
+    else { ctx.fillStyle = '#1a1833'; ctx.fillRect(0, 0, CAFE_W, CAFE_H); }
+
+    // Y-sorted draw list for depth
+    const drawList = [
+      ...state.cafe.furniture.map(f => ({ kind: 'furniture', data: f, sortY: f.y + f.h })),
+      ...state.npcs.rabbits.map(r => ({ kind: 'rabbit', data: r, sortY: r.y + 20 })),
+      ...state.npcs.customers.map(c => {
+        const pos = getCustomerDrawPos(c, state.cafe.furniture);
+        return { kind: 'customer', data: c, sortY: pos.y + 20 };
+      }),
+    ];
+    drawList.sort((a, b) => a.sortY - b.sortY);
+
+    for (const item of drawList) {
+      if (item.kind === 'furniture') {
+        const { type, x, y, w, h } = item.data;
+        const img = furnitureImages.current[type];
+        if (img) {
+          ctx.drawImage(img, x, y, w, h);
+        } else {
+          ctx.fillStyle = 'rgba(100,80,60,0.7)';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeStyle = 'rgba(200,180,140,0.5)';
+          ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText(type, x + w / 2, y + h / 2 + 3);
+        }
+      } else if (item.kind === 'customer') {
+        drawCustomer(ctx, item.data, time, state.cafe.furniture);
+      } else if (item.kind === 'rabbit') {
+        drawRabbit(ctx, item.data, time);
+      }
+    }
+
     drawParticles(ctx, time);
-    
-    // Chaos overlay
+
     if (state.attention.chaosLevel >= 2) {
-      ctx.fillStyle = `rgba(140, 100, 200, ${0.02 + state.attention.chaosLevel * 0.01})`;
+      ctx.fillStyle = `rgba(140,100,200,${0.02 + state.attention.chaosLevel * 0.01})`;
       ctx.fillRect(0, 0, CAFE_W, CAFE_H);
     }
-    
+
     animRef.current = requestAnimationFrame(draw);
-  }, [state.cafe.furniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel]);
-  
+  }, [state.cafe.furniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
+
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [draw]);
 
-  // Rabbit wandering
   useEffect(() => {
     const interval = setInterval(() => {
       state.npcs.rabbits.forEach(r => {
@@ -305,12 +203,11 @@ export default function CafeCanvas() {
     }, 2000);
     return () => clearInterval(interval);
   }, [state.npcs.rabbits, dispatch]);
-  
+
   const handleCanvasClick = (event) => {
     if (!state.cafe.decorateMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const scaleX = CAFE_W / rect.width;
     const scaleY = CAFE_H / rect.height;
@@ -323,27 +220,22 @@ export default function CafeCanvas() {
       return;
     }
 
-    const type = state.cafe.placeFurnitureType || 'plant';
-    const size = FURNITURE_SIZES[type] ?? FURNITURE_SIZES.plant;
-
+    const type = state.cafe.placeFurnitureType || 'plant_big';
+    const size = FURNITURE_SIZES[type] ?? { w: 60, h: 60 };
     dispatch({
       type: 'ADD_FURNITURE',
       payload: {
-        id: `furn-${Date.now()}`,
-        type,
+        id: `furn-${Date.now()}`, type,
         x: Math.max(0, Math.min(CAFE_W - size.w, x - size.w / 2)),
         y: Math.max(50, Math.min(CAFE_H - size.h, y - size.h / 2)),
-        w: size.w,
-        h: size.h,
+        w: size.w, h: size.h,
       },
     });
   };
 
   return (
     <canvas
-      ref={canvasRef}
-      width={CAFE_W}
-      height={CAFE_H}
+      ref={canvasRef} width={CAFE_W} height={CAFE_H}
       onClick={handleCanvasClick}
       className={`rounded-xl border shadow-2xl ${
         state.cafe.decorateMode
