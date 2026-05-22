@@ -45,8 +45,28 @@ export const FURNITURE_SIZES = Object.fromEntries(
 function findFurnitureAt(furniture, x, y) {
   for (let i = furniture.length - 1; i >= 0; i--) {
     const f = furniture[i];
-    if (x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h) return f;
+
+    const rotation = (f.rotation ?? 0) % 180 !== 0;
+
+    const w = rotation ? f.h : f.w;
+    const h = rotation ? f.w : f.h;
+
+    const cx = f.x + f.w / 2;
+    const cy = f.y + f.h / 2;
+
+    const left = cx - w / 2;
+    const top = cy - h / 2;
+
+    if (
+      x >= left &&
+      x <= left + w &&
+      y >= top &&
+      y <= top + h
+    ) {
+      return f;
+    }
   }
+
   return null;
 }
 

@@ -409,20 +409,12 @@ function gameReducer(state, action) {
       };
     }
 
-    case 'ROTATE_PENDING_FURNITURE': {
+   case 'ROTATE_PENDING_FURNITURE': {
   const pf = state.cafe.pendingFurniture;
   if (!pf) return state;
-  const newRotation = ((pf.rotation ?? 0) + action.payload + 360) % 360;
-  const prevRotation = (pf.rotation ?? 0 + 360) % 360;
 
-  // Swap w/h when crossing between portrait/landscape
-  // 0° and 180° = original orientation, 90° and 270° = swapped
-  const wasSwapped = prevRotation === 90 || prevRotation === 270;
-  const willBeSwapped = newRotation === 90 || newRotation === 270;
-  const shouldSwap = wasSwapped !== willBeSwapped;
-
-  const newW = shouldSwap ? pf.h : pf.w;
-  const newH = shouldSwap ? pf.w : pf.h;
+  const newRotation =
+    ((pf.rotation ?? 0) + action.payload + 360) % 360;
 
   return {
     ...state,
@@ -431,11 +423,6 @@ function gameReducer(state, action) {
       pendingFurniture: {
         ...pf,
         rotation: newRotation,
-        w: newW,
-        h: newH,
-        // Re-center so it doesn't jump position
-        x: pf.x + (pf.w - newW) / 2,
-        y: pf.y + (pf.h - newH) / 2,
       },
     },
   };
@@ -444,20 +431,29 @@ function gameReducer(state, action) {
     case 'CONFIRM_PENDING_FURNITURE': {
   const pf = state.cafe.pendingFurniture;
   if (!pf) return state;
+
   return {
     ...state,
     cafe: {
       ...state.cafe,
+
       pendingFurniture: null,
+
       furniture: [
         ...state.cafe.furniture,
+
         {
           id: pf.id,
           type: pf.type,
+
           x: pf.x,
           y: pf.y,
-          w: pf.w,  // ← uses the swapped dimensions
-          h: pf.h,
+
+          // Keep ORIGINAL dimensions only
+          // Rotation is handled visually in canvas rendering
+          w: pf.baseW ?? pf.w,
+          h: pf.baseH ?? pf.h,
+
           rotation: pf.rotation ?? 0,
         },
       ],
