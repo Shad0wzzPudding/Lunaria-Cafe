@@ -396,21 +396,28 @@ function gameReducer(state, action) {
         cafe: { ...state.cafe, placeFurnitureRotation: action.payload },
       };
 
-    case 'SET_PENDING_FURNITURE':
+    case 'SET_PENDING_FURNITURE': {
+      const pf = action.payload;
+      if (!pf) return { ...state, cafe: { ...state.cafe, pendingFurniture: null } };
+      // Always store the catalog base dimensions (rotation=0) so we can derive
+      // correct w/h for any rotation without cumulative drift.
+      const baseW = pf.baseW ?? pf.w;
+      const baseH = pf.baseH ?? pf.h;
       return {
         ...state,
-        cafe: { ...state.cafe, pendingFurniture: action.payload },
+        cafe: { ...state.cafe, pendingFurniture: { ...pf, baseW, baseH } },
       };
+    }
 
     case 'ROTATE_PENDING_FURNITURE': {
       const pf = state.cafe.pendingFurniture;
       if (!pf) return state;
       const newRot = ((pf.rotation ?? 0) + action.payload + 360) % 360;
+      // Always derive w/h from the original catalog dimensions — never from
+      // the current (possibly already-swapped) pf.w / pf.h.
       const swapped = newRot === 90 || newRot === 270;
-      const baseSwapped = pf.rotation === 90 || pf.rotation === 270;
-      // recalc w/h based on original catalog size
-      const w = swapped !== baseSwapped ? pf.h : pf.w;
-      const h = swapped !== baseSwapped ? pf.w : pf.h;
+      const w = swapped ? pf.baseH : pf.baseW;
+      const h = swapped ? pf.baseW : pf.baseH;
       return {
         ...state,
         cafe: {

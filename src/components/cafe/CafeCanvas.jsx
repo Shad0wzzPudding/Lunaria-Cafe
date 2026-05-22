@@ -263,17 +263,16 @@ export default function CafeCanvas() {
       return;
     }
     const type = state.cafe.placeFurnitureType || 'plant_big';
-    const rotation = state.cafe.placeFurnitureRotation ?? 0;
+    const rotation = 0; // always start pending at 0°; user rotates via overlay
     const baseSize = FURNITURE_SIZES[type] ?? { w: 60, h: 60 };
-    const swapped = rotation === 90 || rotation === 270;
-    const size = swapped ? { w: baseSize.h, h: baseSize.w } : baseSize;
     dispatch({
       type: 'SET_PENDING_FURNITURE',
       payload: {
         id: `furn-${Date.now()}`, type, rotation,
-        x: Math.max(0, Math.min(CAFE_W - size.w, x - size.w / 2)),
-        y: Math.max(50, Math.min(CAFE_H - size.h, y - size.h / 2)),
-        w: size.w, h: size.h,
+        baseW: baseSize.w, baseH: baseSize.h,
+        x: Math.max(0, Math.min(CAFE_W - baseSize.w, x - baseSize.w / 2)),
+        y: Math.max(50, Math.min(CAFE_H - baseSize.h, y - baseSize.h / 2)),
+        w: baseSize.w, h: baseSize.h,
       },
     });
   };
