@@ -4,6 +4,7 @@ import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 
 const CAFE_W = 740;
 const CAFE_H = 500;
+const DEBUG_COLLISION = true;
 
 export const FURNITURE_CATALOG = {
   baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false },
@@ -22,7 +23,6 @@ export const FURNITURE_CATALOG = {
   dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false },
   fireplace:          { file: '15_fireplace.png',          w: 100, h: 80,  sittable: false },
   lantern:            { file: '16_lantern.png',            w: 30,  h: 40,  sittable: false },
-  long_table:         { file: '17_long_table.png',         w: 120, h: 60,  sittable: false },
   nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false },
   painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false },
   plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false },
@@ -68,6 +68,43 @@ function findFurnitureAt(furniture, x, y) {
   }
 
   return null;
+}
+
+function collidesWithFurniture(x, y, radius, furniture) {
+  for (const f of furniture) {
+
+    // Ignore non-solid furniture later if needed
+    // For now everything is solid except carpets/paintings
+
+    if (
+      f.type === 'red_carpet' ||
+      f.type === 'painting'
+    ) {
+      continue;
+    }
+
+    const rotated = (f.rotation ?? 0) % 180 !== 0;
+
+    const fw = rotated ? f.h : f.w;
+    const fh = rotated ? f.w : f.h;
+
+    const cx = f.x + f.w / 2;
+    const cy = f.y + f.h / 2;
+
+    const left = cx - fw / 2;
+    const top = cy - fh / 2;
+
+    if (
+      x + radius > left &&
+      x - radius < left + fw &&
+      y + radius > top &&
+      y - radius < top + fh
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3' };
@@ -199,6 +236,28 @@ export default function CafeCanvas() {
           ctx.fillText(type, 0, 3);
         }
         ctx.restore();
+        //Down here is for debug collision line
+        if (DEBUG_COLLISION){
+        ctx.save();
+
+        ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+        ctx.lineWidth = 2;
+
+        const rotated = (rotation ?? 0) % 180 !== 0;
+
+        const debugW = rotated ? h : w;
+        const debugH = rotated ? w : h;
+
+        ctx.strokeRect(
+          cx - debugW / 2,
+          cy - debugH / 2,
+          debugW,
+          debugH
+        );
+
+        ctx.restore();
+      } //Finish here.
+
       } else if (item.kind === 'customer') {
         drawCustomer(ctx, item.data, time, state.cafe.furniture);
       } else if (item.kind === 'rabbit') {
@@ -253,10 +312,39 @@ export default function CafeCanvas() {
   useEffect(() => {
     const interval = setInterval(() => {
       state.npcs.rabbits.forEach(r => {
-        const newX = Math.max(40, Math.min(CAFE_W - 40, r.x + (Math.random() - 0.5) * 30));
-        const newY = Math.max(80, Math.min(CAFE_H - 40, r.y + (Math.random() - 0.5) * 30));
-        dispatch({ type: 'UPDATE_RABBIT', payload: { id: r.id, x: newX, y: newY } });
-      });
+        const moveX = (Math.random() - 0.5) * 30;
+        const moveY = (Math.random() - 0.5) * 30;
+
+        const newX = Math.max(
+        40,
+        Math.min(CAFE_W - 40, r.x + moveX)
+        );
+
+        const newY = Math.max(
+        80,
+      Math.min(CAFE_H - 40, r.y + moveY)
+      );
+
+      // Rabbit collision radius
+      const radius = 12;
+
+      const blocked = collidesWithFurniture(
+        newX,
+        newY,
+        radius,
+        state.cafe.furniture
+      );
+
+      if (!blocked) {
+        dispatch({
+          type: 'UPDATE_RABBIT',
+          payload: {
+            id: r.id,
+            x: newX,
+            y: newY,
+          },
+        });
+      }
     }, 2000);
     return () => clearInterval(interval);
   }, [state.npcs.rabbits, dispatch]);

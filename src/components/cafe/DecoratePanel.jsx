@@ -21,7 +21,6 @@ const PLACEABLE = [
   { type: 'dresser',            label: 'Dresser' },
   { type: 'fireplace',          label: 'Fireplace' },
   { type: 'lantern',            label: 'Lantern' },
-  { type: 'long_table',         label: 'Long Table' },
   { type: 'nightstand',         label: 'Nightstand' },
   { type: 'painting',           label: 'Painting' },
   { type: 'plant_big',          label: 'Plant Big' },
