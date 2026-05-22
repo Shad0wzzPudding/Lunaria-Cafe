@@ -7,35 +7,35 @@ const CAFE_H = 500;
 const DEBUG_COLLISION = false;
 
 export const FURNITURE_CATALOG = {
-  baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false },
-  bar_counter1:       { file: '02_bar_counter1.png',       w: 160, h: 70,  sittable: false },
-  bar_counter2:       { file: '03_bar_counter2 .png',      w: 160, h: 70,  sittable: false },
-  barrel:             { file: '04_barrel.png',             w: 35,  h: 45,  sittable: false },
-  cupboard:           { file: '05_cupboard.png',           w: 70, h: 90,  sittable: false},
-  bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false },
-  cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
-  candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
-  chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 },
-  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 15 },
-  chair_blue:         { file: '11_chair_blue.png',         w: 45,  h: 50,  sittable: true,  seatDx: 0, seatDy: 10 },
-  chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
-  crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false },
-  dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false },
-  fireplace:          { file: '15_fireplace.png',          w: 100, h: 80,  sittable: false },
-  lantern:            { file: '16_lantern.png',            w: 30,  h: 40,  sittable: false },
-  nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false },
-  painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false },
-  plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false },
-  plant_blue:         { file: '21_plant_blue.png',         w: 35,  h: 45,  sittable: false },
-  plant_small:        { file: '22_plant_small.png',        w: 30,  h: 40,  sittable: false },
-  red_carpet:         { file: '23_red_carpet .png',        w: 120, h: 70,  sittable: false },
-  sofa_blue:          { file: '24_sofa_blue.png',          w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 },
-  sofa_red:           { file: '25_sofa_red.png',           w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 },
-  table_long:         { file: '26_table_long.png',         w: 130, h: 90,  sittable: false },
-  table_round:        { file: '27_table_round.png',        w: 90,  h: 90,  sittable: false },
-  table_square:       { file: '28_table_square.png',       w: 80,  h: 80,  sittable: false },
-  table_square_plant: { file: '29_table_square_plant.png', w: 80,  h: 80,  sittable: false },
-  wardrobe:           { file: '30_wardrobe.png',           w: 60,  h: 80,  sittable: false },
+  baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false , solid: false },
+  bar_counter1:       { file: '02_bar_counter1.png',       w: 160, h: 70,  sittable: false , solid: true },
+  bar_counter2:       { file: '03_bar_counter2 .png',      w: 160, h: 70,  sittable: false , solid: true },
+  barrel:             { file: '04_barrel.png',             w: 35,  h: 45,  sittable: false , solid: true },
+  cupboard:           { file: '05_cupboard.png',           w: 70, h: 90,  sittable: false, solid: true },
+  bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false , solid: true },
+  cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false , solid: true },
+  candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false , solid: true },
+  chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
+  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 15 , solid: true },
+  chair_blue:         { file: '11_chair_blue.png',         w: 45,  h: 50,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
+  chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
+  crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false , solid: true },
+  dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false , solid: true },
+  fireplace:          { file: '15_fireplace.png',          w: 100, h: 80,  sittable: false , solid: true },
+  lantern:            { file: '16_lantern.png',            w: 30,  h: 40,  sittable: false , solid: true },
+  nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false , solid: true },
+  painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false , solid: false },
+  plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false , solid: true },
+  plant_blue:         { file: '21_plant_blue.png',         w: 35,  h: 45,  sittable: false , solid: true },
+  plant_small:        { file: '22_plant_small.png',        w: 30,  h: 40,  sittable: false , solid: true },
+  red_carpet:         { file: '23_red_carpet .png',        w: 120, h: 70,  sittable: false , solid: false },
+  sofa_blue:          { file: '24_sofa_blue.png',          w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 , solid: true },
+  sofa_red:           { file: '25_sofa_red.png',           w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 , solid: true },
+  table_long:         { file: '26_table_long.png',         w: 130, h: 90,  sittable: false , solid: true },
+  table_round:        { file: '27_table_round.png',        w: 90,  h: 90,  sittable: false , solid: true },
+  table_square:       { file: '28_table_square.png',       w: 80,  h: 80,  sittable: false , solid: true },
+  table_square_plant: { file: '29_table_square_plant.png', w: 80,  h: 80,  sittable: false , solid: true },
+  wardrobe:           { file: '30_wardrobe.png',           w: 60,  h: 80,  sittable: false , solid: true },
 };
 
 export const FURNITURE_SIZES = Object.fromEntries(
@@ -70,16 +70,16 @@ function findFurnitureAt(furniture, x, y) {
   return null;
 }
 
+
+function isFurnitureSolid(furniture) {
+  return FURNITURE_CATALOG[furniture.type]?.solid ?? true;
+}
+
 function collidesWithFurniture(x, y, radius, furniture) {
   for (const f of furniture) {
 
-    // Ignore non-solid furniture later if needed
-    // For now everything is solid except carpets/paintings
-
-    if (
-      f.type === 'red_carpet' ||
-      f.type === 'painting'
-    ) {
+    // Skip non-solid furniture
+    if (!isFurnitureSolid(f)) {
       continue;
     }
 
@@ -344,7 +344,7 @@ export default function CafeCanvas() {
             id: r.id,
             x: newX,
             y: newY,
-          },
+          , solid: true },
         });
       }
 
