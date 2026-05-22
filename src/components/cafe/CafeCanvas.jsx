@@ -344,7 +344,7 @@ export default function CafeCanvas() {
             id: r.id,
             x: newX,
             y: newY,
-          , solid: true },
+          },
         });
       }
 
