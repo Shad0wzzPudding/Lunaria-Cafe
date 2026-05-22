@@ -203,41 +203,53 @@ export default function CafeCanvas() {
     if (bg) { ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H); }
     else { ctx.fillStyle = '#1a1833'; ctx.fillRect(0, 0, CAFE_W, CAFE_H); }
 
-    // Y-sorted draw list for depth
-    const drawList = [
-      ...state.cafe.furniture.map(f => ({ kind: 'furniture', data: f, sortY: f.y + f.h })),
-      ...state.npcs.rabbits.map(r => ({ kind: 'rabbit', data: r, sortY: r.y + 20 })),
-      ...state.npcs.customers.map(c => {
-        const pos = getCustomerDrawPos(c, state.cafe.furniture);
-        return { kind: 'customer', data: c, sortY: pos.y + 20 };
-      }),
-    ];
-    drawList.sort((a, b) => a.sortY - b.sortY);
+    // =========================
+    // Draw Furniture First
+    // =========================
 
-    for (const item of drawList) {
-      if (item.kind === 'furniture') {
-        const { type, x, y, w, h, rotation } = item.data;
-        const img = furnitureImages.current[type];
-        const rad = ((rotation ?? 0) * Math.PI) / 180;
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rad);
-        if (img) {
-          ctx.drawImage(img, -w / 2, -h / 2, w, h);
-        } else {
-          ctx.fillStyle = 'rgba(100,80,60,0.7)';
-          ctx.fillRect(-w / 2, -h / 2, w, h);
-          ctx.strokeStyle = 'rgba(200,180,140,0.5)';
-          ctx.lineWidth = 1; ctx.strokeRect(-w / 2, -h / 2, w, h);
-          ctx.fillStyle = 'rgba(255,255,255,0.4)';
-          ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText(type, 0, 3);
-        }
-        ctx.restore();
-        //Down here is for debug collision line
-        if (DEBUG_COLLISION) {
+    const sortedFurniture = [...state.cafe.furniture].sort(
+      (a, b) => (a.y + a.h) - (b.y + b.h)
+    );
+
+    for (const furn of sortedFurniture) {
+
+      const { type, x, y, w, h, rotation } = furn;
+
+      const img = furnitureImages.current[type];
+
+      const rad = ((rotation ?? 0) * Math.PI) / 180;
+
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      ctx.save();
+
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+
+      if (img) {
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      } else {
+        ctx.fillStyle = 'rgba(100,80,60,0.7)';
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+
+        ctx.strokeStyle = 'rgba(200,180,140,0.5)';
+        ctx.lineWidth = 1;
+
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+
+        ctx.fillText(type, 0, 3);
+      }
+
+      ctx.restore();
+
+      // Debug collision
+      if (DEBUG_COLLISION) {
+
         ctx.save();
 
         ctx.strokeStyle = 'rgba(255,0,0,0.5)';
@@ -256,14 +268,30 @@ export default function CafeCanvas() {
         );
 
         ctx.restore();
-      } //Finish here.
-
-      } else if (item.kind === 'customer') {
-        drawCustomer(ctx, item.data, time, state.cafe.furniture);
-      } else if (item.kind === 'rabbit') {
-        drawRabbit(ctx, item.data, time);
       }
     }
+
+    // =========================
+    // Draw Rabbits
+    // =========================
+
+    for (const rabbit of state.npcs.rabbits) {
+      drawRabbit(ctx, rabbit, time);
+    }
+
+    // =========================
+    // Draw Customers
+    // =========================
+
+    for (const customer of state.npcs.customers) {
+      drawCustomer(
+        ctx,
+        customer,
+        time,
+        state.cafe.furniture
+      );
+    }
+
 
     // Draw pending furniture ghost
     const pf = state.cafe.pendingFurniture;
