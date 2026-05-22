@@ -4,7 +4,7 @@ import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 
 const CAFE_W = 740;
 const CAFE_H = 500;
-const DEBUG_COLLISION = true;
+const DEBUG_COLLISION = false;
 
 export const FURNITURE_CATALOG = {
   baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false },
@@ -16,7 +16,7 @@ export const FURNITURE_CATALOG = {
   cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
   candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
   chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 },
-  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 15 },
   chair_blue:         { file: '11_chair_blue.png',         w: 45,  h: 50,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
   crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false },
