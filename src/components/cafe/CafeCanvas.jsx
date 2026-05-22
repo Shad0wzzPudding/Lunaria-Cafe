@@ -13,7 +13,7 @@ export const FURNITURE_CATALOG = {
   bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false },
   cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
   candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
-  chair:              { file: '09_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair:              { file: '09_chair.png',              w: 20,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair_blue:         { file: '11_chair_blue.png',         w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
@@ -158,19 +158,26 @@ export default function CafeCanvas() {
 
     for (const item of drawList) {
       if (item.kind === 'furniture') {
-        const { type, x, y, w, h } = item.data;
+        const { type, x, y, w, h, rotation } = item.data;
         const img = furnitureImages.current[type];
+        const rad = ((rotation ?? 0) * Math.PI) / 180;
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rad);
         if (img) {
-          ctx.drawImage(img, x, y, w, h);
+          ctx.drawImage(img, -w / 2, -h / 2, w, h);
         } else {
           ctx.fillStyle = 'rgba(100,80,60,0.7)';
-          ctx.fillRect(x, y, w, h);
+          ctx.fillRect(-w / 2, -h / 2, w, h);
           ctx.strokeStyle = 'rgba(200,180,140,0.5)';
-          ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+          ctx.lineWidth = 1; ctx.strokeRect(-w / 2, -h / 2, w, h);
           ctx.fillStyle = 'rgba(255,255,255,0.4)';
           ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText(type, x + w / 2, y + h / 2 + 3);
+          ctx.fillText(type, 0, 3);
         }
+        ctx.restore();
       } else if (item.kind === 'customer') {
         drawCustomer(ctx, item.data, time, state.cafe.furniture);
       } else if (item.kind === 'rabbit') {
@@ -221,11 +228,15 @@ export default function CafeCanvas() {
     }
 
     const type = state.cafe.placeFurnitureType || 'plant_big';
-    const size = FURNITURE_SIZES[type] ?? { w: 60, h: 60 };
+    const rotation = state.cafe.placeFurnitureRotation ?? 0;
+    const baseSize = FURNITURE_SIZES[type] ?? { w: 60, h: 60 };
+    // Swap w/h for 90 and 270 degree rotations so the bounding box is correct
+    const swapped = rotation === 90 || rotation === 270;
+    const size = swapped ? { w: baseSize.h, h: baseSize.w } : baseSize;
     dispatch({
       type: 'ADD_FURNITURE',
       payload: {
-        id: `furn-${Date.now()}`, type,
+        id: `furn-${Date.now()}`, type, rotation,
         x: Math.max(0, Math.min(CAFE_W - size.w, x - size.w / 2)),
         y: Math.max(50, Math.min(CAFE_H - size.h, y - size.h / 2)),
         w: size.w, h: size.h,

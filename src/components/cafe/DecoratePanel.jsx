@@ -1,6 +1,6 @@
 import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
-import { X, Trash2, GripHorizontal } from 'lucide-react';
+import { X, Trash2, GripHorizontal, RotateCcw } from 'lucide-react';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import { useRef, useState } from 'react';
 
@@ -139,6 +139,31 @@ export default function DecoratePanel() {
             <Trash2 className="w-3.5 h-3.5" /> Remove
           </Button>
         </div>
+
+        {!removeMode && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-pixel text-[10px] text-muted-foreground shrink-0">Rotation</span>
+            {[0, 90, 180, 270].map((deg) => {
+              const selected = (cafe.placeFurnitureRotation ?? 0) === deg;
+              return (
+                <button
+                  key={deg}
+                  type="button"
+                  onClick={() => dispatch({ type: 'SET_PLACE_ROTATION', payload: deg })}
+                  className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1 font-pixel text-[10px] transition-colors ${
+                    selected ? 'border-primary bg-primary/15 text-primary' : 'border-border/40 bg-secondary/30 text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  <RotateCcw
+                    className="w-3 h-3"
+                    style={{ transform: `rotate(${deg}deg)` }}
+                  />
+                  {deg}°
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {!removeMode && (
           <div className="max-h-56 overflow-y-auto pr-1">

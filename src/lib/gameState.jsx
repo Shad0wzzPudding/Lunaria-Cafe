@@ -15,6 +15,7 @@ export const initialState = {
     decorateMode: false,
     decorateTool: 'place',
     placeFurnitureType: 'plant_big',
+    placeFurnitureRotation: 0,
     furniture: [
   { id: 'built-counter',   type: 'bar_counter1',      x: 36.68463611859838, y: 158.72509960159363, w: 160,  h: 70 },
   { id: 'built-counter2',   type: 'bar_counter2',      x: 204.23180592991912, y: 159.72111553784862, w: 160,  h: 70 },
@@ -370,6 +371,7 @@ function gameReducer(state, action) {
           ...state.cafe,
           decorateMode: action.payload,
           decorateTool: 'place',
+          placeFurnitureRotation: 0,
         },
       };
 
@@ -383,6 +385,12 @@ function gameReducer(state, action) {
       return {
         ...state,
         cafe: { ...state.cafe, placeFurnitureType: action.payload, decorateTool: 'place' },
+      };
+
+    case 'SET_PLACE_ROTATION':
+      return {
+        ...state,
+        cafe: { ...state.cafe, placeFurnitureRotation: action.payload },
       };
 
     case 'ADD_FURNITURE':
