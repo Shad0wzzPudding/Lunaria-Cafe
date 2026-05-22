@@ -10,7 +10,7 @@ export const FURNITURE_CATALOG = {
   bar_counter1:       { file: '02_bar_counter1.png',       w: 160, h: 70,  sittable: false },
   bar_counter2:       { file: '03_bar_counter2 .png',      w: 160, h: 70,  sittable: false },
   barrel:             { file: '04_barrel.png',             w: 35,  h: 45,  sittable: false },
-  bench:              { file: '05_bench.png',              w: 120, h: 50,  sittable: true,  seatDx: 0, seatDy: 10 },
+  cupboard:              { file: '05_cupboard.png',              w: 70, h: 90,  sittable: true,  seatDx: 0, seatDy: 10 },
   bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false },
   cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
   candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
