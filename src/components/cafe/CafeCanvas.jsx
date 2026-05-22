@@ -16,7 +16,7 @@ export const FURNITURE_CATALOG = {
   cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false , solid: true },
   candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false , solid: true },
   chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
-  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 0 , solid: true },
+  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: -2 , solid: true },
   chair_blue:         { file: '11_chair_blue.png',         w: 45,  h: 50,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
   chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
   crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false , solid: true },
