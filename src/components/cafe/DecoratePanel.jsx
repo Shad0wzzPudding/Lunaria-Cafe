@@ -9,7 +9,7 @@ const PLACEABLE = [
   { type: 'bar_counter1',       label: 'Bar Counter' },
   { type: 'bar_counter2',       label: 'Bar Counter 2' },
   { type: 'barrel',             label: 'Barrel' },
-  { type: 'bench',              label: 'Bench' },
+  { type: 'cupboard',           label: 'Cupboard' },
   { type: 'bookcase_small',     label: 'Bookcase' },
   { type: 'cabinet',            label: 'Cabinet' },
   { type: 'candle',             label: 'Candle' },
