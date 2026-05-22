@@ -237,7 +237,7 @@ export default function CafeCanvas() {
         }
         ctx.restore();
         //Down here is for debug collision line
-        if (DEBUG_COLLISION){
+        if (DEBUG_COLLISION) {
         ctx.save();
 
         ctx.strokeStyle = 'rgba(255,0,0,0.5)';
@@ -255,8 +255,8 @@ export default function CafeCanvas() {
           debugH
         );
 
-        ctx.restore();
       } //Finish here.
+        ctx.restore();
 
       } else if (item.kind === 'customer') {
         drawCustomer(ctx, item.data, time, state.cafe.furniture);
