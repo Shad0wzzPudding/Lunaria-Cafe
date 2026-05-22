@@ -13,7 +13,7 @@ export const FURNITURE_CATALOG = {
   bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false },
   cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false },
   candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false },
-  chair:              { file: '09_chair.png',              w: 20,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 },
+  chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair_blue:         { file: '11_chair_blue.png',         w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
   chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 },
@@ -185,6 +185,35 @@ export default function CafeCanvas() {
       }
     }
 
+    // Draw pending furniture ghost
+    const pf = state.cafe.pendingFurniture;
+    if (pf) {
+      const img = furnitureImages.current[pf.type];
+      const rad = ((pf.rotation ?? 0) * Math.PI) / 180;
+      const cx = pf.x + pf.w / 2;
+      const cy = pf.y + pf.h / 2;
+      ctx.save();
+      ctx.globalAlpha = 0.55 + Math.sin(time * 0.005) * 0.15;
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+      if (img) {
+        ctx.drawImage(img, -pf.w / 2, -pf.h / 2, pf.w, pf.h);
+      } else {
+        ctx.fillStyle = 'rgba(100,80,60,0.7)';
+        ctx.fillRect(-pf.w / 2, -pf.h / 2, pf.w, pf.h);
+      }
+      ctx.restore();
+      // Pulsing outline
+      ctx.save();
+      ctx.globalAlpha = 0.7 + Math.sin(time * 0.005) * 0.3;
+      ctx.strokeStyle = '#a78bfa';
+      ctx.lineWidth = 2;
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+      ctx.strokeRect(-pf.w / 2 - 2, -pf.h / 2 - 2, pf.w + 4, pf.h + 4);
+      ctx.restore();
+    }
+
     drawParticles(ctx, time);
 
     if (state.attention.chaosLevel >= 2) {
@@ -193,7 +222,7 @@ export default function CafeCanvas() {
     }
 
     animRef.current = requestAnimationFrame(draw);
-  }, [state.cafe.furniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
+  }, [state.cafe.furniture, state.cafe.pendingFurniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
@@ -227,14 +256,18 @@ export default function CafeCanvas() {
       return;
     }
 
+    // If there's already a pending furniture, clicking again cancels it first
+    if (state.cafe.pendingFurniture) {
+      dispatch({ type: 'SET_PENDING_FURNITURE', payload: null });
+      return;
+    }
     const type = state.cafe.placeFurnitureType || 'plant_big';
     const rotation = state.cafe.placeFurnitureRotation ?? 0;
     const baseSize = FURNITURE_SIZES[type] ?? { w: 60, h: 60 };
-    // Swap w/h for 90 and 270 degree rotations so the bounding box is correct
     const swapped = rotation === 90 || rotation === 270;
     const size = swapped ? { w: baseSize.h, h: baseSize.w } : baseSize;
     dispatch({
-      type: 'ADD_FURNITURE',
+      type: 'SET_PENDING_FURNITURE',
       payload: {
         id: `furn-${Date.now()}`, type, rotation,
         x: Math.max(0, Math.min(CAFE_W - size.w, x - size.w / 2)),

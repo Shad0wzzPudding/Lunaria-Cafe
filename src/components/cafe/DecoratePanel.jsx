@@ -1,6 +1,6 @@
 import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
-import { X, Trash2, GripHorizontal, RotateCcw } from 'lucide-react';
+import { X, Trash2, GripHorizontal, RotateCcw, RotateCw, Check } from 'lucide-react';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import { useRef, useState } from 'react';
 
@@ -140,28 +140,48 @@ export default function DecoratePanel() {
           </Button>
         </div>
 
-        {!removeMode && (
-          <div className="flex items-center gap-2 mb-3">
-            <span className="font-pixel text-[10px] text-muted-foreground shrink-0">Rotation</span>
-            {[0, 90, 180, 270].map((deg) => {
-              const selected = (cafe.placeFurnitureRotation ?? 0) === deg;
-              return (
-                <button
-                  key={deg}
-                  type="button"
-                  onClick={() => dispatch({ type: 'SET_PLACE_ROTATION', payload: deg })}
-                  className={`flex items-center justify-center gap-1 rounded-md border px-2 py-1 font-pixel text-[10px] transition-colors ${
-                    selected ? 'border-primary bg-primary/15 text-primary' : 'border-border/40 bg-secondary/30 text-muted-foreground hover:border-primary/40'
-                  }`}
-                >
-                  <RotateCcw
-                    className="w-3 h-3"
-                    style={{ transform: `rotate(${deg}deg)` }}
-                  />
-                  {deg}°
-                </button>
-              );
-            })}
+        {/* Pending furniture confirmation */}
+        {!removeMode && cafe.pendingFurniture && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 mb-3 flex flex-col gap-2">
+            <p className="font-pixel text-[10px] text-primary text-center">Rotate, then confirm placement</p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: -90 })}
+                className="flex items-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary px-3 py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> -90°
+              </button>
+
+              <span className="font-pixel text-xs text-primary min-w-[3rem] text-center">
+                {cafe.pendingFurniture.rotation ?? 0}°
+              </span>
+
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: 90 })}
+                className="flex items-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary px-3 py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCw className="w-3.5 h-3.5" /> +90°
+              </button>
+            </div>
+
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'SET_PENDING_FURNITURE', payload: null })}
+                className="flex-1 flex items-center justify-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" /> Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'CONFIRM_PENDING_FURNITURE' })}
+                className="flex-1 flex items-center justify-center gap-1 rounded-md border border-primary/60 bg-primary/20 hover:bg-primary/30 py-1.5 font-pixel text-[10px] text-primary transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" /> Place
+              </button>
+            </div>
           </div>
         )}
 

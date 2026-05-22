@@ -16,6 +16,7 @@ export const initialState = {
     decorateTool: 'place',
     placeFurnitureType: 'plant_big',
     placeFurnitureRotation: 0,
+    pendingFurniture: null,
     furniture: [
   { id: 'built-counter',   type: 'bar_counter1',      x: 36.68463611859838, y: 158.72509960159363, w: 160,  h: 70 },
   { id: 'built-counter2',   type: 'bar_counter2',      x: 204.23180592991912, y: 159.72111553784862, w: 160,  h: 70 },
@@ -372,6 +373,8 @@ function gameReducer(state, action) {
           decorateMode: action.payload,
           decorateTool: 'place',
           placeFurnitureRotation: 0,
+          pendingFurniture: null,
+    pendingFurniture: null,
         },
       };
 
@@ -392,6 +395,46 @@ function gameReducer(state, action) {
         ...state,
         cafe: { ...state.cafe, placeFurnitureRotation: action.payload },
       };
+
+    case 'SET_PENDING_FURNITURE':
+      return {
+        ...state,
+        cafe: { ...state.cafe, pendingFurniture: action.payload },
+      };
+
+    case 'ROTATE_PENDING_FURNITURE': {
+      const pf = state.cafe.pendingFurniture;
+      if (!pf) return state;
+      const newRot = ((pf.rotation ?? 0) + action.payload + 360) % 360;
+      const swapped = newRot === 90 || newRot === 270;
+      const baseSwapped = pf.rotation === 90 || pf.rotation === 270;
+      // recalc w/h based on original catalog size
+      const w = swapped !== baseSwapped ? pf.h : pf.w;
+      const h = swapped !== baseSwapped ? pf.w : pf.h;
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          pendingFurniture: { ...pf, rotation: newRot, w, h },
+        },
+      };
+    }
+
+    case 'CONFIRM_PENDING_FURNITURE': {
+      const pf = state.cafe.pendingFurniture;
+      if (!pf) return state;
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          pendingFurniture: null,
+          furniture: [
+            ...state.cafe.furniture,
+            { ...pf, id: pf.id ?? `furn-${Date.now()}` },
+          ],
+        },
+      };
+    }
 
     case 'ADD_FURNITURE':
       return {
