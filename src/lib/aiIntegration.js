@@ -36,21 +36,15 @@ let liveAttentionScore = 85;
 function loadConfig() {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
-    if (!raw) return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
-    const parsed = { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser', ...JSON.parse(raw) };
-    
+    if (!raw) return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'simulation' };
+    const parsed = { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'simulation', ...JSON.parse(raw) };
     // migrate old useLiveAI flag
     if (parsed.useLiveAI && parsed.aiMode === 'simulation') {
       parsed.aiMode = 'live';
     }
-    // migrate: treat 'simulation' as unset and force browser default
-    if (parsed.aiMode === 'simulation') {
-      parsed.aiMode = 'browser';
-    }
-
     return parsed;
   } catch {
-    return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
+    return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'simulation' };
   }
 }
 
