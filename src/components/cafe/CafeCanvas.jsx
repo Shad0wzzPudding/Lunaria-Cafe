@@ -255,8 +255,8 @@ export default function CafeCanvas() {
           debugH
         );
 
-      } //Finish here.
         ctx.restore();
+      } //Finish here.
 
       } else if (item.kind === 'customer') {
         drawCustomer(ctx, item.data, time, state.cafe.furniture);
@@ -310,19 +310,21 @@ export default function CafeCanvas() {
   }, [draw]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      state.npcs.rabbits.forEach(r => {
-        const moveX = (Math.random() - 0.5) * 30;
-        const moveY = (Math.random() - 0.5) * 30;
+  const interval = setInterval(() => {
 
-        const newX = Math.max(
+    state.npcs.rabbits.forEach((r) => {
+
+      const moveX = (Math.random() - 0.5) * 30;
+      const moveY = (Math.random() - 0.5) * 30;
+
+      const newX = Math.max(
         40,
         Math.min(CAFE_W - 40, r.x + moveX)
-        );
+      );
 
-        const newY = Math.max(
+      const newY = Math.max(
         80,
-      Math.min(CAFE_H - 40, r.y + moveY)
+        Math.min(CAFE_H - 40, r.y + moveY)
       );
 
       // Rabbit collision radius
@@ -345,9 +347,14 @@ export default function CafeCanvas() {
           },
         });
       }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [state.npcs.rabbits, dispatch]);
+
+    });
+
+  }, 2000);
+
+  return () => clearInterval(interval);
+
+}, [state.npcs.rabbits, state.cafe.furniture, dispatch]);
 
   const handleCanvasClick = (event) => {
     if (!state.cafe.decorateMode) return;
