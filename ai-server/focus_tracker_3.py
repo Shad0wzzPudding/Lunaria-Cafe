@@ -226,16 +226,26 @@ class FocusTracker:
         draw_hud(frame, self.state, self.cfg)
         return frame, self.state
 
+    # @staticmethod
+    # def encode_frame_jpeg(frame: np.ndarray) -> bytes:
+    #     ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+    #     if not ok:
+    #         return b""
+    #     return buf.tobytes()
+
+    # @staticmethod
+    # def encode_frame_b64(frame: np.ndarray) -> str:
+    #     return base64.b64encode(FocusTracker.encode_frame_jpeg(frame)).decode("ascii")
+
     @staticmethod
     def encode_frame_jpeg(frame: np.ndarray) -> bytes:
-        ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-        if not ok:
-            return b""
-        return buf.tobytes()
+        ret, buffer = cv2.imencode('.jpg', frame)
+        return buffer.tobytes() if ret else b""
 
     @staticmethod
     def encode_frame_b64(frame: np.ndarray) -> str:
-        return base64.b64encode(FocusTracker.encode_frame_jpeg(frame)).decode("ascii")
+        jpeg_bytes = FocusTracker.encode_frame_jpeg(frame)
+        return base64.b64encode(jpeg_bytes).decode('utf-8')
 
     def run(self) -> None:
         self.open_camera()
