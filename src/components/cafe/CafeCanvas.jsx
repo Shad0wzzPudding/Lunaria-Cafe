@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
+import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 
 const CAFE_W = 740;
 const CAFE_H = 500;
@@ -277,18 +278,90 @@ export default function CafeCanvas() {
     });
   };
 
+  // Convert canvas coords to screen coords for the floating UI
+  const getOverlayStyle = () => {
+    const pf = state.cafe.pendingFurniture;
+    if (!pf || !canvasRef.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = rect.width / CAFE_W;
+    const scaleY = rect.height / CAFE_H;
+    const screenCx = rect.left + (pf.x + pf.w / 2) * scaleX;
+    const screenCy = rect.top + (pf.y) * scaleY;
+    return { left: screenCx, top: screenCy };
+  };
+
+  const overlayStyle = getOverlayStyle();
+  const pf = state.cafe.pendingFurniture;
+
   return (
-    <canvas
-      ref={canvasRef} width={CAFE_W} height={CAFE_H}
-      onClick={handleCanvasClick}
-      className={`rounded-xl border shadow-2xl ${
-        state.cafe.decorateMode
-          ? state.cafe.decorateTool === 'remove'
-            ? 'border-destructive cursor-pointer ring-2 ring-destructive/40'
-            : 'border-primary cursor-crosshair ring-2 ring-primary/40'
-          : 'border-border/50'
-      }`}
-      style={{ imageRendering: 'pixelated', maxWidth: '100%' }}
-    />
+    <div className="relative inline-block" style={{ maxWidth: '100%' }}>
+      <canvas
+        ref={canvasRef} width={CAFE_W} height={CAFE_H}
+        onClick={handleCanvasClick}
+        className={`rounded-xl border shadow-2xl block ${
+          state.cafe.decorateMode
+            ? state.cafe.decorateTool === 'remove'
+              ? 'border-destructive cursor-pointer ring-2 ring-destructive/40'
+              : 'border-primary cursor-crosshair ring-2 ring-primary/40'
+            : 'border-border/50'
+        }`}
+        style={{ imageRendering: 'pixelated', maxWidth: '100%' }}
+      />
+
+      {pf && overlayStyle && (
+        <div
+          className="fixed z-50 flex flex-col items-center gap-1.5 pointer-events-auto"
+          style={{
+            left: overlayStyle.left,
+            top: overlayStyle.top,
+            transform: 'translate(-50%, calc(-100% - 10px))',
+          }}
+        >
+          {/* Rotate + degree display row */}
+          <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md border border-border/50 rounded-lg px-2 py-1.5 shadow-xl">
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: -90 })}
+              className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            <span className="font-pixel text-[10px] text-primary min-w-[2.5rem] text-center">
+              {pf.rotation ?? 0}°
+            </span>
+
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: 90 })}
+              className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-border/50 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_PENDING_FURNITURE', payload: null })}
+              className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'CONFIRM_PENDING_FURNITURE' })}
+              className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/20 hover:bg-primary/40 border border-primary/40 transition-colors text-primary"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Arrow pointing down to the furniture */}
+          <div className="w-2 h-2 bg-card/95 border-r border-b border-border/50 rotate-45 -mt-1" />
+        </div>
+      )}
+    </div>
   );
 }

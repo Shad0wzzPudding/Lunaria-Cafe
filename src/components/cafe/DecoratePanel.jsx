@@ -1,6 +1,6 @@
 import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
-import { X, Trash2, GripHorizontal, RotateCcw, RotateCw, Check } from 'lucide-react';
+import { X, Trash2, GripHorizontal } from 'lucide-react';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import { useRef, useState } from 'react';
 
@@ -140,50 +140,6 @@ export default function DecoratePanel() {
           </Button>
         </div>
 
-        {/* Pending furniture confirmation */}
-        {!removeMode && cafe.pendingFurniture && (
-          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 mb-3 flex flex-col gap-2">
-            <p className="font-pixel text-[10px] text-primary text-center">Rotate, then confirm placement</p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: -90 })}
-                className="flex items-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary px-3 py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> -90°
-              </button>
-
-              <span className="font-pixel text-xs text-primary min-w-[3rem] text-center">
-                {cafe.pendingFurniture.rotation ?? 0}°
-              </span>
-
-              <button
-                type="button"
-                onClick={() => dispatch({ type: 'ROTATE_PENDING_FURNITURE', payload: 90 })}
-                className="flex items-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary px-3 py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <RotateCw className="w-3.5 h-3.5" /> +90°
-              </button>
-            </div>
-
-            <div className="flex gap-2 mt-1">
-              <button
-                type="button"
-                onClick={() => dispatch({ type: 'SET_PENDING_FURNITURE', payload: null })}
-                className="flex-1 flex items-center justify-center gap-1 rounded-md border border-border/40 bg-secondary/40 hover:bg-secondary py-1.5 font-pixel text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-3.5 h-3.5" /> Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => dispatch({ type: 'CONFIRM_PENDING_FURNITURE' })}
-                className="flex-1 flex items-center justify-center gap-1 rounded-md border border-primary/60 bg-primary/20 hover:bg-primary/30 py-1.5 font-pixel text-[10px] text-primary transition-colors"
-              >
-                <Check className="w-3.5 h-3.5" /> Place
-              </button>
-            </div>
-          </div>
-        )}
 
         {!removeMode && (
           <div className="max-h-56 overflow-y-auto pr-1">
