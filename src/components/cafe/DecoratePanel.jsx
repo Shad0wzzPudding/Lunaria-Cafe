@@ -115,7 +115,7 @@ export default function DecoratePanel() {
       <div className="p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <h3 className="font-display text-sm text-foreground">Decorate Cafe</h3>
-          <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-500"
             onClick={() => dispatch({ type: 'SET_DECORATE_MODE', payload: false })}>
             <X className="w-4 h-4" />
           </Button>
@@ -164,7 +164,7 @@ export default function DecoratePanel() {
                       {label}
                     </span>
                     {/* 👇 Add price tag */}
-                  <span className="font-pixel text-[8px] text-accent/80 flex items-center gap-0.5">
+                  <span className="font-pixel text-[8px] text-yellow-400 flex items-center gap-0.5">
                   🪙 {info?.price ?? '?'}
                   </span>
                   </button>

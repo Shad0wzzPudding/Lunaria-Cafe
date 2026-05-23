@@ -507,7 +507,7 @@ function gameReducer(state, action) {
     case 'REMOVE_FURNITURE': {
   const target = state.cafe.furniture.find((f) => f.id === action.payload);
   if (!target) return state;
-  const refund = Math.floor((FURNITURE_CATALOG[target.type] ?? 0) * 0.5);
+  const refund = Math.floor((FURNITURE_CATALOG[target.type]?.price ?? 0) * 0.5);
   return {
     ...state,
     coins: state.coins + refund,
