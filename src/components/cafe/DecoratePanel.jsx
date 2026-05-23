@@ -164,7 +164,7 @@ export default function DecoratePanel() {
                       {label}
                     </span>
                     {/* 👇 Add price tag */}
-                  <span className="font-pixel text-[10px] text-orange-400 flex items-center gap-0.5">
+                  <span className="font-pixel text-[12px] text-yellow-400 flex items-center gap-0.5">
                   <Coins size={11} strokeWidth={2.5} className="text-yellow-400"/> {info?.price ?? '?'}
                   </span>
                   </button>
