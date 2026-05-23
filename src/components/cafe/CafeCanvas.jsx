@@ -131,24 +131,33 @@ function drawAmbientLights(ctx, furniture, time) {
     const cy = f.y + f.h / 2;
 
     if (f.type === 'fireplace') {
-      // Warm orange flicker
-      const flicker = 0.08 + Math.sin(time * 0.007 + f.x) * 0.03;
-      const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy + 20, 140);
-      grad.addColorStop(0, `rgba(230, 160, 60, ${flicker})`);
-      grad.addColorStop(0.5, `rgba(200, 100, 30, ${flicker * 0.5})`);
-      grad.addColorStop(1, 'rgba(200, 100, 30, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(cx - 140, cy - 40, 280, 200);
+    const flicker = 0.22 + Math.sin(time * 0.01 + f.x) * 0.05;
+    // Outer glow
+    const outer = ctx.createRadialGradient(cx,cy + 10,10,cx,cy + 10,220);
+    outer.addColorStop(0, `rgba(255,180,80,${flicker})`);
+    outer.addColorStop(0.35, `rgba(255,120,40,${flicker * 0.7})`);
+    outer.addColorStop(0.7, `rgba(255,80,20,${flicker * 0.25})`);
+    outer.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = outer;
+    ctx.fillRect(cx - 220,cy - 120,440,440);
+    // Inner bright core
+    const core = ctx.createRadialGradient(cx,cy + 18,0,cx,cy + 18,70);
+    core.addColorStop(0, 'rgba(255,240,180,0.45)');
+    core.addColorStop(0.4, 'rgba(255,180,80,0.2)');
+    core.addColorStop(1, 'rgba(255,180,80,0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(cx - 70,cy - 50,140,140);
     }
 
     if (f.type === 'lantern') {
-      // Soft warm yellow glow
-      const pulse = 0.06 + Math.sin(time * 0.004 + f.x * 0.1) * 0.02;
-      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 90);
-      grad.addColorStop(0, `rgba(255, 210, 100, ${pulse})`);
-      grad.addColorStop(1, 'rgba(255, 180, 60, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(cx - 90, cy - 90, 180, 180);
+    const pulse = 0.14 + Math.sin(time * 0.004 + f.x * 0.1) * 0.03;
+    const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,140);
+    grad.addColorStop(0, `rgba(255,230,140,${pulse})`);
+    grad.addColorStop(0.25, `rgba(255,190,90,${pulse * 0.7})`);
+    grad.addColorStop(0.6, `rgba(255,140,40,${pulse * 0.3})`);
+    grad.addColorStop(1, 'rgba(255,140,40,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - 140,cy - 140,280,280);
     }
   }
 }
@@ -200,7 +209,7 @@ export default function CafeCanvas() {
     const bg = bgImages.current[state.cafe.timeOfDay ?? 'night'];
     if (bg) { ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H); }
     else { ctx.fillStyle = '#1a1833'; ctx.fillRect(0, 0, CAFE_W, CAFE_H); }
-    drawAmbientLights(ctx, state.cafe.furniture, time);
+  
 
     // =========================
     // Draw Furniture First
@@ -273,6 +282,14 @@ export default function CafeCanvas() {
         ctx.restore();
       }
     }
+
+    // =========================
+    // Draw AmbientLight
+    // =========================
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    drawAmbientLights(ctx, state.cafe.furniture, time);
+    ctx.restore();
 
     // =========================
     // Draw Rabbits

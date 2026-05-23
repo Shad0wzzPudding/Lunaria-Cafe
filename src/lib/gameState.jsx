@@ -13,7 +13,7 @@ export const initialState = {
     currentCustomers: 0,
     maxCustomers: 8,
     timeOfDay: 'day',
-    bgMode: 'freestyle', // 'immersive' | 'reallife' | 'freestyle'
+    bgMode: 'immersive', // 'immersive' | 'reallife' | 'freestyle'
     decorateMode: false,
     decorateTool: 'place',
     placeFurnitureType: 'plant_big',
