@@ -1,23 +1,26 @@
 /**
  * Browser-native AI attention tracking using MediaPipe Face Landmarker
- * and TensorFlow.js COCO-SSD for phone detection.
+ * and YOLOv8 ONNX (via Web Worker) for phone detection.
  */
 
 import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
 
 let faceLandmarker = null;
-let cocoModel = null;
 let videoStream = null;
 let videoElement = null;
-let canvasElement = null; // Added for drawing
+let canvasElement = null; 
 let animFrameId = null;
-let renderFrameId = null; // Added for drawing loop
+let renderFrameId = null; 
 let lastProcessTime = 0;
+
+// Worker variables
+let yoloWorker = null;
+let isYoloReady = false;
+let isProcessingYolo = false;
+let workerCanvasCtx = null;
 
 const PROCESS_INTERVAL_MS = 800;
 const GAZE_THRESHOLD = 0.55;
-const PHONE_CONFIDENCE = 0.45;
-const PHONE_CLASS = 'cell phone';
 const NO_FACE_GRACE_MS = 3000;
 const LANDMARK_MATCH_THRESHOLD = 0.6;
 
@@ -33,8 +36,7 @@ let cachedUserLandmarks = null;
 let landmarkCacheTimestamp = 0;
 const LANDMARK_CACHE_DURATION_MS = 5000;
 
-// Added states to pass data to the Canvas Renderer
-let latestPhones = [];
+let latestPhones = []; // รับข้อมูลจาก Worker
 let latestWarning = '';
 let isUserFocusedGlobal = true;
 
@@ -51,6 +53,7 @@ export function getBrowserAIStatus() {
   return _status;
 }
 
+// โหลด MediaPipe
 async function loadFaceLandmarker() {
   if (faceLandmarker) return faceLandmarker;
   const vision = await FilesetResolver.forVisionTasks(
@@ -70,12 +73,50 @@ async function loadFaceLandmarker() {
   return faceLandmarker;
 }
 
-async function loadCocoSSD() {
-  if (cocoModel) return cocoModel;
-  const cocoSsd = await import('@tensorflow-models/coco-ssd');
-  await import('@tensorflow/tfjs');
-  cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-  return cocoModel;
+// เริ่มต้น YOLO Worker
+// function initYoloWorker() {
+//   if (yoloWorker) return;
+  
+//   yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
+  
+//   yoloWorker.onmessage = (e) => {
+//     if (e.data.type === 'status' && e.data.status === 'ready') {
+//       isYoloReady = true;
+//       console.log("YOLO Worker Ready!");
+//     }
+//     if (e.data.type === 'result') {
+//       latestPhones = e.data.phones; // อัปเดตกล่อง
+//       isProcessingYolo = false;     // ปลดล็อคส่งเฟรมใหม่
+//     }
+//   };
+//   yoloWorker.postMessage({ type: 'init' });
+// }
+
+function initYoloWorker() {
+  if (yoloWorker) return; // บรรทัดนี้ห้ามหายนะ! ป้องกันการสร้าง Worker ซ้อนทับกัน
+  
+  yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
+  
+  yoloWorker.onmessage = (e) => {
+    if (e.data.type === 'status' && e.data.status === 'ready') {
+      isYoloReady = true;
+      console.log("YOLO Worker Ready!");
+    }
+    
+    if (e.data.type === 'result') {
+      latestPhones = e.data.phones; // อัปเดตกล่อง
+      
+      // เพิ่มบรรทัดนี้:
+      if (latestPhones.length > 0) {
+          console.log("เจอโทรศัพท์แล้ว!!! พิกัด:", latestPhones);
+      }
+      
+      console.log("AI ตอบกลับมาแล้ว! ปลดล็อคส่งเฟรมต่อไป"); 
+      isProcessingYolo = false;
+    }
+  };
+  
+  yoloWorker.postMessage({ type: 'init' });
 }
 
 async function getWebcamStream() {
@@ -95,17 +136,6 @@ function checkGazeFocused(blendshapes) {
     }
   }
   return true;
-}
-
-function detectPhones(predictions) {
-  const phones = [];
-  for (const pred of predictions) {
-    if (pred.class === PHONE_CLASS && pred.score >= PHONE_CONFIDENCE) {
-      const [x1, y1, w, h] = pred.bbox;
-      phones.push({ x1, y1, x2: x1 + w, y2: y1 + h, w, h, conf: pred.score });
-    }
-  }
-  return phones;
 }
 
 function cacheUserLandmarks(landmarks) {
@@ -138,16 +168,13 @@ function verifyUserPresence(currentLandmarks) {
   return matchRatio >= LANDMARK_MATCH_THRESHOLD;
 }
 
-function processDetections(faceResult, phonePredictions) {
+function processDetections(faceResult, phones) {
+  const isPhoneDetected = phones.length > 0;
   const now = Date.now();
 
   const hasFace = faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0;
   const isGazeFocused = hasFace ? checkGazeFocused(faceResult.faceBlendshapes) : true;
-  const phoneBboxes = detectPhones(phonePredictions);
-  const isPhoneDetected = phoneBboxes.length > 0;
 
-  // Save for Canvas Rendering
-  latestPhones = phoneBboxes;
 
   const isVerifiedUser = hasFace ? verifyUserPresence(faceResult.faceLandmarks[0]) : false;
   if (isVerifiedUser) lastFaceSeenAt = now;
@@ -172,7 +199,6 @@ function processDetections(faceResult, phonePredictions) {
     warningMessage = '';
   }
 
-  // Save for Canvas Rendering
   latestWarning = warningMessage;
   isUserFocusedGlobal = isUserFocused;
 
@@ -226,14 +252,19 @@ async function processFrame() {
 
   try {
     const faceResult = faceLandmarker.detectForVideo(videoElement, now);
-    let phonePredictions = [];
-    if (cocoModel) {
-      try {
-        phonePredictions = await cocoModel.detect(videoElement);
-      } catch {}
+    
+    // ส่งภาพไป YOLO
+    if (isYoloReady && !isProcessingYolo && workerCanvasCtx) {
+      isProcessingYolo = true; // ล็อคทันที! ไม่ให้เฟรมอื่นแทรก
+      
+      console.log("ส่งภาพ 1 เฟรม... รอ AI ตอบกลับ"); // เปลี่ยน log ให้ดูง่ายขึ้น
+      workerCanvasCtx.drawImage(videoElement, 0, 0, 640, 640);
+      const imageData = workerCanvasCtx.getImageData(0, 0, 640, 640);
+      
+      yoloWorker.postMessage({ type: 'detect', payload: { imageData } });
     }
 
-    const event = processDetections(faceResult, phonePredictions);
+    const event = processDetections(faceResult, latestPhones);
     if (_onEvent) _onEvent(event);
   } catch (err) {
     console.warn('[BrowserAI] Frame processing error:', err.message);
@@ -243,7 +274,7 @@ async function processFrame() {
 }
 
 // ---------------------------------------------------------------------
-// CANVAS DRAWING LOGIC (Adds the YOLO visuals)
+// CANVAS DRAWING LOGIC 
 // ---------------------------------------------------------------------
 function drawTextWithBg(ctx, text, x, y, bgRgba, textRgba, fontSize = 14) {
   ctx.font = `bold ${fontSize}px "Segoe UI", sans-serif`;
@@ -257,24 +288,31 @@ function drawTextWithBg(ctx, text, x, y, bgRgba, textRgba, fontSize = 14) {
 }
 
 function renderLoop() {
-  if (_status !== 'active' || !canvasElement || !videoElement) return;
+  // 1. ดึง Canvas ตัวปัจจุบันที่อยู่บนหน้าจอจริงๆ (หาใหม่ทุกเฟรม)
+  const currentCanvas = document.getElementById('ai-canvas');
 
-  const ctx = canvasElement.getContext('2d');
+  // ถ้ายังไม่พร้อม ให้ข้ามเฟรมนี้ไปก่อน (อย่า return ทิ้ง ไม่งั้นมันจะหยุดวาดถาวร)
+  if (_status !== 'active' || !currentCanvas || !videoElement) {
+    renderFrameId = requestAnimationFrame(renderLoop);
+    return;
+  }
+
+  const ctx = currentCanvas.getContext('2d');
   const width = videoElement.videoWidth;
   const height = videoElement.videoHeight;
 
-  // Keep canvas exactly the same size as the video
-  if (canvasElement.width !== width) {
-    canvasElement.width = width;
-    canvasElement.height = height;
+  // ปรับขนาดแผ่นใสให้พอดีกับกล้อง
+  if (currentCanvas.width !== width) {
+    currentCanvas.width = width;
+    currentCanvas.height = height;
   }
 
   ctx.clearRect(0, 0, width, height);
 
-  // 1. Draw Focus Score
+  // --- วาดข้อความ Focus Score ---
   drawTextWithBg(ctx, `Focus Score: ${Math.round(focusScore)}`, 10, 25, 'rgba(20,20,20,0.85)', '#fff');
 
-  // 2. Draw Status Badge
+  // --- วาด Badge สถานะ ---
   let badgeText, badgeColor;
   if (isUserFocusedGlobal) {
     badgeText = " FOCUSED ";
@@ -290,15 +328,29 @@ function renderLoop() {
   const badgeWidth = ctx.measureText(badgeText).width;
   drawTextWithBg(ctx, badgeText, width - badgeWidth - 20, 25, badgeColor, '#fff');
 
-  // 3. Draw Bounding Boxes (Red boxes around phone)
+  // --- วาดกรอบแดงโทรศัพท์ ---
+// ใน browserAI.js -> ฟังก์ชัน renderLoop
   latestPhones.forEach(box => {
-    ctx.strokeStyle = 'rgb(255, 0, 0)';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(box.x1, box.y1, box.w, box.h);
-    drawTextWithBg(ctx, `Phone ${Math.round(box.conf * 100)}%`, box.x1, box.y1 - 10, 'rgba(200,0,0,0.85)', '#fff', 12);
-  });
+  // 1. คำนวณความกว้างและพิกัดดิบก่อน
+  const realW = box.w * width; // Box width (pixel)
+  const realH = box.h * height; // Box height (pixel)
+  const rawX = box.x1 * width; // Left edge from un-mirrored AI (pixel)
+  const realY = box.y1 * height; // Top edge from AI (pixel - แกนนี้ถูกอยู่แล้ว)
 
-  // 4. Draw Warning Banner
+  // 2. 👇 วิชามาร "พลิกด้านซ้ายขวา (Horizontal Flip)"
+  // พิกัดด้านซ้ายใหม่ (mirroredX) = (ความกว้าง Canvas ทั้งหมด) - (พิกัดด้านซ้ายดิบ) - (ความกว้างของกล่อง)
+  const mirroredX = width - rawX - realW;
+
+  // 3. วาดกล่องแดงด้วยพิกัดใหม่ (mirroredX)
+  ctx.strokeStyle = 'rgb(255, 0, 0)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(mirroredX, realY, realW, realH);
+  
+  // 4. วาดข้อความให้ตรงกับพิกัด mirroredX ด้วยครับ
+  drawTextWithBg(ctx, `Phone ${Math.round(box.conf * 100)}%`, mirroredX, realY - 10, 'rgba(200,0,0,0.85)', '#fff', 12);
+});
+
+  // --- วาด Warning ใหญ่กลางจอ ---
   if (latestWarning) {
     ctx.font = `bold 16px "Segoe UI", sans-serif`;
     const warnWidth = ctx.measureText(latestWarning).width;
@@ -310,11 +362,17 @@ function renderLoop() {
     ctx.fillText(latestWarning, cx, cy);
   }
 
+  // เรียกตัวเองเพื่อวาดเฟรมถัดไป (ห้ามลืมบรรทัดนี้!)
   renderFrameId = requestAnimationFrame(renderLoop);
 }
+
 // ---------------------------------------------------------------------
 
 export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
+  // แก้ไขตรงนี้: ถ้ามัน active อยู่แล้ว ให้รีเทิร์นตัวเดิมออกไปเลย!
+  if (_status === 'active') return videoElement; 
+  
+
   _onEvent = onEvent;
   _onStatusChange = onStatusChange;
 
@@ -323,9 +381,10 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
   setStatus('loading', 'Loading AI models...');
 
   try {
-    const [, , stream] = await Promise.all([
+    initYoloWorker(); // เริ่ม YOLO
+
+    const [, stream] = await Promise.all([
       loadFaceLandmarker(),
-      loadCocoSSD().catch((err) => null),
       getWebcamStream(),
     ]);
 
@@ -342,16 +401,21 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     videoElement.muted = true;
     await videoElement.play();
 
-    // Setup Canvas Overlay inside the React DOM
+    // สร้าง Offscreen Canvas ลับไว้ส่งให้ Worker
+    const hiddenCanvas = document.createElement('canvas');
+    hiddenCanvas.width = 640;
+    hiddenCanvas.height = 640;
+    workerCanvasCtx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
+
     if (!canvasElement && videoElement.parentElement) {
-      videoElement.parentElement.style.position = 'relative'; // Ensure parent can hold absolute canvas
+      videoElement.parentElement.style.position = 'relative';
       canvasElement = document.createElement('canvas');
       canvasElement.style.position = 'absolute';
       canvasElement.style.top = '0';
       canvasElement.style.left = '0';
       canvasElement.style.width = '100%';
       canvasElement.style.height = '100%';
-      canvasElement.style.pointerEvents = 'none'; // So you can still click the video if needed
+      canvasElement.style.pointerEvents = 'none';
       videoElement.parentElement.appendChild(canvasElement);
     }
 
@@ -363,7 +427,7 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     setStatus('active', 'Browser AI running');
     
     animFrameId = requestAnimationFrame(processFrame);
-    renderFrameId = requestAnimationFrame(renderLoop); // Start drawing!
+    renderFrameId = requestAnimationFrame(renderLoop);
 
     return videoElement;
   } catch (err) {
@@ -393,12 +457,18 @@ export function stopBrowserAI() {
     videoElement.srcObject = null;
     videoElement = null;
   }
+  if (yoloWorker) {
+    yoloWorker.terminate(); // ปิด Worker เมื่อหยุดใช้งาน
+    yoloWorker = null;
+    isYoloReady = false;
+  }
 
   _onEvent = null;
   focusScore = 0;
   currentAttentionScore = 85;
   cachedUserLandmarks = null;
   landmarkCacheTimestamp = 0;
+  latestPhones = [];
   setStatus('idle');
 }
 

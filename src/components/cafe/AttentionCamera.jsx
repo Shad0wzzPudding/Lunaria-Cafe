@@ -57,33 +57,42 @@ export default function AttentionCamera() {
 
   if (!showCamera) return null;
 
-if (isBrowserMode) {
-  return (
-    <aside className="absolute bottom-3 left-3 z-20 w-40 overflow-hidden rounded-lg border border-border/50 bg-black/60 shadow-lg">
-      <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel">
-        AI Camera <span className="text-emerald-400">(Browser)</span>
-      </p>
-
-      {/* Always render video so videoRef.current is available to useEffect */}
-      <video
-        ref={videoRef}
-        autoPlay playsInline muted
-        className="w-full aspect-video object-cover"
-        style={{ transform: 'scaleX(-1)', display: isReady ? 'block' : 'none' }}
-      />
-
-      {/* Overlay shown while not ready */}
-      {!isReady && (
-        <div className="flex aspect-video items-center justify-center bg-black/80">
-          {error
-            ? <span className="text-[10px] text-red-400 text-center px-2">{error}</span>
-            : <span className="text-[10px] text-muted-foreground">Loading...</span>
-          }
+  if (isBrowserMode) {
+    return (
+      <aside className="absolute bottom-3 left-3 z-20 w-40 overflow-hidden rounded-lg border border-border/50 bg-black/60 shadow-lg">
+        <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel">
+          AI Camera <span className="text-emerald-400">(Browser)</span>
+        </p>
+  
+        {/* ห่อกล้องและ Canvas ไว้ด้วยกัน */}
+        <div className="relative">
+          <video
+            ref={videoRef}
+            autoPlay playsInline muted
+            className="w-full aspect-video object-cover"
+            style={{ transform: 'scaleX(-1)', display: isReady ? 'block' : 'none' }}
+          />
+          
+          {/* 👇 นี่คือจุดเปลี่ยนชีวิต! ใส่ Canvas ทับวิดีโอเอาไว้ */}
+          <canvas
+            id="ai-canvas"
+            className="absolute top-0 left-0 w-full h-full pointer-events-none"
+            
+          />
         </div>
-      )}
-    </aside>
-  );
-}
+  
+        {!isReady && (
+          // ... (โค้ด overlay Loading ตอนกล้องยังไม่มา ปล่อยไว้เหมือนเดิมครับ)
+          <div className="flex aspect-video items-center justify-center bg-black/80">
+            {error
+              ? <span className="text-[10px] text-red-400 text-center px-2">{error}</span>
+              : <span className="text-[10px] text-muted-foreground">Loading...</span>
+            }
+          </div>
+        )}
+      </aside>
+    );
+  }
 
   // live mode — Python server stream
   return (
