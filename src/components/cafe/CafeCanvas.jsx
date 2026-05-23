@@ -160,6 +160,34 @@ function drawCustomer(ctx, customer, time, furniture) {
   }
 }
 
+function drawAmbientLights(ctx, furniture, time) {
+  for (const f of furniture) {
+    const cx = f.x + f.w / 2;
+    const cy = f.y + f.h / 2;
+
+    if (f.type === 'fireplace') {
+      // Warm orange flicker
+      const flicker = 0.08 + Math.sin(time * 0.007 + f.x) * 0.03;
+      const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy + 20, 140);
+      grad.addColorStop(0, `rgba(230, 160, 60, ${flicker})`);
+      grad.addColorStop(0.5, `rgba(200, 100, 30, ${flicker * 0.5})`);
+      grad.addColorStop(1, 'rgba(200, 100, 30, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - 140, cy - 40, 280, 200);
+    }
+
+    if (f.type === 'lantern') {
+      // Soft warm yellow glow
+      const pulse = 0.06 + Math.sin(time * 0.004 + f.x * 0.1) * 0.02;
+      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 90);
+      grad.addColorStop(0, `rgba(255, 210, 100, ${pulse})`);
+      grad.addColorStop(1, 'rgba(255, 180, 60, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - 90, cy - 90, 180, 180);
+    }
+  }
+}
+
 function drawParticles(ctx, time) {
   for (let i = 0; i < 15; i++) {
     const px = (Math.sin(time * 0.001 + i * 2.3) * 0.5 + 0.5) * CAFE_W;
@@ -202,6 +230,7 @@ export default function CafeCanvas() {
     const bg = bgImages.current[state.cafe.timeOfDay ?? 'night'];
     if (bg) { ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H); }
     else { ctx.fillStyle = '#1a1833'; ctx.fillRect(0, 0, CAFE_W, CAFE_H); }
+    drawAmbientLights(ctx, state.cafe.furniture, time);
 
     // =========================
     // Draw Furniture First
