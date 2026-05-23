@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useState
 import { getChaosStage } from '@/lib/aiIntegration';
 import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from '@/lib/saveService';
 import { pushPopup } from '@/lib/feedbackHelpers';
-import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';ห
+import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
 
 export const initialState = {
   phase: 'menu',
