@@ -286,10 +286,12 @@ export default function CafeCanvas() {
     // =========================
     // Draw AmbientLight
     // =========================
+    if (state.cafe.timeOfDay === 'night'){
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     drawAmbientLights(ctx, state.cafe.furniture, time);
     ctx.restore();
+    }
 
     // =========================
     // Draw Rabbits
