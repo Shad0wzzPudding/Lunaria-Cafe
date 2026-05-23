@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
-import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
+import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
 import {
   startAttentionFeed,
   stopAttentionFeed,
