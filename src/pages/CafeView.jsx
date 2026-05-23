@@ -1,3 +1,5 @@
+import { Wand2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import React, { useEffect } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
@@ -19,16 +21,88 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
 
+function BgModePanel({ state, dispatch, onClose }) {
+  const panelRef = useRef(null);
+  const { bgMode } = state.cafe;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const modes = [
+    {
+      id: 'immersive',
+      label: 'Immersive',
+      icon: '🌙',
+      desc: 'Night during focus, day when resting.',
+    },
+    {
+      id: 'reallife',
+      label: 'Real-life',
+      icon: '🕐',
+      desc: 'Follows your local time (night 7PM–6AM).',
+    },
+    {
+      id: 'freestyle',
+      label: 'Freestyle',
+      icon: '✨',
+      desc: 'Toggle day/night manually anytime.',
+    },
+  ];
+
+  return (
+    <div
+      ref={panelRef}
+      className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display text-sm text-foreground">Background Mode</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex flex-col gap-2">
+        {modes.map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => {
+              dispatch({ type: 'SET_BG_MODE', payload: mode.id });
+              onClose();
+            }}
+            className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+              bgMode === mode.id
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border/40 bg-secondary/30 hover:border-primary/40 text-muted-foreground'
+            }`}
+          >
+            <span className="text-lg mt-0.5">{mode.icon}</span>
+            <div>
+              <div className="font-pixel text-xs font-semibold">{mode.label}</div>
+              <div className="font-body text-[11px] mt-0.5 opacity-80">{mode.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
   const isManagement = state.phase === 'management';
+  const [showBgModePanel, setShowBgModePanel] = useState(false);
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -87,6 +161,30 @@ export default function CafeView() {
     dispatch({ type: 'START_FOCUS' });
   };
 
+  // 👇 ADD HERE
+  useEffect(() => {
+    const bgMode = state.cafe.bgMode ?? 'freestyle';
+
+    if (bgMode === 'immersive') {
+      dispatch({
+        type: 'SET_TIME_OF_DAY',
+        payload: isFocusing ? 'night' : 'day',
+      });
+      return;
+    }
+
+    if (bgMode === 'reallife') {
+      const checkTime = () => {
+        const hour = new Date().getHours();
+        const isNight = hour >= 19 || hour < 6;
+        dispatch({ type: 'SET_TIME_OF_DAY', payload: isNight ? 'night' : 'day' });
+      };
+      checkTime();
+      const interval = setInterval(checkTime, 60_000);
+      return () => clearInterval(interval);
+    }
+  }, [state.cafe.bgMode, isFocusing, dispatch]);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       {isFocusing && <PhoneWarning />}
@@ -137,17 +235,40 @@ export default function CafeView() {
           <div className="flex flex-wrap gap-2 ml-auto">
             {isManagement && !state.cafe.decorateMode && (
               <>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-2 font-pixel text-xs"
-                onClick={() => dispatch({
-                  type: 'SET_TIME_OF_DAY',
-                  payload: state.cafe.timeOfDay === 'day' ? 'night' : 'day',
-                })}
-              >
-                {state.cafe.timeOfDay === 'day' ? '🌙 Night' : '☀️ Day'}
+              {/* Wand button */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowBgModePanel(v => !v)}
+                  title="Background mode"
+                >
+                  <Wand2 className="w-4 h-4" />
                 </Button>
+                {showBgModePanel && (
+                  <BgModePanel
+                    state={state}
+                    dispatch={dispatch}
+                    onClose={() => setShowBgModePanel(false)}
+                  />
+                )}
+              </div>
+
+              {/* Freestyle toggle only */}
+              {state.cafe.bgMode === 'freestyle' && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2 font-pixel text-xs"
+                  onClick={() => dispatch({
+                    type: 'SET_TIME_OF_DAY',
+                    payload: state.cafe.timeOfDay === 'day' ? 'night' : 'day',
+                  })}
+                >
+                  {state.cafe.timeOfDay === 'day' ? '🌙 Night' : '☀️ Day'}
+                </Button>
+              )}
                 <Button
                   variant="secondary"
                   size="sm"

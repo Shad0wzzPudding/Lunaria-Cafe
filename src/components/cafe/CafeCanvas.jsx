@@ -21,7 +21,7 @@ export const FURNITURE_CATALOG = {
   chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
   crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false , solid: true },
   dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false , solid: true },
-  fireplace:          { file: '15_fireplace.png', nightFile: 'fireplace(off).png', w: 100, h: 80, sittable: false },
+  fireplace:          { file: 'fireplace(off).png', nightFile: 'fireplace(night).png', w: 100, h: 80, sittable: false },
   nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false , solid: true },
   painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false , solid: false },
   plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false , solid: true },

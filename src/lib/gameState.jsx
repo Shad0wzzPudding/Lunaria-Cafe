@@ -12,6 +12,7 @@ export const initialState = {
     currentCustomers: 0,
     maxCustomers: 8,
     timeOfDay: 'day',
+    bgMode: 'freestyle', // 'immersive' | 'reallife' | 'freestyle'
     decorateMode: false,
     decorateTool: 'place',
     placeFurnitureType: 'plant_big',
@@ -572,6 +573,12 @@ function gameReducer(state, action) {
     ...state,
     cafe: { ...state.cafe, timeOfDay: action.payload },
     };
+
+    case 'SET_BG_MODE':
+  return {
+    ...state,
+    cafe: { ...state.cafe, bgMode: action.payload },
+  };
 
     default:
       return state;
