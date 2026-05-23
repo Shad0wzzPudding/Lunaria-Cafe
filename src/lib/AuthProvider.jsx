@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -15,6 +16,8 @@ export function AuthProvider({ children }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      // If a real session starts, exit guest mode automatically
+      if (session?.user) setIsGuest(false);
     });
 
     return () => sub.subscription.unsubscribe();
@@ -26,10 +29,15 @@ export function AuthProvider({ children }) {
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password });
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = () => {
+    setIsGuest(false);
+    return supabase.auth.signOut();
+  };
+
+  const signInAsGuest = () => setIsGuest(true);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isGuest, signUp, signIn, signOut, signInAsGuest }}>
       {children}
     </AuthContext.Provider>
   );

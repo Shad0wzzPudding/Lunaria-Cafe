@@ -133,6 +133,7 @@ export default function MainMenu() {
             <Settings className="w-4 h-4" />
             Settings
           </Button>
+
         </motion.div>
         
         <motion.p 

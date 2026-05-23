@@ -1,9 +1,21 @@
 /**
- * AI Integration — connects Lunaria Cafe to the Python focus tracker API.
+ * AI Integration — connects Lunaria Cafe to focus tracking systems.
+ *
+ * Three modes:
+ *   1. simulation — random attention drift (default, works everywhere)
+ *   2. live       — polls a local Python FastAPI server
+ *   3. browser    — runs MediaPipe + COCO-SSD directly in the browser
  *
  * Game event shape:
- * { phone_detected, attention_score (0-100), user_present, timestamp, warning_message?, tracker_score? }
+ * { phone_detected, attention_score (0-100), user_present, timestamp, warning_message?, tracker_score?, source }
  */
+
+import {
+  startBrowserAI,
+  stopBrowserAI,
+  isBrowserAISupported,
+  getBrowserAIStatus,
+} from '@/lib/browserAI';
 
 const CONFIG_KEY = 'lunaria-ai-config';
 const DEFAULT_API_URL = 'http://127.0.0.1:8000';
@@ -15,15 +27,24 @@ const statusListeners = new Set();
 let simulatedScore = 85;
 let simulationInterval = null;
 let pollInterval = null;
+let browserAIActive = false;
+let browserVideoElement = null;
 let connectionStatus = 'offline'; // offline | connecting | live | error
+let liveAttentionScore = 85;
 
+// aiMode: 'simulation' | 'live' | 'browser'
 function loadConfig() {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
-    if (!raw) return { apiUrl: DEFAULT_API_URL, useLiveAI: false };
-    return { apiUrl: DEFAULT_API_URL, useLiveAI: false, ...JSON.parse(raw) };
+    if (!raw) return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
+    const parsed = { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser', ...JSON.parse(raw) };
+    // migrate old useLiveAI flag
+    if (parsed.useLiveAI && parsed.aiMode === 'simulation') {
+      parsed.aiMode = 'live';
+    }
+    return parsed;
   } catch {
-    return { apiUrl: DEFAULT_API_URL, useLiveAI: false };
+    return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
   }
 }
 
@@ -68,22 +89,32 @@ export function mapTrackerStateToEvent(trackerState) {
     warning_message,
   } = trackerState;
 
-  let attention_score = 85;
-
+  // Gradual score changes instead of preset patterns
+  let targetScore = 85;
   if (is_phone_detected) {
-    attention_score = 22;
+    targetScore = 22;
   } else if (!is_face_detected) {
-    attention_score = 38;
+    targetScore = 38;
   } else if (!is_user_focused) {
-    attention_score = 52;
+    targetScore = 52;
   } else {
     const bonus = Math.min(30, Math.log1p(focus_score) * 4);
-    attention_score = Math.min(100, 70 + bonus);
+    targetScore = Math.min(100, 70 + bonus);
   }
+
+  // Gradually move current score toward target
+  const scoreDiff = targetScore - liveAttentionScore;
+  const maxChange = 2.0; // Maximum change per tick
+  if (Math.abs(scoreDiff) <= maxChange) {
+    liveAttentionScore = targetScore;
+  } else {
+    liveAttentionScore += Math.sign(scoreDiff) * maxChange;
+  }
+  liveAttentionScore = Math.max(0, Math.min(100, liveAttentionScore));
 
   return {
     phone_detected: Boolean(is_phone_detected),
-    attention_score: Math.round(attention_score),
+    attention_score: Math.round(liveAttentionScore),
     user_present: Boolean(is_face_detected),
     timestamp: Date.now(),
     warning_message: warning_message || '',
@@ -151,6 +182,7 @@ export function stopLiveTracking() {
     clearInterval(pollInterval);
     pollInterval = null;
   }
+  liveAttentionScore = 85;
   if (!simulationInterval) setConnectionStatus('offline');
 }
 
@@ -182,14 +214,51 @@ export function stopSimulation() {
 }
 
 /**
- * Start AI feed for focus sessions: live API if enabled, else simulation.
+ * Start browser-native AI tracking (MediaPipe + COCO-SSD).
+ */
+export async function startBrowserTracking() {
+  if (browserAIActive) return;
+  setConnectionStatus('connecting', 'Loading browser AI...');
+
+  try {
+    browserVideoElement = await startBrowserAI({
+      onEvent: (event) => processAIEvent(event),
+      onStatusChange: ({ status, detail }) => {
+        if (status === 'active') setConnectionStatus('live', 'Browser AI');
+        else if (status === 'error') setConnectionStatus('error', detail);
+        else if (status === 'loading') setConnectionStatus('connecting', detail);
+      },
+    });
+    browserAIActive = true;
+  } catch (err) {
+    setConnectionStatus('error', err.message);
+  }
+}
+
+export function stopBrowserTracking() {
+  if (!browserAIActive) return;
+  stopBrowserAI();
+  browserAIActive = false;
+  browserVideoElement = null;
+  if (!simulationInterval && !pollInterval) setConnectionStatus('offline');
+}
+
+export function getBrowserVideoElement() {
+  return browserVideoElement;
+}
+
+/**
+ * Start AI feed for focus sessions based on the configured mode.
  */
 export function startAttentionFeed() {
-  const { useLiveAI } = loadConfig();
+  const { aiMode, useLiveAI } = loadConfig();
   stopSimulation();
   stopLiveTracking();
+  stopBrowserTracking();
 
-  if (useLiveAI) {
+  if (aiMode === 'browser') {
+    startBrowserTracking();
+  } else if (aiMode === 'live' || useLiveAI) {
     startLiveTracking();
   } else {
     startSimulation();
@@ -199,8 +268,11 @@ export function startAttentionFeed() {
 export function stopAttentionFeed() {
   stopSimulation();
   stopLiveTracking();
+  stopBrowserTracking();
   setConnectionStatus('offline');
 }
+
+export { isBrowserAISupported, getBrowserAIStatus };
 
 export function getStreamUrl(apiUrl = loadConfig().apiUrl) {
   return `${apiUrl.replace(/\/$/, '')}/stream`;

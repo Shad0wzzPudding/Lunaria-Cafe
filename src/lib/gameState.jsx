@@ -11,21 +11,38 @@ export const initialState = {
     name: 'Lunaria Cafe',
     currentCustomers: 0,
     maxCustomers: 8,
+    timeOfDay: 'day',
     decorateMode: false,
     decorateTool: 'place',
-    placeFurnitureType: 'plant',
+    placeFurnitureType: 'plant_big',
+    placeFurnitureRotation: 0,
+    pendingFurniture: null,
     furniture: [
-      { id: 'built-counter', type: 'counter', x: 50, y: 80, w: 160, h: 50 },
-      { id: 'built-brewing', type: 'brewing', x: 230, y: 85, w: 50, h: 45 },
-      { id: 'built-table-1', type: 'table', x: 100, y: 220, w: 80, h: 50 },
-      { id: 'built-table-2', type: 'table', x: 300, y: 280, w: 80, h: 50 },
-      { id: 'built-table-3', type: 'table', x: 500, y: 220, w: 80, h: 50 },
-      { id: 'built-shelf', type: 'shelf', x: 620, y: 70, w: 80, h: 100 },
-      { id: 'built-plant', type: 'plant', x: 30, y: 380, w: 32, h: 32 },
-      { id: 'built-window-1', type: 'window', x: 200, y: 5, w: 80, h: 45 },
-      { id: 'built-window-2', type: 'window', x: 460, y: 5, w: 80, h: 45 },
-      { id: 'built-fireplace', type: 'fireplace', x: 340, y: 60, w: 60, h: 50 },
-    ],
+  { id: 'built-counter',   type: 'bar_counter1',      x: 36.68463611859838, y: 158.72509960159363, w: 160,  h: 70 },
+  { id: 'built-counter2',   type: 'bar_counter2',      x: 204.23180592991912, y: 159.72111553784862, w: 160,  h: 70 },
+  { id: 'built-fireplace',   type: 'fireplace',      x: 494.5283018867924, y: 110.89641434262947, w: 100,  h: 80 },
+  { id: 'built-bookcase',   type: 'bookcase_small',      x: 616.2398921832884, y: 100.91633466135457, w: 70,  h: 90 },
+  { id: 'built-plant',   type: 'plant_big',      x: 576.388140161725 , y: 422.70916334661354 , w: 40 ,  h: 50 },
+  { id: 'built-plant',   type: 'plant_big',      x: 599.3261455525607, y: 423.7051792828685, w: 40,  h: 50 },
+  { id: 'built-plant2',   type: 'plant_big',      x: 97.68194070080862, y: 415.7370517928287, w: 40,  h: 50 },
+  { id: 'built-plant3',   type: 'plant_big',      x: 127.6010781671159, y: 415.7370517928287, w: 40,  h: 50 },
+  { id: 'built-table_round',   type: 'table_round',      x: 311.03773584905656, y: 285.1792828685259, w: 90,  h: 90 },
+  { id: 'built-table_square_plant',   type: 'table_square_plant',      x: 517.4932614555256, y: 231.41434262948206, w: 80,  h: 80 },
+  { id: 'built-chair2',   type: 'chair2',      x: 589.3530997304582, y: 251.90239043824704, w: 40,  h: 45 },
+  { id: 'built-chair2_2',   type: 'chair2',      x: 468.6792452830189, y: 256.88247011952194, w: 40,  h: 45 },
+  { id: 'built-chair2_3',   type: 'chair2',      x: 267.2237196765499, y: 308.6752988047809, w: 40,  h: 45 },
+  { id: 'built-chair2_4',   type: 'chair2',      x: 393.8814016172507, y: 305.68725099601596, w: 40,  h: 45 },
+  { id: 'built-chair2_5',   type: 'chair2',      x: 41.832884097035034, y: 217.0418326693227, w: 40,  h: 45 },
+  { id: 'built-chair2_6',   type: 'chair2',      x: 87.70889487870619, y: 215.04980079681275, w: 40,  h: 45 },
+  { id: 'built-chair2_7',   type: 'chair2',      x: 180.45822102425876, y: 306.6832669322709, w: 40,  h: 45 },
+  { id: 'built-chair2_8',   type: 'chair2',      x: 64.77088948787062, y: 309.67131474103587, w: 40,  h: 45 },
+  { id: 'built-table_square',   type: 'table_square',      x: 99.62264150943395, y: 277.23107569721117, w: 80,  h: 80 },
+  { id: 'built-red_carpet',   type: 'red_carpet',      x: 310.99730458221023, y: 395.7768924302789, w: 120,  h: 70 },
+  { id: 'built-painting',   type: 'painting',      x: 604.299191374663, y: 50, w: 50,  h: 40 },
+  { id: 'built-barrel',   type: 'barrel',      x: 677.6212938005391, y: 341.5438247011952, w: 35,  h: 45 },
+  { id: 'built-barrel2',   type: 'barrel',      x: 676.6239892183288, y: 305.68725099601596, w: 35,  h: 45 },
+  { id: 'built-barrel3',   type: 'barrel',      x: 672.6347708894879, y: 275.80677290836655, w: 35,  h: 45 },
+],
   },
   focus: {
     status: 'idle',
@@ -41,6 +58,9 @@ export const initialState = {
     chaosEvents: [],
     warningMessage: '',
     source: 'offline',
+    phoneWarningStart: null,
+    phoneFreeSince: null,
+    gazeFocusedSince: null,
   },
   npcs: {
     customers: [],
@@ -248,12 +268,66 @@ function gameReducer(state, action) {
       const chaos = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const nextEvents = [...state.attention.chaosEvents];
+      const now = Date.now();
+      const WARNING_DURATION_MS = 60000; // 1 minute
+      const CLEAR_CONDITION_MS = 2000; // 2 seconds of continuous good behavior
 
       if (chaos.level > prevLevel && chaos.level > 0 && action.payload.phone_detected) {
         nextEvents.push({
           message: action.payload.warning_message || `Chaos level: ${chaos.name}`,
           timestamp: Date.now(),
         });
+      }
+
+      // Phone warning logic with strict clearing conditions
+      let phoneWarningStart = state.attention.phoneWarningStart;
+      let phoneFreeSince = state.attention.phoneFreeSince;
+      let gazeFocusedSince = state.attention.gazeFocusedSince;
+      let newFocusStatus = state.focus.status;
+
+      // Check if user is looking at screen (no gaze distraction warning)
+      const isGazeFocused = !action.payload.warning_message?.includes('GAZE DISTRACTED');
+
+      if (action.payload.phone_detected) {
+        // Phone detected - start warning immediately
+        if (!phoneWarningStart) {
+          phoneWarningStart = now;
+        }
+        // Reset clearing conditions
+        phoneFreeSince = null;
+        gazeFocusedSince = null;
+        // Only set to distracted after 1 minute of continuous phone detection
+        if (now - phoneWarningStart >= WARNING_DURATION_MS) {
+          newFocusStatus = 'distracted';
+        }
+      } else {
+        // No phone detected - track phone-free duration
+        if (!phoneFreeSince) {
+          phoneFreeSince = now;
+        }
+        
+        // Track gaze-focused duration
+        if (isGazeFocused) {
+          if (!gazeFocusedSince) {
+            gazeFocusedSince = now;
+          }
+        } else {
+          gazeFocusedSince = null;
+        }
+
+        // Strict clearing: both conditions must be met for 2 seconds
+        const phoneFreeDuration = phoneFreeSince ? now - phoneFreeSince : 0;
+        const gazeFocusedDuration = gazeFocusedSince ? now - gazeFocusedSince : 0;
+
+        if (phoneFreeDuration >= CLEAR_CONDITION_MS && gazeFocusedDuration >= CLEAR_CONDITION_MS) {
+          // Both conditions met - clear warning
+          phoneWarningStart = null;
+          phoneFreeSince = null;
+          gazeFocusedSince = null;
+          if (state.focus.status === 'distracted') {
+            newFocusStatus = 'active';
+          }
+        }
       }
 
       return {
@@ -267,15 +341,13 @@ function gameReducer(state, action) {
           warningMessage: action.payload.warning_message ?? '',
           source: action.payload.source ?? state.attention.source,
           chaosEvents: nextEvents.slice(-10),
+          phoneWarningStart,
+          phoneFreeSince,
+          gazeFocusedSince,
         },
         focus: {
           ...state.focus,
-          status:
-            action.payload.phone_detected && state.focus.status === 'active'
-              ? 'distracted'
-              : state.focus.status === 'distracted' && !action.payload.phone_detected
-                ? 'active'
-                : state.focus.status,
+          status: newFocusStatus,
         },
       };
     }
@@ -300,6 +372,9 @@ function gameReducer(state, action) {
           ...state.cafe,
           decorateMode: action.payload,
           decorateTool: 'place',
+          placeFurnitureRotation: 0,
+          pendingFurniture: null,
+    pendingFurniture: null,
         },
       };
 
@@ -314,6 +389,77 @@ function gameReducer(state, action) {
         ...state,
         cafe: { ...state.cafe, placeFurnitureType: action.payload, decorateTool: 'place' },
       };
+
+    case 'SET_PLACE_ROTATION':
+      return {
+        ...state,
+        cafe: { ...state.cafe, placeFurnitureRotation: action.payload },
+      };
+
+    case 'SET_PENDING_FURNITURE': {
+      const pf = action.payload;
+      if (!pf) return { ...state, cafe: { ...state.cafe, pendingFurniture: null } };
+      // Always store the catalog base dimensions (rotation=0) so we can derive
+      // correct w/h for any rotation without cumulative drift.
+      const baseW = pf.baseW ?? pf.w;
+      const baseH = pf.baseH ?? pf.h;
+      return {
+        ...state,
+        cafe: { ...state.cafe, pendingFurniture: { ...pf, baseW, baseH } },
+      };
+    }
+
+   case 'ROTATE_PENDING_FURNITURE': {
+  const pf = state.cafe.pendingFurniture;
+  if (!pf) return state;
+
+  const newRotation =
+    ((pf.rotation ?? 0) + action.payload + 360) % 360;
+
+  return {
+    ...state,
+    cafe: {
+      ...state.cafe,
+      pendingFurniture: {
+        ...pf,
+        rotation: newRotation,
+      },
+    },
+  };
+}
+
+    case 'CONFIRM_PENDING_FURNITURE': {
+  const pf = state.cafe.pendingFurniture;
+  if (!pf) return state;
+
+  return {
+    ...state,
+    cafe: {
+      ...state.cafe,
+
+      pendingFurniture: null,
+
+      furniture: [
+        ...state.cafe.furniture,
+
+        {
+          id: pf.id,
+          type: pf.type,
+
+          x: pf.x,
+          y: pf.y,
+
+          // Keep ORIGINAL dimensions only
+          // Rotation is handled visually in canvas rendering
+          w: pf.baseW ?? pf.w,
+          h: pf.baseH ?? pf.h,
+
+          rotation: pf.rotation ?? 0,
+        },
+      ],
+    },
+  };
+}
 
     case 'ADD_FURNITURE':
       return {
@@ -331,18 +477,16 @@ function gameReducer(state, action) {
       };
 
     case 'REMOVE_FURNITURE': {
-      const target = state.cafe.furniture.find((f) => f.id === action.payload);
-      if (!target || target.type === 'counter' || target.type === 'brewing') {
-        return state;
-      }
-      return {
-        ...state,
-        cafe: {
-          ...state.cafe,
-          furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
-        },
-      };
-    }
+  const target = state.cafe.furniture.find((f) => f.id === action.payload);
+  if (!target || target.id === 'built-counter') return state; // only protect main counter
+  return {
+    ...state,
+    cafe: {
+      ...state.cafe,
+      furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
+    },
+  };
+}
 
     case 'DISMISS_UI_POPUP':
       return {
@@ -423,7 +567,12 @@ function gameReducer(state, action) {
         },
       };
     }
-    
+    case 'SET_TIME_OF_DAY':
+    return {
+    ...state,
+    cafe: { ...state.cafe, timeOfDay: action.payload },
+    };
+
     default:
       return state;
   }

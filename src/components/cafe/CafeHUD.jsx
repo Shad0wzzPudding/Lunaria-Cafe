@@ -27,11 +27,13 @@ export default function CafeHUD() {
   const chaos = getChaosStage(state.attention.score);
   const aiStatus = getConnectionStatus();
   const sourceLabel =
-    state.attention.source === 'live'
-      ? 'AI Camera'
-      : state.attention.source === 'simulation'
-        ? 'Simulated'
-        : 'Offline';
+    state.attention.source === 'browser'
+      ? 'Browser AI'
+      : state.attention.source === 'live'
+        ? 'AI Camera'
+        : state.attention.source === 'simulation'
+          ? 'Simulated'
+          : 'Offline';
 
   return (
     <div className="relative flex flex-wrap items-center gap-2 min-w-0">
