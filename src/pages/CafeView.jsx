@@ -1,6 +1,4 @@
-import { Wand2 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
 import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
 import {
