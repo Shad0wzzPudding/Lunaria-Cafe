@@ -1,45 +1,11 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useGame } from '@/lib/gameState.jsx';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
+import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/furnitureCatalog';
 
 const CAFE_W = 740;
 const CAFE_H = 500;
 const DEBUG_COLLISION = false;
-
-export const FURNITURE_CATALOG = {
-  baner:              { file: '01_baner.png',              w: 40,  h: 60,  sittable: false , solid: false },
-  bar_counter1:       { file: '02_bar_counter1.png',       w: 160, h: 70,  sittable: false , solid: true },
-  bar_counter2:       { file: '03_bar_counter2 .png',      w: 160, h: 70,  sittable: false , solid: true },
-  barrel:             { file: '04_barrel.png',             w: 35,  h: 45,  sittable: false , solid: true },
-  cupboard:           { file: '05_cupboard.png',           w: 70, h: 90,  sittable: false, solid: true },
-  bookcase_small:     { file: '06_bookcase_small.png',     w: 70,  h: 90,  sittable: false , solid: true },
-  cabinet:            { file: '07_cabinet.png',            w: 70,  h: 80,  sittable: false , solid: true },
-  candle:             { file: '08_candle.png',             w: 25,  h: 30,  sittable: false , solid: true },
-  chair:              { file: '09_chair.png',              w: 30,  h: 60,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
-  chair2:             { file: '10_chair.png',              w: 40,  h: 45,  sittable: true,  seatDx: 1, seatDy: -10 , solid: true },
-  chair_blue:         { file: '11_chair_blue.png',         w: 45,  h: 50,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
-  chair_red:          { file: '12_chair_red.png',          w: 40,  h: 45,  sittable: true,  seatDx: 0, seatDy: 10 , solid: true },
-  crate:              { file: '13_crate.png',              w: 40,  h: 40,  sittable: false , solid: true },
-  dresser:            { file: '14_dresser.png',            w: 70,  h: 60,  sittable: false , solid: true },
-  fireplace:          { file: 'fireplace(off).png', nightFile: 'fireplace(night).png', w: 100, h: 80, sittable: false },
-  nightstand:         { file: '18_nightstand.png',         w: 45,  h: 50,  sittable: false , solid: true },
-  painting:           { file: '19_painting.png',           w: 50,  h: 40,  sittable: false , solid: false },
-  plant_big:          { file: '20_plant_big.png',          w: 40,  h: 50,  sittable: false , solid: true },
-  plant_blue:         { file: '21_plant_blue.png',         w: 35,  h: 45,  sittable: false , solid: true },
-  plant_small:        { file: '22_plant_small.png',        w: 30,  h: 40,  sittable: false , solid: true },
-  red_carpet:         { file: '23_red_carpet .png',        w: 120, h: 70,  sittable: false , solid: false },
-  sofa_blue:          { file: '24_sofa_blue.png',          w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 , solid: true },
-  sofa_red:           { file: '25_sofa_red.png',           w: 110, h: 60,  sittable: true,  seatDx: 0, seatDy: 15 , solid: true },
-  table_long:         { file: '26_table_long.png',         w: 130, h: 90,  sittable: false , solid: true },
-  table_round:        { file: '27_table_round.png',        w: 90,  h: 90,  sittable: false , solid: true },
-  table_square:       { file: '28_table_square.png',       w: 80,  h: 80,  sittable: false , solid: true },
-  table_square_plant: { file: '29_table_square_plant.png', w: 80,  h: 80,  sittable: false , solid: true },
-  wardrobe:           { file: '30_wardrobe.png',           w: 60,  h: 80,  sittable: false , solid: true },
-};
-
-export const FURNITURE_SIZES = Object.fromEntries(
-  Object.entries(FURNITURE_CATALOG).map(([k, v]) => [k, { w: v.w, h: v.h }])
-);
 
 function findFurnitureAt(furniture, x, y) {
   for (let i = furniture.length - 1; i >= 0; i--) {
@@ -530,7 +496,22 @@ export default function CafeCanvas() {
 
             <button
               type="button"
-              onClick={() => dispatch({ type: 'CONFIRM_PENDING_FURNITURE' })}
+              onClick={() => {
+              const price = FURNITURE_CATALOG[pf.type]?.price ?? 0;
+              dispatch({
+                type: 'BUY_AND_PLACE_FURNITURE',
+                payload: {
+                  price,
+                  item: {
+                    id: pf.id, type: pf.type,
+                    x: pf.x, y: pf.y,
+                    w: pf.w, h: pf.h,
+                    rotation: pf.rotation ?? 0,
+                  },
+                },
+              });
+            }}
+            
               className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/20 hover:bg-primary/40 border border-primary/40 transition-colors text-primary"
             >
               <Check className="w-3.5 h-3.5" />

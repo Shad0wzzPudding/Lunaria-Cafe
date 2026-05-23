@@ -1,7 +1,7 @@
 import { useGame } from '@/lib/gameState.jsx';
 import { Button } from '@/components/ui/button';
 import { X, Trash2, GripHorizontal } from 'lucide-react';
-import { FURNITURE_CATALOG } from '@/components/cafe/CafeCanvas';
+import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
 import { useRef, useState } from 'react';
 
 const PLACEABLE = [
@@ -122,7 +122,9 @@ export default function DecoratePanel() {
         </div>
 
         <p className="text-xs text-muted-foreground font-body mb-3">
-          {removeMode ? 'Click furniture on the cafe to remove it.' : 'Pick an item, then click the cafe floor to place it.'}
+        {removeMode
+        ? 'Click furniture to sell it back for 50% of its price.'
+        : 'Pick an item and click the cafe floor to place it.'}
         </p>
 
         <div className="flex gap-2 mb-3">
@@ -161,6 +163,10 @@ export default function DecoratePanel() {
                     <span className={`font-pixel text-[9px] text-center leading-tight ${selected ? 'text-primary' : 'text-muted-foreground'}`}>
                       {label}
                     </span>
+                    {/* 👇 Add price tag */}
+                  <span className="font-pixel text-[8px] text-accent/80 flex items-center gap-0.5">
+                  🪙 {info?.price ?? '?'}
+                  </span>
                   </button>
                 );
               })}

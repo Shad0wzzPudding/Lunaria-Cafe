@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useState
 import { getChaosStage } from '@/lib/aiIntegration';
 import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from '@/lib/saveService';
 import { pushPopup } from '@/lib/feedbackHelpers';
+import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';ห
 
 export const initialState = {
   phase: 'menu',
@@ -462,6 +463,32 @@ function gameReducer(state, action) {
   };
 }
 
+    case 'BUY_AND_PLACE_FURNITURE': {
+  const { item, price } = action.payload;
+  if (state.coins < price) {
+    return {
+      ...state,
+      ui: pushPopup(state, `❌ Not enough coins! Need ${price} coins.`, 0),
+    };
+  }
+  return {
+    ...state,
+    coins: state.coins - price,
+    cafe: {
+      ...state.cafe,
+      pendingFurniture: null,
+      furniture: [
+        ...state.cafe.furniture,
+        {
+          ...item,
+          id: item.id ?? `furn-${Date.now()}`,
+        },
+      ],
+    },
+    ui: pushPopup(state, `🛋️ Placed! -${price} coins`, -price),
+  };
+}
+
     case 'ADD_FURNITURE':
       return {
         ...state,
@@ -479,13 +506,18 @@ function gameReducer(state, action) {
 
     case 'REMOVE_FURNITURE': {
   const target = state.cafe.furniture.find((f) => f.id === action.payload);
-  if (!target || target.id === 'built-counter') return state; // only protect main counter
+  if (!target) return state;
+  const refund = Math.floor((FURNITURE_CATALOG[target.type] ?? 0) * 0.5);
   return {
     ...state,
+    coins: state.coins + refund,
     cafe: {
       ...state.cafe,
       furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
     },
+    ui: refund > 0
+      ? pushPopup(state, `🪙 Sold for ${refund} coins`, refund)
+      : state.ui,
   };
 }
 
