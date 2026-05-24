@@ -9,7 +9,7 @@ const CONF_THRESHOLD = 0.10;
 
 async function initModel() {
   try {
-    session = await ort.InferenceSession.create('/models/yolov8n.onnx', {
+    session = await ort.InferenceSession.create(self.location.origin + '/models/yolov8n.onnx', {
       executionProviders: ['wasm']
     });
     console.log("Model Input Names:", session.inputNames);

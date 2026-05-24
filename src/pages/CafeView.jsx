@@ -109,38 +109,54 @@ export default function CafeView() {
     return unsub;
   }, [processAIEvent]);
 
+  // ก้อนที่ 1: จัดการ AI (เปิด-ปิด กล้องและโมเดล)
+  // ==========================================
+  useEffect(() => {
+    if (!isFocusing) return; // ถ้าไม่ได้อยู่ในโหมดโฟกัส ก็ไม่ต้องเปิด AI
+
+    startAttentionFeed(); // สั่งเปิดกล้องและเริ่มประมวลผล
+
+    return () => {
+      stopAttentionFeed(); // ปิด AI เมื่อออกจากโหมดโฟกัส
+    };
+  }, [isFocusing]); // <-- กุญแจสำคัญ! ทำงานแค่ตอน isFocusing เปลี่ยนค่าเท่านั้น
+
+
+  // ==========================================
+  // ก้อนที่ 2: จัดการระบบคาเฟ่ (ลูกค้าเดินเข้า-ออก, Event ต่างๆ)
+  // ==========================================
   useEffect(() => {
     if (!isFocusing) return;
 
-    startAttentionFeed();
-
+    // 1. ลูกค้าเข้าและออกร้าน
     const customerInterval = setInterval(() => {
-  if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
-    const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
-    const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
-    const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
-    const cat = freeSeat ? FURNITURE_CATALOG[freeSeat.type] : null;
+      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
+        const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
+        const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
+        const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
+        const cat = freeSeat ? FURNITURE_CATALOG[freeSeat.type] : null;
 
-    dispatch({
-      type: 'ADD_CUSTOMER',
-      payload: {
-        id: `cust-${Date.now()}`,
-        x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : 80 + Math.random() * 580,
-        y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : 150 + Math.random() * 300,
-        seatedAt: freeSeat?.id ?? null,
-        color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
-        emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
-        arrivedAt: Date.now(),
-      },
-    });
-  }
+        dispatch({
+          type: 'ADD_CUSTOMER',
+          payload: {
+            id: `cust-${Date.now()}`,
+            x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : 80 + Math.random() * 580,
+            y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : 150 + Math.random() * 300,
+            seatedAt: freeSeat?.id ?? null,
+            color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
+            emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
+            arrivedAt: Date.now(),
+          },
+        });
+      }
 
-  if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
-    const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
-    if (leaving) dispatch({ type: 'SERVE_CUSTOMER', payload: leaving.id });
-  }
-}, 4000);
+      if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
+        const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
+        if (leaving) dispatch({ type: 'SERVE_CUSTOMER', payload: leaving.id });
+      }
+    }, 4000);
 
+    // 2. สุ่มเกิด Chaos Event
     const chaosInterval = setInterval(() => {
       if (state.attention.chaosLevel > 0 && Math.random() < 0.2 * state.attention.chaosLevel) {
         const msg = generateChaosEvent(state.attention.chaosLevel);
@@ -149,15 +165,16 @@ export default function CafeView() {
     }, 6000);
 
     return () => {
-      stopAttentionFeed();
       clearInterval(customerInterval);
       clearInterval(chaosInterval);
     };
- }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
+  // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
+  }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const startFocusSession = () => {
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
   };
+
 
   // 👇 ADD HERE
   useEffect(() => {
