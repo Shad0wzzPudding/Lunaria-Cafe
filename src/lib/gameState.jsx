@@ -6,6 +6,7 @@ import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
 
 export const initialState = {
   phase: 'menu',
+  lastSession: null,
   coins: 0,
   reputation: 0,
   cafe: {
@@ -158,7 +159,15 @@ function gameReducer(state, action) {
       const repGain = sessionMins > 0 ? Math.min(3, Math.floor(sessionMins / 2)) : 0;
       let next = {
         ...state,
-        phase: 'summary',
+        phase: 'management',
+        lastSession: {
+        durationMinutes: sessionMins,
+        coinsEarned: coinsEarned,
+        coinsReduced: 0,
+        reputationGain: repGain,
+        attentionScore: Math.round(state.attention.score),
+        distractions: state.attention.chaosEvents.length,
+        },
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
         coins: state.coins + coinsEarned,
         reputation: Math.min(100, state.reputation + repGain),
@@ -220,7 +229,15 @@ function gameReducer(state, action) {
       const servedCount = state.npcs.customers.length;
       let next = {
           ...state,
-          phase: 'summary',
+          phase: 'management',
+          lastSession: {
+            durationMinutes: sessionMins,
+            coinsEarned: coinsEarned,
+            coinsReduced: 0,
+            reputationGain: repGain,
+            attentionScore: Math.round(state.attention.score),
+            distractions: sessionChaos,
+          },
           focus: { ...state.focus, status: 'completed' },
           coins: state.coins + coinsEarned,
           reputation: Math.min(100, state.reputation + repGain),
@@ -521,6 +538,9 @@ function gameReducer(state, action) {
         ...state,
         ui: { ...state.ui, coinFloat: null },
       };
+    
+    case 'CLEAR_SESSION_SUMMARY':
+      return { ...state, lastSession: null };
 
     case 'ADD_CUSTOMER':
       return {

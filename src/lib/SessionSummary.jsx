@@ -1,77 +1,85 @@
-import { useGame } from '@/lib/gameState';
+import { useGame } from '@/lib/gameState.jsx';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Coins, Star, Clock, Zap, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function SessionSummary() {
   const { state, dispatch } = useGame();
-  const { stats, coins, reputation, attention } = state;
-
-  // Grab last session data from stats
-  const sessionMins = stats.todayMinutes;
-  const coinsEarned = stats.coinsEarned;
-  const chaosEvents = attention.chaosEvents.length;
-  const attentionScore = attention.score;
+  const s = state.lastSession;
 
   return (
-    <motion.div
-      className="min-h-screen flex items-center justify-center bg-background"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="w-full max-w-sm rounded-2xl border border-violet-500/30 bg-violet-500/10 p-8 text-center space-y-6">
-        
-        {/* Title */}
-        <div>
-          <h2 className="font-pixel text-xl text-white">Session Complete!</h2>
-          <p className="text-xs text-muted-foreground mt-1 font-body">
-            Your cafe thanks you for focusing
-          </p>
-        </div>
+    <AnimatePresence>
+      {s && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
-            <Clock className="w-4 h-4 text-blue-400" />
-            <span className="text-white font-pixel text-base">{sessionMins}m</span>
-            <span className="text-muted-foreground text-xs">Focus Time</span>
-          </div>
+          {/* Modal */}
+          <motion.div
+            className="absolute inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <div className="w-full max-w-xs rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl">
 
-          <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
-            <Coins className="w-4 h-4 text-amber-400" />
-            <span className="text-amber-300 font-pixel text-base">+{coinsEarned}</span>
-            <span className="text-muted-foreground text-xs">Coins Earned</span>
-          </div>
+              {/* Title */}
+              <div className="text-center space-y-1">
+                <h2 className="font-pixel text-base text-white">Closing Time!</h2>
+                <p className="text-xs text-muted-foreground font-body">
+                  Here's how your cafe went
+                </p>
+              </div>
 
-          <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
-            <Star className="w-4 h-4 text-rose-400" />
-            <span className="text-rose-300 font-pixel text-base">{reputation}%</span>
-            <span className="text-muted-foreground text-xs">Reputation</span>
-          </div>
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard icon={<Clock className="w-3.5 h-3.5 text-blue-400" />}
+                  label="Focused" value={`${s.durationMinutes}m`} color="text-white" />
 
-          <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
-            <Zap className="w-4 h-4 text-yellow-400" />
-            <span className="text-white font-pixel text-base">{attentionScore}</span>
-            <span className="text-muted-foreground text-xs">Attention Score</span>
-          </div>
-        </div>
+                <StatCard icon={<Zap className="w-3.5 h-3.5 text-yellow-400" />}
+                  label="Attention" value={s.attentionScore} color="text-white" />
 
-        {/* Chaos warning if any */}
-        {chaosEvents > 0 && (
-          <p className="text-xs text-red-400 font-body">
-            ⚠️ {chaosEvents} distraction{chaosEvents > 1 ? 's' : ''} detected this session
-          </p>
-        )}
+                <StatCard icon={<Coins className="w-3.5 h-3.5 text-amber-400" />}
+                  label="Coins Earned" value={`+${s.coinsEarned}`} color="text-amber-300" />
 
-        {/* Continue button */}
-        <Button
-          onClick={() => dispatch({ type: 'SET_PHASE', payload: 'management' })}
-          className="w-full font-pixel text-sm bg-primary/90 hover:bg-primary"
-        >
-          Back to Cafe
-        </Button>
-      </div>
-    </motion.div>
+                <StatCard icon={<Coins className="w-3.5 h-3.5 text-red-400" />}
+                  label="Coins Lost" value={`-${s.coinsReduced}`} color="text-red-400" />
+
+                <StatCard icon={<Star className="w-3.5 h-3.5 text-rose-400" />}
+                  label="Reputation" value={`+${s.reputationGain}%`} color="text-rose-300" />
+
+                <StatCard icon={<AlertTriangle className="w-3.5 h-3.5 text-orange-400" />}
+                  label="Distractions" value={s.distractions} 
+                  color={s.distractions > 0 ? "text-orange-400" : "text-muted-foreground"} />
+              </div>
+
+              {/* Button */}
+              <Button
+                className="w-full font-pixel text-xs"
+                onClick={() => dispatch({ type: 'CLEAR_SESSION_SUMMARY' })}
+              >
+                Back to Cafe
+              </Button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function StatCard({ icon, label, value, color }) {
+  return (
+    <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
+      {icon}
+      <span className={`font-pixel text-sm ${color}`}>{value}</span>
+      <span className="text-muted-foreground text-[10px] font-body">{label}</span>
+    </div>
   );
 }

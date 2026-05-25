@@ -21,8 +21,6 @@ function GameRouter() {
     case 'management':
     case 'focus':
       return <CafeView />
-    case 'summary':          
-      return <SessionSummary />
     case 'stats':
       return <Statistics />
     case 'settings':

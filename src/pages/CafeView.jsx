@@ -21,6 +21,7 @@ import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SessionSummary from '@/lib/SessionSummary';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
@@ -241,6 +242,7 @@ export default function CafeView() {
           <GameFeedback />
           <DecoratePanel />
           {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().aiMode === 'live' || getAIConfig().useLiveAI) && <AttentionCamera />}
+          <SessionSummary />
         </motion.div>
       </main>
 
