@@ -20,6 +20,12 @@ export default function StatsCharts() {
   const { state } = useGame();
   const { stats } = state;
   
+  function formatTotal(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const weeklyChartData = stats.weeklyData.map((mins, i) => ({
     day: weekDays[i],
@@ -33,7 +39,7 @@ export default function StatsCharts() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatCard icon={Clock} label="Total Sessions" value={stats.totalSessions} color="#cc7ada" />
-        <StatCard icon={Flame} label="Focus Time" value={`${stats.totalFocusMinutes}m`} color="#e8a040" />
+        <StatCard icon={Flame} label="Focus Time" value={formatTotal(stats.totalFocusMinutes)} color="#e8a040" />
         <StatCard icon={Coins} label="Coins Earned" value={stats.coinsEarned} color="#f0c674" />
         <StatCard icon={Users} label="Customers Served" value={stats.customersTotal} color="#7ec8a0" />
         <StatCard icon={Sparkles} label="Current Streak" value={`${stats.currentStreak}d`} color="#6b9fdb" />

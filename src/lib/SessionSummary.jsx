@@ -29,7 +29,7 @@ export default function SessionSummary() {
         <>
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -37,7 +37,7 @@ export default function SessionSummary() {
 
           {/* Modal wrapper */}
           <motion.div
-            className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 gap-3"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 gap-3"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}

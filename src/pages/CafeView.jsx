@@ -242,7 +242,6 @@ export default function CafeView() {
           <GameFeedback />
           <DecoratePanel />
           {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().aiMode === 'live' || getAIConfig().useLiveAI) && <AttentionCamera />}
-          <SessionSummary />
         </motion.div>
       </main>
 
@@ -341,6 +340,7 @@ export default function CafeView() {
           </div>
         </div>
       </footer>
+      <SessionSummary />
     </div>
   );
 }
