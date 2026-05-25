@@ -339,9 +339,7 @@ export default function CafeView() {
             {state.focus.status === 'completed' && (
               <Button
                 onClick={() => {
-                  dispatch({ type: 'RESET_FOCUS' });
-                  dispatch({ type: 'SET_PHASE', payload: 'management' });
-                }}
+                dispatch({ type: 'SET_PHASE', payload: 'summary' }); }}
                 size="sm"
                 className="gap-2 font-pixel text-xs bg-accent hover:bg-accent/80 text-accent-foreground"
               >

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { UserX } from 'lucide-react';
 
 export default function Login() {
+  const [showGuestWarning, setShowGuestWarning] = useState(false);
   const { signIn, signUp, signInAsGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,14 +58,38 @@ export default function Login() {
           <div className="flex-1 h-px bg-border/30" />
         </div>
 
-        <button
-          type="button"
-          onClick={signInAsGuest}
-          className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50 hover:text-muted-foreground w-full transition-colors"
-        >
-          <UserX className="w-3 h-3" />
-          Play as Guest
-        </button>
+        {!showGuestWarning ? (
+  <button
+    type="button"
+    onClick={() => setShowGuestWarning(true)}
+    className="flex items-center justify-center gap-2 text-xs text-muted-foreground/50 hover:text-muted-foreground w-full transition-colors"
+  >
+    <UserX className="w-3 h-3" />
+    Play as Guest
+  </button>
+) : (
+  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+    <p className="text-xs text-amber-400 text-center">
+      ⚠️ Progress won't be saved in guest mode.
+    </p>
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => setShowGuestWarning(false)}
+        className="flex-1 text-xs text-muted-foreground hover:text-foreground border border-border/30 rounded-md py-1.5 transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={signInAsGuest}
+        className="flex-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-md py-1.5 transition-colors"
+      >
+        Continue
+      </button>
+    </div>
+  </div>
+)}
       </form>
     </div>
   );

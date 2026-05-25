@@ -158,7 +158,7 @@ function gameReducer(state, action) {
       const repGain = sessionMins > 0 ? Math.min(3, Math.floor(sessionMins / 2)) : 0;
       let next = {
         ...state,
-        phase: 'management',
+        phase: 'summary',
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
         coins: state.coins + coinsEarned,
         reputation: Math.min(100, state.reputation + repGain),
@@ -173,16 +173,6 @@ function gameReducer(state, action) {
           currentStreak: sessionMins > 0 ? state.stats.currentStreak + 1 : state.stats.currentStreak,
         },
       };
-      if (coinsEarned > 0) {
-        next = {
-          ...next,
-          ui: pushPopup(
-            next,
-            `Focus ended · +${coinsEarned} coins`,
-            coinsEarned,
-          ),
-        };
-      }
       return next;
     }
 
@@ -229,11 +219,12 @@ function gameReducer(state, action) {
       const sessionChaos = state.attention.chaosEvents.length;
       const servedCount = state.npcs.customers.length;
       let next = {
-        ...state,
-        focus: { ...state.focus, status: 'completed' },
-        coins: state.coins + coinsEarned,
-        reputation: Math.min(100, state.reputation + repGain),
-        stats: {
+          ...state,
+          phase: 'summary',
+          focus: { ...state.focus, status: 'completed' },
+          coins: state.coins + coinsEarned,
+          reputation: Math.min(100, state.reputation + repGain),
+          stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + 1,
           totalMinutes: state.stats.totalMinutes + extraMins,
@@ -246,11 +237,6 @@ function gameReducer(state, action) {
           currentStreak: state.stats.currentStreak + 1,
           bestStreak: Math.max(state.stats.bestStreak, state.stats.currentStreak + 1),
         },
-        ui: pushPopup(
-          state,
-          `Session complete! +${coinsEarned} coins · reputation +${repGain}%`,
-          coinsEarned,
-        ),
       };
       return next;
     }

@@ -9,6 +9,7 @@ import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GaneSettings'
+import SessionSummary from '@/lib/SessionSummary'
 
 function GameRouter() {
   const { state } = useGame()
@@ -20,6 +21,8 @@ function GameRouter() {
     case 'management':
     case 'focus':
       return <CafeView />
+    case 'summary':          
+      return <SessionSummary />
     case 'stats':
       return <Statistics />
     case 'settings':
