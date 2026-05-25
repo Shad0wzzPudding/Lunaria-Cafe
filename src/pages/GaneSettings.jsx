@@ -155,7 +155,7 @@ export default function GameSettings() {
                     <span className="block text-sm font-body">Browser AI</span>
                     <span className="block text-xs text-muted-foreground">
                       {isBrowserAISupported()
-                        ? 'Real webcam tracking using MediaPipe + COCO-SSD (no server needed)'
+                        ? 'Real webcam tracking using MediaPipe + YOLOv8 (no server needed)'
                         : 'Not supported in this browser (camera access required)'}
                     </span>
                   </span>

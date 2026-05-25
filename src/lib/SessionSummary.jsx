@@ -81,7 +81,7 @@ export default function SessionSummary() {
                   label="Focused" value={formatDuration(s.durationSeconds)} color="text-white" />
 
                 <StatCard icon={<Zap className="w-3.5 h-3.5 text-yellow-400" />}
-                  label="Attention" value={s.attentionScore} color="text-white" />
+                  label="Focus Score" value={s.attentionScore} color="text-white" />
 
                 <StatCard icon={<Coins className="w-3.5 h-3.5 text-amber-400" />}
                   label="Coins Earned" value={`+${s.coinsEarned}`} color="text-amber-300" />
