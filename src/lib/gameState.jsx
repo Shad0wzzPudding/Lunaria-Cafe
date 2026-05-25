@@ -89,6 +89,7 @@ export const initialState = {
   },
   stats: {
     totalSessions: 0,
+    totalFocusSeconds: 0,
     totalMinutes: 0,
     bestStreak: 0,
     totalFocusMinutes: 0,
@@ -190,6 +191,7 @@ function gameReducer(state, action) {
         stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + (sessionMins > 0 ? 1 : 0),
+          totalFocusSeconds: state.stats.totalFocusSeconds + state.focus.elapsed,
           totalMinutes: state.stats.totalMinutes + extraMins,
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes: state.stats.todayMinutes + extraMins,
@@ -259,6 +261,7 @@ function gameReducer(state, action) {
           stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + 1,
+          totalFocusSeconds: state.stats.totalFocusSeconds + state.focus.elapsed,
           totalMinutes: state.stats.totalMinutes + extraMins,
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes: state.stats.todayMinutes + extraMins,
