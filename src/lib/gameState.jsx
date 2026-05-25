@@ -100,6 +100,7 @@ export const initialState = {
     todayMinutes: 0,
     dailyGoal: 60,
     weeklyData: [0, 0, 0, 0, 0, 0, 0],
+    weekStartDate: null,
   },
   ui: {
     popups: [],
