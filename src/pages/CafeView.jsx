@@ -338,17 +338,6 @@ export default function CafeView() {
                 </Button>
               </>
             )}
-            {state.focus.status === 'completed' && (
-              <Button
-                onClick={() => {
-                dispatch({ type: 'SET_PHASE', payload: 'summary' }); }}
-                size="sm"
-                className="gap-2 font-pixel text-xs bg-accent hover:bg-accent/80 text-accent-foreground"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Collect Rewards
-              </Button>
-            )}
           </div>
         </div>
       </footer>

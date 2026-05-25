@@ -48,9 +48,6 @@ export default function SessionSummary() {
                 <StatCard icon={<Coins className="w-3.5 h-3.5 text-amber-400" />}
                   label="Coins Earned" value={`+${s.coinsEarned}`} color="text-amber-300" />
 
-                <StatCard icon={<Coins className="w-3.5 h-3.5 text-red-400" />}
-                  label="Coins Lost" value={`-${s.coinsReduced}`} color="text-red-400" />
-
                 <StatCard icon={<Star className="w-3.5 h-3.5 text-rose-400" />}
                   label="Reputation" value={`+${s.reputationGain}%`} color="text-rose-300" />
 

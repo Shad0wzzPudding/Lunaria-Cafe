@@ -123,6 +123,8 @@ function gameReducer(state, action) {
           ...state.focus,
           status: 'active',
           elapsed: 0,
+          coinsAtStart: state.coins,
+          reputationAtStart: state.reputation
         },
         attention: {
           ...state.attention,
@@ -152,25 +154,18 @@ function gameReducer(state, action) {
       const weeklyData = [...state.stats.weeklyData];
       const todayIdx = (new Date().getDay() + 6) % 7;
       if (extraMins > 0) weeklyData[todayIdx] += extraMins;
-      const coinsEarned =
-        sessionMins > 0
-          ? Math.max(1, Math.floor(sessionMins * 2 * (state.attention.score / 100)))
-          : 0;
-      const repGain = sessionMins > 0 ? Math.min(3, Math.floor(sessionMins / 2)) : 0;
+      const coinsEarned = Math.max(0, state.coins - state.focus.coinsAtStart);
       let next = {
         ...state,
         phase: 'management',
         lastSession: {
         durationMinutes: sessionMins,
         coinsEarned: coinsEarned,
-        coinsReduced: 0,
-        reputationGain: repGain,
+        reputationGain: Math.max(0, state.reputation - state.focus.reputationAtStart),
         attentionScore: Math.round(state.attention.score),
         distractions: state.attention.chaosEvents.length,
         },
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
-        coins: state.coins + coinsEarned,
-        reputation: Math.min(100, state.reputation + repGain),
         stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + (sessionMins > 0 ? 1 : 0),
@@ -181,6 +176,8 @@ function gameReducer(state, action) {
           coinsEarned: state.stats.coinsEarned + coinsEarned,
           currentStreak: sessionMins > 0 ? state.stats.currentStreak + 1 : state.stats.currentStreak,
         },
+        npcs: { ...state.npcs, customers: [] },
+        cafe: { ...state.cafe, currentCustomers: 0 },
       };
       return next;
     }
@@ -223,24 +220,20 @@ function gameReducer(state, action) {
       if (extraMins > 0) {
         weeklyData[todayIdx] += extraMins;
       }
-      const coinsEarned = Math.max(1, Math.floor(sessionMins * 2 * (state.attention.score / 100)));
-      const repGain = Math.min(5, Math.floor(sessionMins / 2));
+      const coinsEarned = Math.max(0, state.coins - state.focus.coinsAtStart);
       const sessionChaos = state.attention.chaosEvents.length;
       const servedCount = state.npcs.customers.length;
       let next = {
           ...state,
           phase: 'management',
           lastSession: {
-            durationMinutes: sessionMins,
-            coinsEarned: coinsEarned,
-            coinsReduced: 0,
-            reputationGain: repGain,
-            attentionScore: Math.round(state.attention.score),
-            distractions: sessionChaos,
+          durationMinutes: sessionMins,
+          coinsEarned: coinsEarned,
+          reputationGain: 0,
+          attentionScore: Math.round(state.attention.score),
+          distractions: sessionChaos,
           },
           focus: { ...state.focus, status: 'completed' },
-          coins: state.coins + coinsEarned,
-          reputation: Math.min(100, state.reputation + repGain),
           stats: {
           ...state.stats,
           totalSessions: state.stats.totalSessions + 1,
@@ -254,6 +247,8 @@ function gameReducer(state, action) {
           currentStreak: state.stats.currentStreak + 1,
           bestStreak: Math.max(state.stats.bestStreak, state.stats.currentStreak + 1),
         },
+        npcs: { ...state.npcs, customers: [] },
+        cafe: { ...state.cafe, currentCustomers: 0 },
       };
       return next;
     }
