@@ -179,6 +179,7 @@ function gameReducer(state, action) {
         ...state,
         phase: 'management',
         lastSession: {
+        durationSeconds: state.focus.elapsed,
         durationMinutes: sessionMins,
         coinsEarned: coinsEarned,
         reputationGain: Math.max(0, state.reputation - state.focus.reputationAtStart),
@@ -193,7 +194,6 @@ function gameReducer(state, action) {
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes: state.stats.todayMinutes + extraMins,
           weeklyData,
-          coinsEarned: state.stats.coinsEarned + coinsEarned,
           currentStreak: sessionMins > 0 ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate) : state.stats.currentStreak,
           lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
         },
@@ -248,6 +248,7 @@ function gameReducer(state, action) {
           ...state,
           phase: 'management',
           lastSession: {
+          durationSeconds: state.focus.elapsed,
           durationMinutes: sessionMins,
           coinsEarned: coinsEarned,
           reputationGain: 0,
@@ -262,7 +263,6 @@ function gameReducer(state, action) {
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes: state.stats.todayMinutes + extraMins,
           weeklyData,
-          coinsEarned: state.stats.coinsEarned + coinsEarned,
           customersTotal: state.stats.customersTotal + servedCount,
           chaosEvents: state.stats.chaosEvents + sessionChaos,
           currentStreak: calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate),

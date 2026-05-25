@@ -17,6 +17,12 @@ export default function SessionSummary() {
     setTimeout(() => setHint(false), 2500);
   };
 
+  function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
   return (
     <AnimatePresence>
       {s && (
@@ -27,19 +33,40 @@ export default function SessionSummary() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleBackdropClick}
           />
 
-          {/* Modal */}
+          {/* Modal wrapper */}
           <motion.div
-            className="absolute inset-0 z-50 flex items-center justify-center p-4"
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 gap-3"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
+            onClick={handleBackdropClick}
           >
-            <div className="w-full max-w-xs rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl">
+          {/* Hint message */}
+          <AnimatePresence>
+            {hint && (
+              <motion.div
+                className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-4 py-2"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <p className="text-xs text-amber-400 font-body text-center">
+                  Press "Back to Cafe" to proceed!
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+            {/* Card — everything inside here */}
+            <motion.div
+              className="w-full max-w-xs rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl"
+              animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              onClick={e => e.stopPropagation()}
+            >
               {/* Title */}
               <div className="text-center space-y-1">
                 <h2 className="font-pixel text-base text-white">Closing Time!</h2>
@@ -51,7 +78,7 @@ export default function SessionSummary() {
               {/* Stats */}
               <div className="grid grid-cols-2 gap-2">
                 <StatCard icon={<Clock className="w-3.5 h-3.5 text-blue-400" />}
-                  label="Focused" value={`${s.durationMinutes}m`} color="text-white" />
+                  label="Focused" value={formatDuration(s.durationSeconds)} color="text-white" />
 
                 <StatCard icon={<Zap className="w-3.5 h-3.5 text-yellow-400" />}
                   label="Attention" value={s.attentionScore} color="text-white" />
@@ -63,7 +90,7 @@ export default function SessionSummary() {
                   label="Reputation" value={`+${s.reputationGain}%`} color="text-rose-300" />
 
                 <StatCard icon={<AlertTriangle className="w-3.5 h-3.5 text-orange-400" />}
-                  label="Distractions" value={s.distractions} 
+                  label="Distractions" value={s.distractions}
                   color={s.distractions > 0 ? "text-orange-400" : "text-muted-foreground"} />
               </div>
 
@@ -74,7 +101,7 @@ export default function SessionSummary() {
               >
                 Back to Cafe
               </Button>
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}
