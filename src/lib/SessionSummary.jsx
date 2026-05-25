@@ -1,11 +1,21 @@
 import { useGame } from '@/lib/gameState.jsx';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function SessionSummary() {
   const { state, dispatch } = useGame();
+  const [shake, setShake] = useState(false);
+  const [hint, setHint] = useState(false);
   const s = state.lastSession;
+
+  const handleBackdropClick = () => {
+    setShake(true);
+    setHint(true);
+    setTimeout(() => setShake(false), 500);
+    setTimeout(() => setHint(false), 2500);
+  };
 
   return (
     <AnimatePresence>
@@ -17,6 +27,7 @@ export default function SessionSummary() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={handleBackdropClick}
           />
 
           {/* Modal */}
