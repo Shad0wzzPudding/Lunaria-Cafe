@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { Play, BarChart3, Settings, Rabbit, Moon, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';

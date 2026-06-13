@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
 import {
   startAttentionFeed,

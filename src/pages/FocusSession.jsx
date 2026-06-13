@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import FocusTimer from '@/components/focus/FocusTimer';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Rabbit, Moon } from 'lucide-react';

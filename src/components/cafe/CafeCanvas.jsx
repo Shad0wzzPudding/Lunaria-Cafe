@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/furnitureCatalog';
 

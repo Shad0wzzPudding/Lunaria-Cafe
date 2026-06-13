@@ -1,4 +1,4 @@
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function ChaosEventLog() {

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 
 export default function ParticleOverlay() {
   const { state } = useGame();
