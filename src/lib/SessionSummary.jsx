@@ -1,4 +1,4 @@
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
