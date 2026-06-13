@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 

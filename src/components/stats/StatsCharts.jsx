@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGame } from '@/lib/gameState.jsx';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Clock, Flame, Coins, Users, Sparkles, Rabbit } from 'lucide-react';
 
