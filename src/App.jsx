@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { AuthProvider, useAuth } from '@/lib/AuthProvider'
-import { GameProvider, useGame } from '@/lib/gameState.jsx'
+import { GameProvider, useGame } from '@/lib/gameState/GameProvider.jsx'
 import { useCafeAudio } from '@/lib/useCafeAudio'
 import Login from '@/lib/Login'
 import MainMenu from '@/pages/MainMenu'
