@@ -2,6 +2,7 @@ import React from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Clock, Flame, Coins, Users, Sparkles, Rabbit } from 'lucide-react';
+import DailyGoalTracker from './DailyGoalTracker.jsx';
 
 function StatCard({ icon: Icon, label, value, color, subtext }) {
   return (
@@ -33,7 +34,6 @@ export default function StatsCharts() {
     minutes: mins,
   }));
   
-  const goalProgress = Math.min(100, Math.round((stats.todayMinutes / stats.dailyGoal) * 100));
   
   return (
     <div className="space-y-6">
@@ -48,19 +48,7 @@ export default function StatsCharts() {
       </div>
       
       {/* Daily goal */}
-      <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-muted-foreground font-body">Today's Goal</span>
-          <span className="font-pixel text-sm text-primary">{stats.todayMinutes}/{stats.dailyGoal} min</span>
-        </div>
-        <div className="h-3 bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
-            style={{ width: `${goalProgress}%` }}
-          />
-        </div>
-        <div className="text-right mt-1 text-xs text-muted-foreground">{goalProgress}%</div>
-      </div>
+      <DailyGoalTracker current={stats.todayMinutes} goal={stats.dailyGoal} unit="min" />
       
       {/* Weekly chart */}
       <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">

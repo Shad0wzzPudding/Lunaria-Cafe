@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
-import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/furnitureCatalog';
+import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/cafe/furnitureCatalog.js';
 
 const CAFE_W = 740;
 const CAFE_H = 500;

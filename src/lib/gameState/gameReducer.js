@@ -1,6 +1,6 @@
-import { getChaosStage } from '@/lib/aiIntegration';
-import { pushPopup } from '@/lib/feedbackHelpers';
-import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
+import { getChaosStage } from '@/lib/ai/aiIntegration';
+import { pushPopup } from '@/lib/gameState/feedbackHelpers';
+import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';

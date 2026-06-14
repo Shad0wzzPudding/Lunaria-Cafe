@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { unlockCafeAudio, updateCafeAudio } from '@/lib/cafeAudioEngine';
+import { unlockCafeAudio, updateCafeAudio } from '@/lib/audio/cafeAudioEngine';
 
 export function useCafeAudio() {
   const { state } = useGame();

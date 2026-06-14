@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useAuth } from '@/lib/AuthProvider';
+import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { UserX } from 'lucide-react';
+import { UserX, AlertTriangle } from 'lucide-react';
 
 export default function Login() {
   const [showGuestWarning, setShowGuestWarning] = useState(false);
@@ -68,11 +68,13 @@ export default function Login() {
     Play as Guest
   </button>
 ) : (
-  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
-    <p className="text-xs text-amber-400 text-center">
-      ⚠️ Progress won't be saved in guest mode.
-    </p>
-    <div className="flex gap-2">
+ <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+  <div className="flex items-center justify-center gap-2 text-xs text-amber-400">
+    <AlertTriangle className="h-3.5 w-3.5" />
+    <span>Progress won't be saved in guest mode.</span>
+  </div>
+
+  <div className="flex gap-2">
       <button
         type="button"
         onClick={() => setShowGuestWarning(false)}

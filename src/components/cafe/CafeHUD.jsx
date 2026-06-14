@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { getChaosStage, getConnectionStatus } from '@/lib/aiIntegration';
+import { getChaosStage, getConnectionStatus } from '@/lib/ai/aiIntegration';
 import { Coins, Heart, Users, Sparkles, Wifi, WifiOff } from 'lucide-react';
 
 function StatPill({ icon: Icon, value, colorClass, iconColor, title }) {

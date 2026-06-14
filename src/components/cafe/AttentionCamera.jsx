@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getAIConfig, getStreamUrl, getBrowserVideoElement, getBrowserAIStatus } from '@/lib/aiIntegration';
+import { getAIConfig, getStreamUrl, getBrowserVideoElement, getBrowserAIStatus } from '@/lib/ai/aiIntegration';
 import Draggable from 'react-draggable';
 
 export default function AttentionCamera() {

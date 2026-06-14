@@ -15,7 +15,7 @@ import {
   stopBrowserAI,
   isBrowserAISupported,
   getBrowserAIStatus,
-} from '@/lib/browserAI';
+} from '@/lib/ai/browserAI';
 
 const CONFIG_KEY = 'lunaria-ai-config';
 const DEFAULT_API_URL = 'http://127.0.0.1:8000';

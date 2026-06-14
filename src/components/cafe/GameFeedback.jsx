@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { playCoinChime } from '@/lib/cafeAudioEngine';
+import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
 
 export default function GameFeedback() {
   const { state, dispatch } = useGame();

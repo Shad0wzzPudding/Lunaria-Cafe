@@ -1,7 +1,7 @@
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { X, Trash2, GripHorizontal,Coins } from 'lucide-react';
-import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
+import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { useRef, useState } from 'react';
 
 const PLACEABLE = [

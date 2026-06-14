@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useState, useRef } from 'react';
-import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from '@/lib/saveService';
+import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from './saveService';
 import { gameReducer } from './gameReducer';
 import { initialState } from './initialState';
 import { AUTO_SAVE_INTERVAL } from './constants';

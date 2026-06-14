@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { FURNITURE_CATALOG } from '@/lib/furnitureCatalog';
+import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import {
   startAttentionFeed,
   stopAttentionFeed,
   onAttentionEvent,
   generateChaosEvent,
   getAIConfig,
-} from '@/lib/aiIntegration';
+} from '@/lib/ai/aiIntegration';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
@@ -21,7 +21,7 @@ import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import SessionSummary from '@/lib/SessionSummary';
+import SessionSummary from '@/components/cafe/SessionSummary';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];

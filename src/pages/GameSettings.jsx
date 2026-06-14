@@ -10,8 +10,8 @@ import {
   checkAIHealth,
   onConnectionStatus,
   isBrowserAISupported,
-} from '@/lib/aiIntegration';
-import { useAuth } from '@/lib/AuthProvider';
+} from '@/lib/ai/aiIntegration';
+import { useAuth } from '@/auth/AuthProvider';
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
