@@ -17,6 +17,19 @@ export function gameReducer(state, action) {
     case 'ADD_REPUTATION':
       return { ...state, reputation: state.reputation + action.payload };
 
+    case 'SET_DAILY_GOAL': {
+      const dailyGoal = Number(action.payload);
+      if (!Number.isFinite(dailyGoal) || dailyGoal <= 0) return state;
+
+      return {
+        ...state,
+        stats: {
+          ...state.stats,
+          dailyGoal: Math.round(dailyGoal),
+        },
+      };
+    }
+
     // ── Focus ────────────────────────────────────────────────────────────────
 
     case 'START_FOCUS':
@@ -70,6 +83,7 @@ export function gameReducer(state, action) {
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes:      state.stats.todayMinutes      + extraMins,
           todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
+          todayDate:         state.focus.elapsed > 0 ? getDateString() : state.stats.todayDate,
           weeklyData,
           currentStreak:   newStreak,
           lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
@@ -99,6 +113,7 @@ export function gameReducer(state, action) {
             totalMinutes:      state.stats.totalMinutes      + 1,
             totalFocusMinutes: state.stats.totalFocusMinutes + 1,
             todayMinutes:      state.stats.todayMinutes      + 1,
+            todayDate:         getDateString(),
             weeklyData,
           },
         };
@@ -133,6 +148,7 @@ export function gameReducer(state, action) {
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes:      state.stats.todayMinutes      + extraMins,
           todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
+          todayDate:         state.focus.elapsed > 0 ? getDateString() : state.stats.todayDate,
           weeklyData,
           customersTotal: state.stats.customersTotal + servedCount,
           chaosEvents:    state.stats.chaosEvents    + sessionChaos,

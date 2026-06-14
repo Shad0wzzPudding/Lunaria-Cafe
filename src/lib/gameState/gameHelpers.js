@@ -42,12 +42,14 @@ export function calcSessionTotals(state, requireMin1 = false) {
   const tickedMins  = Math.floor(state.focus.elapsed / 60);
   const sessionMins = requireMin1
     ? Math.max(1, Math.ceil(state.focus.elapsed / 60))
-    : Math.max(state.focus.elapsed >= 30 ? 1 : 0, Math.ceil(state.focus.elapsed / 60));
+    : state.focus.elapsed >= 30
+      ? Math.ceil(state.focus.elapsed / 60)
+      : 0;
   const extraMins   = Math.max(0, sessionMins - tickedMins);
+  const untickedSeconds = Math.max(0, state.focus.elapsed - tickedMins * 60);
 
   const weeklyData = [...state.stats.weeklyData];
-  // weeklyData stores seconds, so convert extraMins to seconds
-  if (extraMins > 0) weeklyData[getTodayIndex()] += extraMins * 60;
+  if (untickedSeconds > 0) weeklyData[getTodayIndex()] += untickedSeconds;
 
   return { sessionMins, extraMins, weeklyData };
 }

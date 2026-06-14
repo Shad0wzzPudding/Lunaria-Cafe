@@ -1,7 +1,38 @@
 import { supabase } from '@/lib/supabase';
 
+function getDateString(date = new Date()) {
+  return date.toISOString().split('T')[0];
+}
+
+function getWeekStart(dateStr) {
+  const d = new Date(dateStr);
+  const diff = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().split('T')[0];
+}
+
+function normalizePositiveNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function normalizeNonNegativeNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : fallback;
+}
+
+function normalizeWeeklyData(value, fallback) {
+  const source = Array.isArray(value) ? value : fallback;
+  return fallback.map((defaultValue, index) =>
+    normalizeNonNegativeNumber(source[index], defaultValue)
+  );
+}
+
 /** Fields we persist (skip volatile in-session state). */
 export function serializeGameState(state) {
+  const today = getDateString();
+  const stats = state.stats ?? {};
+
   return {
     coins: state.coins,
     reputation: state.reputation,
@@ -11,7 +42,13 @@ export function serializeGameState(state) {
       decorateMode: false,
     },
     audio: state.audio,
-    stats: state.stats,
+    stats: {
+      ...stats,
+      dailyGoal: normalizePositiveNumber(stats.dailyGoal, 60),
+      todayDate: stats.todayDate ?? (stats.todaySeconds > 0 ? today : null),
+      weeklyDataUnit: 'seconds',
+      weekStartDate: stats.weekStartDate ?? getWeekStart(today),
+    },
     npcs: {
       rabbits: state.npcs.rabbits,
       major: state.npcs.major,
@@ -23,13 +60,23 @@ export function serializeGameState(state) {
 export function mergeLoadedSave(loaded, initialState) {
   if (!loaded || typeof loaded !== 'object') return null;
 
-    const today = new Date().toISOString().split('T')[0]; // "2026-05-25"
+  const today = getDateString();
   const loadedStats = loaded.stats ?? {};
+  const dailyGoal = normalizePositiveNumber(
+    loadedStats.dailyGoal ?? loaded.dailyGoal,
+    initialState.stats.dailyGoal
+  );
 
   // ── Daily reset ──────────────────────────────────────────────
-  const isToday = loadedStats.lastSessionDate === today;
-  const todayMinutes = isToday ? (loadedStats.todayMinutes ?? 0) : 0;
-  const todaySeconds = isToday ? (loadedStats.todaySeconds ?? 0) : 0;
+  const loadedTodayDate = loadedStats.todayDate ?? loadedStats.lastSessionDate;
+  const isToday = loadedTodayDate === today;
+  const todayMinutes = isToday ? normalizeNonNegativeNumber(loadedStats.todayMinutes) : 0;
+  const todaySeconds = isToday
+    ? normalizeNonNegativeNumber(
+        loadedStats.todaySeconds,
+        normalizeNonNegativeNumber(loadedStats.todayMinutes) * 60
+      )
+    : 0;
 
   // ── Weekly reset ─────────────────────────────────────────────
   const getWeekStart = (dateStr) => {

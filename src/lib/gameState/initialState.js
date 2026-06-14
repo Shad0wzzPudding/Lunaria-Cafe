@@ -70,6 +70,7 @@ export const initialState = {
     chaosEvents: 0,
     todayMinutes: 0,
     todaySeconds: 0,
+    todayDate: null,
     dailyGoal: 60,
     weeklyData: [0, 0, 0, 0, 0, 0, 0],
     weekStartDate: null,
