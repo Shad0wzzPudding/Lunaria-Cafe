@@ -27,10 +27,9 @@ export function mergeLoadedSave(loaded, initialState) {
   const loadedStats = loaded.stats ?? {};
 
   // ── Daily reset ──────────────────────────────────────────────
-  const todayMinutes =
-    loadedStats.lastSessionDate === today
-      ? (loadedStats.todayMinutes ?? 0)
-      : 0; // new day → reset
+  const isToday = loadedStats.lastSessionDate === today;
+  const todayMinutes = isToday ? (loadedStats.todayMinutes ?? 0) : 0;
+  const todaySeconds = isToday ? (loadedStats.todaySeconds ?? 0) : 0;
 
   // ── Weekly reset ─────────────────────────────────────────────
   const getWeekStart = (dateStr) => {
@@ -66,6 +65,7 @@ export function mergeLoadedSave(loaded, initialState) {
     audio: { ...initialState.audio, ...loaded.audio },
     stats: {...initialState.stats, ...loadedStats,
       todayMinutes,          // ← overwrite with reset-aware value
+      todaySeconds,          // ← overwrite with reset-aware value
       weeklyData,            // ← overwrite with reset-aware value
       weekStartDate: currentWeekStart, // ← persist so next load can compare
     },

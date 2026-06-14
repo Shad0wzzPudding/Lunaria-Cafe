@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Clock, Flame, Coins, Users, Sparkles, Rabbit } from 'lucide-react';
 import DailyGoalTracker from './DailyGoalTracker.jsx';
 
@@ -20,21 +20,24 @@ function StatCard({ icon: Icon, label, value, color, subtext }) {
 export default function StatsCharts() {
   const { state } = useGame();
   const { stats } = state;
-  
+
   function formatTotal(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    const parts = [];
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+    return parts.join(' ');
+  }
 
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weeklyChartData = stats.weeklyData.map((mins, i) => ({
+  const weeklyChartData = stats.weeklyData.map((seconds, i) => ({
     day: weekDays[i],
-    minutes: mins,
+    seconds,
   }));
-  
-  
+
   return (
     <div className="space-y-6">
       {/* Stat cards */}
@@ -46,10 +49,10 @@ export default function StatsCharts() {
         <StatCard icon={Sparkles} label="Current Streak" value={`${stats.currentStreak}d`} color="#6b9fdb" />
         <StatCard icon={Rabbit} label="Chaos Events" value={stats.chaosEvents} color="#d4a0b0" />
       </div>
-      
+
       {/* Daily goal */}
-      <DailyGoalTracker current={stats.todayMinutes} goal={stats.dailyGoal} unit="min" />
-      
+      <DailyGoalTracker current={stats.todaySeconds} goal={stats.dailyGoal * 60} />
+
       {/* Weekly chart */}
       <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
         <h3 className="font-display text-sm text-foreground/80 mb-4">Weekly Focus</h3>
@@ -60,9 +63,9 @@ export default function StatsCharts() {
             <Tooltip
               contentStyle={{ background: 'hsl(232 30% 12%)', border: '1px solid hsl(232 25% 20%)', borderRadius: 8, fontSize: 12 }}
               labelStyle={{ color: 'hsl(45 20% 90%)' }}
-              formatter={(v) => [`${v} min`, 'Focus']}
+              formatter={(v) => [formatTotal(v), 'Focus']}
             />
-            <Bar dataKey="minutes" fill="hsl(265 45% 55%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="seconds" fill="hsl(265 45% 55%)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

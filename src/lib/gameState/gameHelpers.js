@@ -46,7 +46,8 @@ export function calcSessionTotals(state, requireMin1 = false) {
   const extraMins   = Math.max(0, sessionMins - tickedMins);
 
   const weeklyData = [...state.stats.weeklyData];
-  if (extraMins > 0) weeklyData[getTodayIndex()] += extraMins;
+  // weeklyData stores seconds, so convert extraMins to seconds
+  if (extraMins > 0) weeklyData[getTodayIndex()] += extraMins * 60;
 
   return { sessionMins, extraMins, weeklyData };
 }

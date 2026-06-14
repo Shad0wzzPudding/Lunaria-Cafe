@@ -69,6 +69,7 @@ export function gameReducer(state, action) {
           totalMinutes:      state.stats.totalMinutes      + extraMins,
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes:      state.stats.todayMinutes      + extraMins,
+          todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
           weeklyData,
           currentStreak:   newStreak,
           lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
@@ -90,7 +91,7 @@ export function gameReducer(state, action) {
 
       if (nextElapsed > 0 && nextElapsed % 60 === 0) {
         const weeklyData = [...state.stats.weeklyData];
-        weeklyData[(new Date().getDay() + 6) % 7] += 1;
+        weeklyData[(new Date().getDay() + 6) % 7] += 60;
         return {
           ...base,
           stats: {
@@ -131,6 +132,7 @@ export function gameReducer(state, action) {
           totalMinutes:      state.stats.totalMinutes      + extraMins,
           totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
           todayMinutes:      state.stats.todayMinutes      + extraMins,
+          todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
           weeklyData,
           customersTotal: state.stats.customersTotal + servedCount,
           chaosEvents:    state.stats.chaosEvents    + sessionChaos,

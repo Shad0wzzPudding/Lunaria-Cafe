@@ -69,6 +69,7 @@ export const initialState = {
     currentStreak: 0,
     chaosEvents: 0,
     todayMinutes: 0,
+    todaySeconds: 0,
     dailyGoal: 60,
     weeklyData: [0, 0, 0, 0, 0, 0, 0],
     weekStartDate: null,

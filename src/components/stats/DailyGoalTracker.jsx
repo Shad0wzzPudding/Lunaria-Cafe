@@ -1,15 +1,26 @@
 import ProgressBar from '@/components/ui/ProgressBar.jsx';
 
-export default function DailyGoalTracker({ current = 0, goal = 60, unit = 'min' }) {
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(' ');
+}
+
+export default function DailyGoalTracker({ current = 0, goal = 3600 }) {
   const goalProgress = goal > 0 ? Math.min(100, Math.round((current / goal) * 100)) : 0;
 
   return (
     <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm text-muted-foreground font-body">Today's Goal</span>
-        <span className="font-pixel text-sm text-primary">{current}/{goal} {unit}</span>
+        <span className="font-pixel text-sm text-primary">{formatTime(current)} / {formatTime(goal)}</span>
       </div>
-      
+
       <ProgressBar
         value={current}
         max={goal}
