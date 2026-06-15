@@ -110,6 +110,14 @@ export default function CafeView() {
     return unsub;
   }, [processAIEvent]);
 
+  // Auto-end the session when distraction threshold is reached,
+  // so SessionSummary is shown even on disruption exits.
+  useEffect(() => {
+    if (state.focus.status === 'distracted') {
+      dispatch({ type: 'END_FOCUS' });
+    }
+  }, [state.focus.status, dispatch]);
+
   // ก้อนที่ 1: จัดการ AI (เปิด-ปิด กล้องและโมเดล)
   // ==========================================
   useEffect(() => {

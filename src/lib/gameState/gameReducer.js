@@ -55,7 +55,7 @@ export function gameReducer(state, action) {
       return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0 } };
 
     case 'END_FOCUS': {
-      if (state.focus.status !== 'active' && state.focus.status !== 'paused') return state;
+      if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
 
       const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
@@ -73,6 +73,7 @@ export function gameReducer(state, action) {
           reputationGain: Math.max(0, state.reputation - (state.focus.reputationAtStart ?? state.reputation)),
           attentionScore:  Math.round(state.attention.score),
           distractions:    state.attention.chaosEvents.length,
+          endReason: state.focus.status === 'distracted' ? 'distracted' : 'manual',
         },
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
         stats: {
