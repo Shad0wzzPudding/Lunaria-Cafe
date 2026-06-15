@@ -110,14 +110,6 @@ export default function CafeView() {
     return unsub;
   }, [processAIEvent]);
 
-  // Auto-end the session when distraction threshold is reached,
-  // so SessionSummary is shown even on disruption exits.
-  useEffect(() => {
-    if (state.focus.status === 'distracted') {
-      dispatch({ type: 'END_FOCUS' });
-    }
-  }, [state.focus.status, dispatch]);
-
   // ก้อนที่ 1: จัดการ AI (เปิด-ปิด กล้องและโมเดล)
   // ==========================================
   useEffect(() => {
@@ -139,7 +131,8 @@ export default function CafeView() {
 
     // 1. ลูกค้าเข้าและออกร้าน
     const customerInterval = setInterval(() => {
-      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
+      const arrivalChance = 0.05 + (state.reputation / 100) * 0.35;
+      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < arrivalChance) {
         const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
         const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
         const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
