@@ -63,7 +63,7 @@ export function mergeLoadedSave(loaded, initialState) {
   const today = getDateString();
   const loadedStats = loaded.stats ?? {};
   const dailyGoal = normalizePositiveNumber(
-    loadedStats.dailyGoal ?? loaded.dailyGoal,
+    loadedStats.dailyGoal,
     initialState.stats.dailyGoal
   );
 
@@ -79,17 +79,21 @@ export function mergeLoadedSave(loaded, initialState) {
     : 0;
 
   // ── Weekly reset ─────────────────────────────────────────────
-  const getWeekStart = (dateStr) => {
-    const d = new Date(dateStr);
-    const diff = (d.getDay() + 6) % 7; // days since Monday
-    d.setDate(d.getDate() - diff);
-    return d.toISOString().split('T')[0];
-  };
   const currentWeekStart = getWeekStart(today);
-  const weeklyData =
-    loadedStats.weekStartDate === currentWeekStart
-      ? (loadedStats.weeklyData ?? initialState.stats.weeklyData)
-      : [0, 0, 0, 0, 0, 0, 0]; // new week → reset
+  const isSameWeek = loadedStats.weekStartDate === currentWeekStart;
+
+  let weeklyData;
+  if (!isSameWeek) {
+    // New week — reset entirely
+    weeklyData = [0, 0, 0, 0, 0, 0, 0];
+  } else if (loadedStats.weeklyDataUnit === 'seconds') {
+    // Same week, current format — normalize values only
+    weeklyData = normalizeWeeklyData(loadedStats.weeklyData, initialState.stats.weeklyData);
+  } else {
+    // Same week, old format (minutes) — convert to seconds
+    weeklyData = normalizeWeeklyData(loadedStats.weeklyData, initialState.stats.weeklyData)
+      .map(mins => mins * 60);
+  }
 
   return {
     ...initialState,
@@ -110,7 +114,10 @@ export function mergeLoadedSave(loaded, initialState) {
       decorateMode: false,
     },
     audio: { ...initialState.audio, ...loaded.audio },
-    stats: {...initialState.stats, ...loadedStats,
+    stats: {
+      ...initialState.stats,
+      ...loadedStats,
+      dailyGoal,
       todayMinutes,          // ← overwrite with reset-aware value
       todaySeconds,          // ← overwrite with reset-aware value
       weeklyData,            // ← overwrite with reset-aware value
