@@ -161,7 +161,7 @@ export default function GameSettings() {
                   </span>
                 </button>
 
-                <button
+                {/* <button
                   type="button"
                   onClick={() => saveAi({ aiMode: 'live', useLiveAI: true })}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
@@ -175,11 +175,11 @@ export default function GameSettings() {
                     <span className="block text-sm font-body">Local Python Server</span>
                     <span className="block text-xs text-muted-foreground">Connect to ai-server/ running on your machine</span>
                   </span>
-                </button>
+                </button> */}
               </div>
             </div>
 
-            {aiConfig.aiMode === 'live' && (
+            {/* {aiConfig.aiMode === 'live' && (
               <div className="space-y-3 pt-2 border-t border-border/20">
                 <label className="block space-y-1">
                   <span className="text-xs text-muted-foreground">API URL</span>
@@ -194,7 +194,8 @@ export default function GameSettings() {
                   {aiTesting ? 'Testing…' : 'Test connection'}
                 </Button>
               </div>
-            )}
+            )} */}
+            
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
               {`Status: ${aiStatus.status}${aiStatus.detail ? `\n${aiStatus.detail}` : ''}${
@@ -225,7 +226,7 @@ export default function GameSettings() {
               <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
                 Save now
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
                 Log out
               </Button>
             </p>
