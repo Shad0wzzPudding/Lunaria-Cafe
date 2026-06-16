@@ -64,7 +64,7 @@ export default function AttentionCamera() {
   if (isBrowserMode) {
     return (
       // 👇 ใส่ nodeRef={draggableRef} ตรงนี้
-      <Draggable bounds="body" nodeRef={draggableRef}>
+      <Draggable bounds="parent" nodeRef={draggableRef}>
         {/* 👇 และใส่ ref={draggableRef} ตรงนี้ให้มันเชื่อมกัน */}
         <aside ref={draggableRef} className="absolute bottom-3 left-3 z-50 w-64 min-w-[200px] resize overflow-auto cursor-move rounded-lg border border-border/50 bg-black/60 shadow-lg pb-1">
           <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel pointer-events-none">
@@ -100,7 +100,7 @@ export default function AttentionCamera() {
 
   // live mode — Python server stream
   return (
-    <Draggable bounds="body" nodeRef={draggableRef}>
+    <Draggable bounds="parent" nodeRef={draggableRef}>
       <aside ref={draggableRef} className="absolute bottom-3 left-3 z-50 w-64 min-w-[200px] resize overflow-auto cursor-move rounded-lg border border-border/50 bg-black/60 shadow-lg pb-1">
         <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel pointer-events-none">AI Camera</p>
         <img src={getStreamUrl()} alt="Focus tracker camera" className="w-full aspect-video object-cover pointer-events-none" />
