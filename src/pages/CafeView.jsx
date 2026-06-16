@@ -1,4 +1,4 @@
-import {Coins} from 'lucide-react';
+import { Coins, Sprout, Coffee, Sparkles, Moon, Star, Crown } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
@@ -28,12 +28,12 @@ const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', 
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
 
 const REPUTATION_TIERS = [
-  { min: 0,   max: 19,  name: 'Newcomer',  icon: '🌱', color: '#9ca3af' },
-  { min: 20,  max: 39,  name: 'Local Gem', icon: '☕', color: '#7ec8a0' },
-  { min: 40,  max: 59,  name: 'Popular',   icon: '✨', color: '#6bb3d4' },
-  { min: 60,  max: 79,  name: 'Renowned',  icon: '🌙', color: '#cc7ada' },
-  { min: 80,  max: 99,  name: 'Legendary', icon: '⭐', color: '#f0c674' },
-  { min: 100, max: 100, name: 'Mythic',    icon: '🌟', color: '#f472b6' },
+  { min: 0,   max: 19,  name: 'Newcomer',  icon: Sprout,   color: '#9ca3af' },
+  { min: 20,  max: 39,  name: 'Local Gem', icon: Coffee,   color: '#7ec8a0' },
+  { min: 40,  max: 59,  name: 'Popular',   icon: Sparkles, color: '#6bb3d4' },
+  { min: 60,  max: 79,  name: 'Renowned',  icon: Moon,     color: '#cc7ada' },
+  { min: 80,  max: 99,  name: 'Legendary', icon: Star,     color: '#f0c674' },
+  { min: 100, max: 100, name: 'Mythic',    icon: Crown,    color: '#f472b6' },
 ];
 
 function getCurrentTier(rep) {
@@ -110,8 +110,12 @@ function CafeStatsPanel({ state, onClose }) {
                     background: isLocked ? 'transparent' : `${tier.color}12`,
                   }}
                 >
-                  <span style={{ opacity: isLocked ? 0.2 : 1, fontSize: isCurrent ? '1.05rem' : '0.85rem' }}>
-                    {tier.icon}
+                  <span style={{ opacity: isLocked ? 0.2 : 1 }}>
+                    {React.createElement(tier.icon, {
+                      size: isCurrent ? 17 : 14,
+                      strokeWidth: 2,
+                      style: { color: isLocked ? 'var(--muted-foreground)' : tier.color },
+                    })}
                   </span>
                 </div>
                 <span
@@ -142,9 +146,7 @@ function CafeStatsPanel({ state, onClose }) {
       <div className="grid grid-cols-3 gap-2">
         {stats.map(({ icon, label, value }) => (
           <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
-            <div className="text-base mb-0.5 flex justify-center items-center">
-              {typeof icon === 'string' ? icon : React.createElement(icon, { size: 14, strokeWidth: 2 })}
-            </div>
+            <div className="text-base mb-0.5">{icon}</div>
             <div className="font-pixel text-xs text-foreground">{value}</div>
             <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
           </div>
@@ -220,7 +222,7 @@ function CafeUpgradePanel({ state, onClose }) {
 }
 
 
-function BgModePanel({ state, dispatch, onClose }) {
+function BackgroundModePanel({ state, onClose }) {
   
   const panelRef = useRef(null);
   const { bgMode } = state.cafe;
