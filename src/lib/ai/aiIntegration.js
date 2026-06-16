@@ -142,17 +142,6 @@ export function processAIEvent(event) {
   return normalized;
 }
 
-export async function checkAIHealth(apiUrl = loadConfig().apiUrl) {
-  const base = apiUrl.replace(/\/$/, '');
-  try {
-    const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return { ok: true, data: await res.json() };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
 async function pollTrackerState() {
   const { apiUrl } = loadConfig();
   const base = apiUrl.replace(/\/$/, '');
