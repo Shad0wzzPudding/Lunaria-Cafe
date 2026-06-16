@@ -19,14 +19,200 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
 
-function BgModePanel({ state, dispatch, onClose }) {
+const REPUTATION_TIERS = [
+  { min: 0,   max: 19,  name: 'Newcomer',  icon: '🌱', color: '#9ca3af' },
+  { min: 20,  max: 39,  name: 'Local Gem', icon: '☕', color: '#7ec8a0' },
+  { min: 40,  max: 59,  name: 'Popular',   icon: '✨', color: '#6bb3d4' },
+  { min: 60,  max: 79,  name: 'Renowned',  icon: '🌙', color: '#cc7ada' },
+  { min: 80,  max: 99,  name: 'Legendary', icon: '⭐', color: '#f0c674' },
+  { min: 100, max: 100, name: 'Mythic',    icon: '🌟', color: '#f472b6' },
+];
+
+function getCurrentTier(rep) {
+  for (let i = REPUTATION_TIERS.length - 1; i >= 0; i--) {
+    if (rep >= REPUTATION_TIERS[i].min) return REPUTATION_TIERS[i];
+  }
+  return REPUTATION_TIERS[0];
+}
+
+const CAFE_UPGRADES = [
+  { icon: '🪑', name: 'Extra Seating',   desc: 'Adds 2 more seats for customers.',  repReq: 30,  cost: 200  },
+  { icon: '🧙', name: 'Skilled Barista', desc: 'Serves customers twice as fast.',   repReq: 50,  cost: 500  },
+  { icon: '🌙', name: 'VIP Corner',      desc: 'Attracts higher-paying guests.',    repReq: 70,  cost: 800  },
+  { icon: '🏰', name: 'Cafe Expansion',  desc: "Double your cafe's capacity.",      repReq: 90,  cost: 1500 },
+];
+
+function CafeStatsPanel({ state, onClose }) {
+  const panelRef = useRef(null);
+  const reputation = state.reputation ?? 0;
+  const currentTier = getCurrentTier(reputation);
+  const tierIdx = REPUTATION_TIERS.indexOf(currentTier);
+  const nextTier = REPUTATION_TIERS[tierIdx + 1];
+  const progress = nextTier
+    ? ((reputation - currentTier.min) / (nextTier.min - currentTier.min)) * 100
+    : 100;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const stats = [
+    { icon: '👥', label: 'Customers',   value: state.stats?.customersTotal ?? 0 },
+    { icon: '☕', label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
+    { icon: '🔥', label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
+    { icon: '⏱️', label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
+    { icon: '🪙', label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
+    { icon: '🌀', label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
+  ];
+
+  return (
+    <div
+      ref={panelRef}
+      className="absolute bottom-14 right-10 z-50 w-80 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display text-sm text-foreground">Cafe Stats</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Reputation tier section */}
+      <div className="mb-4 rounded-lg border border-border/30 p-3" style={{ background: `${currentTier.color}10` }}>
+        <div className="text-[10px] font-pixel text-muted-foreground mb-3 uppercase tracking-wider">Reputation Tier</div>
+
+        <div className="flex justify-between items-end mb-3">
+          {REPUTATION_TIERS.map((tier) => {
+            const isCurrent = tier.name === currentTier.name;
+            const isLocked = reputation < tier.min;
+            return (
+              <div key={tier.name} className="flex flex-col items-center gap-1 flex-1">
+                <div
+                  className="relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
+                  style={isCurrent ? {
+                    background: `${tier.color}25`,
+                    boxShadow: `0 0 0 2px ${tier.color}, 0 0 14px ${tier.color}90`,
+                  } : {
+                    background: isLocked ? 'transparent' : `${tier.color}12`,
+                  }}
+                >
+                  <span style={{ opacity: isLocked ? 0.2 : 1, fontSize: isCurrent ? '1.05rem' : '0.85rem' }}>
+                    {tier.icon}
+                  </span>
+                </div>
+                <span
+                  className="text-[8px] font-pixel text-center leading-tight"
+                  style={{ color: isCurrent ? tier.color : 'var(--muted-foreground)', opacity: isLocked ? 0.3 : isCurrent ? 1 : 0.65 }}
+                >
+                  {tier.name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-1.5 rounded-full bg-border/40 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${progress}%`, background: currentTier.color }}
+            />
+          </div>
+          <span className="text-[9px] font-pixel text-muted-foreground whitespace-nowrap">
+            {reputation}{nextTier ? `/${nextTier.min}` : ' MAX'}
+          </span>
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-2">
+        {stats.map(({ icon, label, value }) => (
+          <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
+            <div className="text-base mb-0.5">{icon}</div>
+            <div className="font-pixel text-xs text-foreground">{value}</div>
+            <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CafeUpgradePanel({ state, onClose }) {
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={panelRef}
+      className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-display text-sm text-foreground">Upgrades</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <p className="font-body text-[11px] text-muted-foreground mb-3">Expand and improve your cafe.</p>
+
+      <div className="flex flex-col gap-2">
+        {CAFE_UPGRADES.map((upg) => {
+          const isUnlocked = state.reputation >= upg.repReq;
+          return (
+            <div
+              key={upg.name}
+              className={`rounded-lg border p-3 flex items-start gap-3 transition-colors ${
+                isUnlocked
+                  ? 'border-border/40 bg-secondary/30'
+                  : 'border-border/20 bg-secondary/10 opacity-40'
+              }`}
+            >
+              <span className="text-xl mt-0.5">{isUnlocked ? upg.icon : '🔒'}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-pixel text-xs text-foreground">{upg.name}</div>
+                <div className="font-body text-[10px] text-muted-foreground mt-0.5 leading-snug">{upg.desc}</div>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="font-pixel text-[9px] text-amber-400">🪙 {upg.cost}</span>
+                  {!isUnlocked && (
+                    <span className="font-pixel text-[9px] text-muted-foreground">Rep {upg.repReq}+ needed</span>
+                  )}
+                </div>
+              </div>
+              {isUnlocked && (
+                <button
+                  disabled
+                  className="shrink-0 self-center rounded-md px-2 py-1 font-pixel text-[9px] bg-primary/10 text-primary border border-primary/20 opacity-60 cursor-not-allowed"
+                >
+                  Soon™
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
   const panelRef = useRef(null);
   const { bgMode } = state.cafe;
 
@@ -102,6 +288,8 @@ export default function CafeView() {
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
   const isManagement = state.phase === 'management';
   const [showBgModePanel, setShowBgModePanel] = useState(false);
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [showUpgradePanel, setShowUpgradePanel] = useState(false);
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -109,6 +297,12 @@ export default function CafeView() {
     });
     return unsub;
   }, [processAIEvent]);
+
+  useEffect(() => {
+    if (state.focus.status === 'distracted') {
+      dispatch({ type: 'END_FOCUS' });
+    }
+  }, [state.focus.status, dispatch]);
 
   // ก้อนที่ 1: จัดการ AI (เปิด-ปิด กล้องและโมเดล)
   // ==========================================
@@ -131,8 +325,7 @@ export default function CafeView() {
 
     // 1. ลูกค้าเข้าและออกร้าน
     const customerInterval = setInterval(() => {
-      const arrivalChance = 0.05 + (state.reputation / 100) * 0.35;
-      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < arrivalChance) {
+      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
         const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
         const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
         const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
@@ -252,6 +445,38 @@ export default function CafeView() {
           <div className="flex flex-wrap gap-2 ml-auto">
             {isManagement && !state.cafe.decorateMode && (
               <>
+              {/* Stats button */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => { setShowStatsPanel(v => !v); setShowUpgradePanel(false); }}
+                  title="Cafe stats"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                </Button>
+                {showStatsPanel && (
+                  <CafeStatsPanel state={state} onClose={() => setShowStatsPanel(false)} />
+                )}
+              </div>
+
+              {/* Upgrade button */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => { setShowUpgradePanel(v => !v); setShowStatsPanel(false); }}
+                  title="Upgrades"
+                >
+                  <Store className="w-4 h-4" />
+                </Button>
+                {showUpgradePanel && (
+                  <CafeUpgradePanel state={state} onClose={() => setShowUpgradePanel(false)} />
+                )}
+              </div>
+
               {/* Wand button */}
               <div className="relative">
                 <Button
