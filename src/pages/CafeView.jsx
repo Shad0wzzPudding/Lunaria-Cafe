@@ -225,7 +225,7 @@ function CafeUpgradePanel({ state, onClose }) {
 }
 
 
-function BackgroundModePanel({ state, onClose }) {
+function BgModePanel({ state, onClose }) {
   
   const panelRef = useRef(null);
   const { bgMode } = state.cafe;
