@@ -213,6 +213,8 @@ function CafeUpgradePanel({ state, onClose }) {
 }
 
 
+function BackgroundModePanel({ state, onClose }) {
+  
   const panelRef = useRef(null);
   const { bgMode } = state.cafe;
 
@@ -281,7 +283,7 @@ function CafeUpgradePanel({ state, onClose }) {
       </div>
     </div>
   );
-
+}
 
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
