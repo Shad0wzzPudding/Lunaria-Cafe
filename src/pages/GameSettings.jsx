@@ -226,7 +226,7 @@ export default function GameSettings() {
               <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
                 Save now
               </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
+              <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
                 Log out
               </Button>
             </p>
