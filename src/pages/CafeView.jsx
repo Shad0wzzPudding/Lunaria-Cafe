@@ -1,3 +1,4 @@
+import {Coins} from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
@@ -42,6 +43,7 @@ function getCurrentTier(rep) {
   return REPUTATION_TIERS[0];
 }
 
+// Upgrade data - can be expanded with actual effects later
 const CAFE_UPGRADES = [
   { icon: '🪑', name: 'Extra Seating',   desc: 'Adds 2 more seats for customers.',  repReq: 30,  cost: 200  },
   { icon: '🧙', name: 'Skilled Barista', desc: 'Serves customers twice as fast.',   repReq: 50,  cost: 500  },
@@ -67,12 +69,13 @@ function CafeStatsPanel({ state, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // Stats to display - can be expanded with more interesting metrics later
   const stats = [
     { icon: '👥', label: 'Customers',   value: state.stats?.customersTotal ?? 0 },
     { icon: '☕', label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
     { icon: '🔥', label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
     { icon: '⏱️', label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
-    { icon: '🪙', label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
+    { icon: Coins, label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
     { icon: '🌀', label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
   ];
 
@@ -190,7 +193,7 @@ function CafeUpgradePanel({ state, onClose }) {
                 <div className="font-pixel text-xs text-foreground">{upg.name}</div>
                 <div className="font-body text-[10px] text-muted-foreground mt-0.5 leading-snug">{upg.desc}</div>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="font-pixel text-[9px] text-amber-400">🪙 {upg.cost}</span>
+                 <span> <Coins size={11} strokeWidth={2.5} className="text-yellow-400"/> {upg.cost}</span>
                   {!isUnlocked && (
                     <span className="font-pixel text-[9px] text-muted-foreground">Rep {upg.repReq}+ needed</span>
                   )}
