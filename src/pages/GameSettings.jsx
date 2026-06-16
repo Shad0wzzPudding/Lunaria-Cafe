@@ -179,7 +179,7 @@ export default function GameSettings() {
               </div>
             </div>
 
-            {/* {aiConfig.aiMode === 'live' && (
+            {aiConfig.aiMode === 'live' && (
               <div className="space-y-3 pt-2 border-t border-border/20">
                 <label className="block space-y-1">
                   <span className="text-xs text-muted-foreground">API URL</span>
@@ -194,7 +194,7 @@ export default function GameSettings() {
                   {aiTesting ? 'Testing…' : 'Test connection'}
                 </Button>
               </div>
-            )} */}
+            )}
             
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
