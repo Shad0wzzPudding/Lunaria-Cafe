@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Users, Coffee, Flame, Timer, Zap } from 'lucide-react';
+import {Coins} from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
@@ -20,6 +20,7 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 
@@ -70,12 +71,12 @@ function CafeStatsPanel({ state, onClose }) {
 
   // Stats to display - can be expanded with more interesting metrics later
   const stats = [
-    { icon: Users,  label: 'Customers',   value: state.stats?.customersTotal ?? 0 },
-    { icon: Coffee, label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
-    { icon: Flame,  label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
-    { icon: Timer,  label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
-    { icon: Coins,  label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
-    { icon: Zap,    label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
+    { icon: '👥', label: 'Customers',   value: state.stats?.customersTotal ?? 0 },
+    { icon: '☕', label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
+    { icon: '🔥', label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
+    { icon: '⏱️', label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
+    { icon: Coins, label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
+    { icon: '🌀', label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
   ];
 
   return (
@@ -141,9 +142,7 @@ function CafeStatsPanel({ state, onClose }) {
       <div className="grid grid-cols-3 gap-2">
         {stats.map(({ icon, label, value }) => (
           <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
-            <div className="mb-0.5 flex justify-center items-center text-muted-foreground">
-              <icon size={14} strokeWidth={2} />
-            </div>
+            <div className="text-base mb-0.5">{icon}</div>
             <div className="font-pixel text-xs text-foreground">{value}</div>
             <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
           </div>
@@ -194,7 +193,9 @@ function CafeUpgradePanel({ state, onClose }) {
                 <div className="font-pixel text-xs text-foreground">{upg.name}</div>
                 <div className="font-body text-[10px] text-muted-foreground mt-0.5 leading-snug">{upg.desc}</div>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                 <span> <Coins size={11} strokeWidth={2.5} className="text-yellow-400"/> {upg.cost}</span>
+                  <span className="font-pixel text-[12px] text-yellow-400 flex items-center gap-0.5">
+                    <Coins size={11} strokeWidth={2.5} className="text-yellow-400" /> {upg.cost}
+                  </span>
                   {!isUnlocked && (
                     <span className="font-pixel text-[9px] text-muted-foreground">Rep {upg.repReq}+ needed</span>
                   )}
