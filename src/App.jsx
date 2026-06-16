@@ -9,6 +9,7 @@ import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GameSettings'
+import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 
 function GameRouter() {
   const { state } = useGame()
@@ -17,6 +18,8 @@ function GameRouter() {
   switch (state.phase) {
     case 'menu':
       return <MainMenu />
+    case 'loading':
+      return <CafeLoadingScreen />
     case 'management':
     case 'focus':
       return <CafeView />

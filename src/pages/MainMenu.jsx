@@ -108,7 +108,7 @@ export default function MainMenu() {
           transition={{ delay: 1.0 }}
         >
           <Button
-            onClick={() => dispatch({ type: 'SET_PHASE', payload: 'management' })}
+            onClick={() => dispatch({ type: 'SET_PHASE', payload: 'loading' })}
             className="bg-primary/90 hover:bg-primary text-primary-foreground h-12 font-pixel text-sm tracking-wide gap-2 relative overflow-hidden group"
           >
             <motion.div className="absolute inset-0 bg-accent/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />
