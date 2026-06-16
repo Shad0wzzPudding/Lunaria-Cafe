@@ -1,4 +1,3 @@
-import { Coins, Sprout, Coffee, Sparkles, Moon, Star, Crown } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
@@ -20,7 +19,7 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 
