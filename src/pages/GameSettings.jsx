@@ -161,7 +161,7 @@ export default function GameSettings() {
                   </span>
                 </button>
 
-                {/* <button
+                <button
                   type="button"
                   onClick={() => saveAi({ aiMode: 'live', useLiveAI: true })}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
@@ -175,7 +175,7 @@ export default function GameSettings() {
                     <span className="block text-sm font-body">Local Python Server</span>
                     <span className="block text-xs text-muted-foreground">Connect to ai-server/ running on your machine</span>
                   </span>
-                </button> */}
+                </button>
               </div>
             </div>
 
