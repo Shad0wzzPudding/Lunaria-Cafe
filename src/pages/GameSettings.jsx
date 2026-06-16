@@ -160,41 +160,10 @@ export default function GameSettings() {
                     </span>
                   </span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => saveAi({ aiMode: 'live', useLiveAI: true })}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    aiConfig.aiMode === 'live'
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : 'border-border/40 bg-background text-muted-foreground hover:border-border'
-                  }`}
-                >
-                  <Monitor className="w-4 h-4 shrink-0" />
-                  <span>
-                    <span className="block text-sm font-body">Local Python Server</span>
-                    <span className="block text-xs text-muted-foreground">Connect to ai-server/ running on your machine</span>
-                  </span>
-                </button>
               </div>
             </div>
 
-            {aiConfig.aiMode === 'live' && (
-              <div className="space-y-3 pt-2 border-t border-border/20">
-                <label className="block space-y-1">
-                  <span className="text-xs text-muted-foreground">API URL</span>
-                  <input
-                    type="url"
-                    value={aiConfig.apiUrl}
-                    onChange={(e) => saveAi({ apiUrl: e.target.value })}
-                    className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
-                  />
-                </label>
-                <Button type="button" variant="secondary" size="sm" onClick={testAi} disabled={aiTesting}>
-                  {aiTesting ? 'Testing…' : 'Test connection'}
-                </Button>
-              </div>
-            )}
+            
             
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
@@ -226,7 +195,7 @@ export default function GameSettings() {
               <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
                 Save now
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
                 Log out
               </Button>
             </p>
