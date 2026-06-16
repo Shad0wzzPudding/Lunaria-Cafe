@@ -145,7 +145,11 @@ function CafeStatsPanel({ state, onClose }) {
       <div className="grid grid-cols-3 gap-2">
         {stats.map(({ icon, label, value }) => (
           <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
-            <div className="text-base mb-0.5">{icon}</div>
+            <div className="mb-0.5 flex justify-center items-center">
+              {typeof icon === 'string'
+                ? <span className="text-base">{icon}</span>
+                : React.createElement(icon, { size: 14, strokeWidth: 2, className: 'text-muted-foreground' })}
+            </div>
             <div className="font-pixel text-xs text-foreground">{value}</div>
             <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
           </div>
