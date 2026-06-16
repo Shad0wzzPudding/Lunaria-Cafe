@@ -281,7 +281,7 @@ function CafeUpgradePanel({ state, onClose }) {
       </div>
     </div>
   );
-}
+
 
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
