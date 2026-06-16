@@ -11,25 +11,30 @@ import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 
+// App.jsx — GameRouter function
+
 function GameRouter() {
   const { state } = useGame()
   useCafeAudio()
 
-  switch (state.phase) {
-    case 'menu':
-      return <MainMenu />
-    case 'loading':
-      return <CafeLoadingScreen />
-    case 'management':
-    case 'focus':
-      return <CafeView />
-    case 'stats':
-      return <Statistics />
-    case 'settings':
-      return <GameSettings />
-    default:
-      return <MainMenu />
-  }
+  const phase = state.phase
+
+  return (
+    <>
+      {/* Pre-mount CafeView during loading so it's ready instantly */}
+      <div style={{ display: phase === 'management' || phase === 'focus' || phase === 'loading' ? 'block' : 'none' }}>
+        <CafeView />
+      </div>
+
+      {/* Overlay the loading screen on top while loading */}
+      {phase === 'loading' && <div className="absolute inset-0 z-50"><CafeLoadingScreen /></div>}
+
+      {/* Other phases */}
+      {phase === 'menu'     && <MainMenu />}
+      {phase === 'stats'    && <Statistics />}
+      {phase === 'settings' && <GameSettings />}
+    </>
+  )
 }
 
 function AppShell() {
@@ -50,7 +55,7 @@ function AppShell() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <GameProvider userId={isGuest ? null : user?.id}>
-        <main className="dark min-h-screen">
+        <main className="dark min-h-screen relative">
           <GameRouter />
         </main>
       </GameProvider>
