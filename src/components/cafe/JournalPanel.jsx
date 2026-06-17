@@ -59,7 +59,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           value={journal?.noteHeader ?? ''}
           onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE_HEADER', payload: event.target.value })}
           className="absolute z-10 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
-          style={{ left: '18%', top: '14.2%', width: '8%' }}
+          style={{ left: '20%', top: '14.2%', width: '8%' }}
           placeholder="Title..."
         />
         {/* Left Body — shifted 35% rightward from section origin */}
@@ -67,7 +67,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           value={journal?.note ?? ''}
           onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
           className="absolute z-10 resize-none border-0 bg-transparent p-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
-          style={{ left: '12%', top: '18%', width: '13%', height: '59.7%' }}
+          style={{ left: '15%', top: '18%', width: '30%', height: '59.7%' }}
           placeholder="Write your cafe notes..."
           spellCheck
         />
