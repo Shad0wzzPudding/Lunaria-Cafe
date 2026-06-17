@@ -19,9 +19,12 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown } from 'lucide-react';
+import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
+import JournalPanel from '@/components/cafe/JournalPanel';
+
+const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
@@ -304,6 +307,7 @@ export default function CafeView() {
   const [showBgModePanel, setShowBgModePanel] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -433,9 +437,32 @@ export default function CafeView() {
 
         <div className="flex items-center gap-3">
           {isFocusing && <FocusTimer compact />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowJournal(true)}
+            className="relative h-11 w-11 overflow-visible rounded-lg bg-transparent p-0 hover:bg-transparent"
+            title="Open journal"
+          >
+            <img
+              src={JOURNAL_BUTTON_ART}
+              alt=""
+              aria-hidden="true"
+              className="h-11 w-11 object-contain drop-shadow-md transition-transform group-hover/button:scale-105"
+            />
+            <BookOpen className="absolute bottom-1 right-1 h-3.5 w-3.5 text-[#744225]/70 drop-shadow-sm" aria-hidden="true" />
+          </Button>
           <NPCPanel />
         </div>
       </header>
+
+      {showJournal && (
+        <JournalPanel
+          journal={state.journal}
+          dispatch={dispatch}
+          onClose={() => setShowJournal(false)}
+        />
+      )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
         <motion.div

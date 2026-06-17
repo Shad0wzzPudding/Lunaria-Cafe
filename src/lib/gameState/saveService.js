@@ -28,6 +28,25 @@ function normalizeWeeklyData(value, fallback) {
   );
 }
 
+function normalizeJournal(value, fallback) {
+  const journal = value && typeof value === 'object' ? value : {};
+  const fallbackTodos = Array.isArray(fallback.todos) ? fallback.todos : [];
+  const sourceTodos = Array.isArray(journal.todos) ? journal.todos : fallbackTodos;
+
+  return {
+    note: typeof journal.note === 'string' ? journal.note : fallback.note,
+    todos: sourceTodos
+      .filter((todo) => todo && typeof todo === 'object')
+      .map((todo, index) => ({
+        id: String(todo.id ?? `loaded-todo-${index}`),
+        text: typeof todo.text === 'string' ? todo.text : '',
+        completed: Boolean(todo.completed),
+        createdAt: normalizeNonNegativeNumber(todo.createdAt, 0),
+      }))
+      .filter((todo) => todo.text.trim().length > 0),
+  };
+}
+
 /** Fields we persist (skip volatile in-session state). */
 export function serializeGameState(state) {
   const today = getDateString();
@@ -42,6 +61,7 @@ export function serializeGameState(state) {
       decorateMode: false,
     },
     audio: state.audio,
+    journal: normalizeJournal(state.journal, { note: '', todos: [] }),
     stats: {
       ...stats,
       dailyGoal: normalizePositiveNumber(stats.dailyGoal, 60),
@@ -114,6 +134,7 @@ export function mergeLoadedSave(loaded, initialState) {
       decorateMode: false,
     },
     audio: { ...initialState.audio, ...loaded.audio },
+    journal: normalizeJournal(loaded.journal, initialState.journal),
     stats: {
       ...initialState.stats,
       ...loadedStats,

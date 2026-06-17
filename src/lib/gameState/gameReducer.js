@@ -238,6 +238,67 @@ export function gameReducer(state, action) {
         stats: { ...state.stats, chaosEvents: state.stats.chaosEvents + 1 },
       };
 
+    // ── Journal ──────────────────────────────────────────────────────────────
+
+    case 'SET_JOURNAL_NOTE':
+      return {
+        ...state,
+        journal: {
+          ...(state.journal ?? initialState.journal),
+          note: String(action.payload ?? ''),
+        },
+      };
+
+    case 'ADD_TODO': {
+      const text = typeof action.payload === 'string'
+        ? action.payload.trim()
+        : String(action.payload?.text ?? '').trim();
+      if (!text) return state;
+
+      const journal = state.journal ?? initialState.journal;
+      return {
+        ...state,
+        journal: {
+          ...journal,
+          todos: [
+            ...journal.todos,
+            {
+              id: action.payload?.id ?? `todo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              text,
+              completed: false,
+              createdAt: action.payload?.createdAt ?? Date.now(),
+            },
+          ],
+        },
+      };
+    }
+
+    case 'TOGGLE_TODO': {
+      const journal = state.journal ?? initialState.journal;
+      return {
+        ...state,
+        journal: {
+          ...journal,
+          todos: journal.todos.map((todo) =>
+            todo.id === action.payload
+              ? { ...todo, completed: !todo.completed }
+              : todo
+          ),
+        },
+      };
+    }
+
+    case 'REMOVE_TODO': {
+      const journal = state.journal ?? initialState.journal;
+      return {
+        ...state,
+        journal: {
+          ...journal,
+          todos: journal.todos.filter((todo) => todo.id !== action.payload),
+        },
+      };
+    }
+
     // ── Decoration ───────────────────────────────────────────────────────────
 
     case 'SET_DECORATE_MODE':

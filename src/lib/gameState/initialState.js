@@ -37,6 +37,10 @@ export const initialState = {
     phoneFreeSince: null,
     gazeFocusedSince: null,
   },
+  journal: {
+    note: '',
+    todos: [],
+  },
   npcs: {
     customers: [],
     rabbits: [
