@@ -34,7 +34,9 @@ function normalizeJournal(value, fallback) {
   const sourceTodos = Array.isArray(journal.todos) ? journal.todos : fallbackTodos;
 
   return {
+    noteHeader: typeof journal.noteHeader === 'string' ? journal.noteHeader : fallback.noteHeader,
     note: typeof journal.note === 'string' ? journal.note : fallback.note,
+    todoHeader: typeof journal.todoHeader === 'string' ? journal.todoHeader : fallback.todoHeader,
     todos: sourceTodos
       .filter((todo) => todo && typeof todo === 'object')
       .map((todo, index) => ({
@@ -61,7 +63,7 @@ export function serializeGameState(state) {
       decorateMode: false,
     },
     audio: state.audio,
-    journal: normalizeJournal(state.journal, { note: '', todos: [] }),
+    journal: normalizeJournal(state.journal, initialState.journal),
     stats: {
       ...stats,
       dailyGoal: normalizePositiveNumber(stats.dailyGoal, 60),

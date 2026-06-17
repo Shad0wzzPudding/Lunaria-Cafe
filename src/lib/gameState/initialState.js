@@ -38,7 +38,9 @@ export const initialState = {
     gazeFocusedSince: null,
   },
   journal: {
+    noteHeader: '',
     note: '',
+    todoHeader: '',
     todos: [],
   },
   npcs: {

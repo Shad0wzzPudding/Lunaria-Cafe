@@ -240,12 +240,30 @@ export function gameReducer(state, action) {
 
     // ── Journal ──────────────────────────────────────────────────────────────
 
+    case 'SET_JOURNAL_NOTE_HEADER':
+      return {
+        ...state,
+        journal: {
+          ...(state.journal ?? initialState.journal),
+          noteHeader: String(action.payload ?? ''),
+        },
+      };
+
     case 'SET_JOURNAL_NOTE':
       return {
         ...state,
         journal: {
           ...(state.journal ?? initialState.journal),
           note: String(action.payload ?? ''),
+        },
+      };
+
+    case 'SET_TODO_HEADER':
+      return {
+        ...state,
+        journal: {
+          ...(state.journal ?? initialState.journal),
+          todoHeader: String(action.payload ?? ''),
         },
       };
 
@@ -483,9 +501,6 @@ export function gameReducer(state, action) {
 
     case 'RESET':
       return initialState;
-    
-    case 'SET_JOURNAL_NOTE_HEADER': return { ...state, noteHeader: action.payload };
-    case 'SET_TODO_HEADER':         return { ...state, todoHeader: action.payload };
 
     default:
       return state;
