@@ -175,6 +175,11 @@ export default function GameSettings() {
                 Signed in as <span className="text-foreground">{user.email}</span>
               </p>
             )}
+            {isGuest && (
+              <p className="text-sm text-muted-foreground font-body">
+                Signed in as Guest (progress will not be saved).
+              </p>
+            )}
             {saveError && (
               <p className="text-sm text-amber-400">Save issue: {saveError}</p>
             )}
