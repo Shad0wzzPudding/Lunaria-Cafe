@@ -53,26 +53,26 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           <X className="h-3.5 w-3.5" />
         </Button>
 
-        <section className="absolute left-[2%] top-[14.2%] flex h-[63.5%] w-[34%] flex-col">
-          {/* Header */}
-          <input
-            type="text"
-            value={journal?.noteHeader ?? ''}
-            onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE_HEADER', payload: event.target.value })}
-            className="w-full shrink-0 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
-            placeholder="Title..."
-          />
-          {/* Body */}
-          <textarea
-            value={journal?.note ?? ''}
-            onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
-            className="mt-1.5 h-full w-full resize-none border-0 bg-transparent pl-[15%] pr-1 pt-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
-            placeholder="Write your cafe notes..."
-            spellCheck
-          />
-        </section>
+        {/* Left Header — shifted 40% rightward from section origin */}
+        <input
+          type="text"
+          value={journal?.noteHeader ?? ''}
+          onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE_HEADER', payload: event.target.value })}
+          className="absolute z-10 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+          style={{ left: '42%', top: '14.2%', width: '8%' }}
+          placeholder="Title..."
+        />
+        {/* Left Body — shifted 35% rightward from section origin */}
+        <textarea
+          value={journal?.note ?? ''}
+          onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
+          className="absolute z-10 resize-none border-0 bg-transparent p-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
+          style={{ left: '37%', top: '18%', width: '13%', height: '59.7%' }}
+          placeholder="Write your cafe notes..."
+          spellCheck
+        />
 
-        <section className="absolute left-[56.3%] top-[14%] flex h-[63.5%] w-[33%] flex-col">
+        <section className="absolute left-[56.3%] top-[14%] z-10 flex h-[63.5%] w-[33%] flex-col">
           {/* Header */}
           <input
             type="text"
