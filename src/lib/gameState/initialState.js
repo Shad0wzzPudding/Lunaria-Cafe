@@ -49,7 +49,7 @@ export const initialState = {
       },
       {
         "id": "todo-1781717305452-fs9ygy",
-        "text": "Feed Rabbits",
+        "text": "Feed Rabbits.",
         "completed": false,
         "createdAt": 1781717305452
       },
