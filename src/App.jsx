@@ -1,3 +1,4 @@
+import React from 'react'
 import { Toaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -16,29 +17,41 @@ function GameRouter() {
   useCafeAudio()
 
   const phase = state.phase
-  const showCafe = phase === 'management' || phase === 'focus' || phase === 'loading'
+
+  // Delay mounting CafeView by 100ms after loading starts so Radix UI
+  // contexts are fully initialised before Dialog components render.
+  const [cafeReady, setCafeReady] = React.useState(false)
+
+  React.useEffect(() => {
+    if (phase === 'loading' || phase === 'management' || phase === 'focus') {
+      const t = setTimeout(() => setCafeReady(true), 100)
+      return () => clearTimeout(t)
+    }
+  }, [phase])
+
+  // Once mounted, keep it mounted to avoid remount cost on phase changes
+  const showCafe = cafeReady || phase === 'management' || phase === 'focus'
 
   return (
     <>
-      {/* Pre-mount CafeView but non-interactive during loading to avoid Radix Dialog useContext crash */}
-      <div style={{
-        visibility: showCafe ? 'visible' : 'hidden',
-        pointerEvents: phase === 'loading' ? 'none' : 'auto',
-        position: phase === 'loading' ? 'absolute' : 'relative',
-        inset: 0,
-        zIndex: 0,
-      }}>
-        <CafeView />
-      </div>
+      {showCafe && (
+        <div style={{
+          pointerEvents: phase === 'loading' ? 'none' : 'auto',
+          position: phase === 'loading' ? 'absolute' : 'relative',
+          visibility: phase === 'loading' ? 'hidden' : 'visible',
+          inset: 0,
+          zIndex: 0,
+        }}>
+          <CafeView />
+        </div>
+      )}
 
-      {/* Overlay the loading screen on top while loading */}
       {phase === 'loading' && (
         <div className="absolute inset-0 z-50">
           <CafeLoadingScreen />
         </div>
       )}
 
-      {/* Other phases */}
       {phase === 'menu'     && <MainMenu />}
       {phase === 'stats'    && <Statistics />}
       {phase === 'settings' && <GameSettings />}
