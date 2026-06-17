@@ -450,7 +450,6 @@ export default function CafeView() {
               aria-hidden="true"
               className="h-11 w-11 object-contain drop-shadow-md transition-transform group-hover/button:scale-105"
             />
-            <BookOpen className="absolute bottom-1 right-1 h-3.5 w-3.5 text-[#744225]/70 drop-shadow-sm" aria-hidden="true" />
           </Button>
           <NPCPanel />
         </div>
