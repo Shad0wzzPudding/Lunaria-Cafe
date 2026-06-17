@@ -7,12 +7,11 @@ import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, L
 import {
   getAIConfig,
   setAIConfig,
+  checkAIHealth,
   onConnectionStatus,
   isBrowserAISupported,
 } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/AuthProvider';
-
-const {isGuest} = useAuth();
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
@@ -60,6 +59,12 @@ export default function GameSettings() {
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const saveAi = (updates) => setAiConfigState(setAIConfig(updates));
+  const testAi = async () => {
+    setAiTesting(true);
+    const r = await checkAIHealth(aiConfig.apiUrl);
+    setAiTesting(false);
+    setAiStatus(r.ok ? { status: 'live', detail: 'Server reachable' } : { status: 'error', detail: r.error });
+  };
 
   const handleLogout = async () => {
     try {
@@ -181,11 +186,6 @@ export default function GameSettings() {
             {user?.email && (
               <p className="text-sm text-muted-foreground font-body">
                 Signed in as <span className="text-foreground">{user.email}</span>
-              </p>
-            )}
-            {isGuest && (
-              <p className="text-sm text-muted-foreground font-body">
-                Signed in as Guest mode.
               </p>
             )}
             {saveError && (
