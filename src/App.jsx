@@ -17,20 +17,22 @@ function GameRouter() {
   useCafeAudio()
 
   const phase = state.phase
+  const isCafePhase = phase === 'loading' || phase === 'management' || phase === 'focus'
 
   // Delay mounting CafeView by 100ms after loading starts so Radix UI
   // contexts are fully initialised before Dialog components render.
   const [cafeReady, setCafeReady] = React.useState(false)
 
   React.useEffect(() => {
-    if (phase === 'loading' || phase === 'management' || phase === 'focus') {
+    if (isCafePhase) {
       const t = setTimeout(() => setCafeReady(true), 100)
       return () => clearTimeout(t)
     }
-  }, [phase])
+  }, [isCafePhase])
 
-  // Once mounted, keep it mounted to avoid remount cost on phase changes
-  const showCafe = cafeReady || phase === 'management' || phase === 'focus'
+  // Only show CafeView while we're actually in a cafe-related phase.
+  // (Using && here — not || — so it unmounts once phase leaves loading/management/focus.)
+  const showCafe = cafeReady && isCafePhase
 
   return (
     <>
