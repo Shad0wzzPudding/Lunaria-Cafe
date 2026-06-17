@@ -11,23 +11,32 @@ import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 
-// App.jsx — GameRouter function
-
 function GameRouter() {
   const { state } = useGame()
   useCafeAudio()
 
   const phase = state.phase
+  const showCafe = phase === 'management' || phase === 'focus' || phase === 'loading'
 
   return (
     <>
-      {/* Pre-mount CafeView during loading so it's ready instantly */}
-      <div style={{ display: phase === 'management' || phase === 'focus' || phase === 'loading' ? 'block' : 'none' }}>
+      {/* Pre-mount CafeView but non-interactive during loading to avoid Radix Dialog useContext crash */}
+      <div style={{
+        visibility: showCafe ? 'visible' : 'hidden',
+        pointerEvents: phase === 'loading' ? 'none' : 'auto',
+        position: phase === 'loading' ? 'absolute' : 'relative',
+        inset: 0,
+        zIndex: 0,
+      }}>
         <CafeView />
       </div>
 
       {/* Overlay the loading screen on top while loading */}
-      {phase === 'loading' && <div className="absolute inset-0 z-50"><CafeLoadingScreen /></div>}
+      {phase === 'loading' && (
+        <div className="absolute inset-0 z-50">
+          <CafeLoadingScreen />
+        </div>
+      )}
 
       {/* Other phases */}
       {phase === 'menu'     && <MainMenu />}
