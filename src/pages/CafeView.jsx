@@ -450,7 +450,7 @@ export default function CafeView() {
           <GameFeedback />
           <DecoratePanel />
           </motion.div>
-          {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().aiMode === 'live' || getAIConfig().useLiveAI) && <AttentionCamera />}
+          {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
       </main>
 
       <footer className="shrink-0 z-30 px-4 py-3 border-t border-border/30 bg-card/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">

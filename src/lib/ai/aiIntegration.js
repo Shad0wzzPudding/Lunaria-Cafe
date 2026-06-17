@@ -1,10 +1,9 @@
 /**
  * AI Integration — connects Lunaria Cafe to focus tracking systems.
  *
- * Three modes:
+ * Two modes:
  *   1. simulation — random attention drift (default, works everywhere)
- *   2. live       — polls a local Python FastAPI server
- *   3. browser    — runs MediaPipe + COCO-SSD directly in the browser
+ *   2. browser    — runs MediaPipe + COCO-SSD directly in the browser
  *
  * Game event shape:
  * { phone_detected, attention_score (0-100), user_present, timestamp, warning_message?, tracker_score?, source }
@@ -18,33 +17,24 @@ import {
 } from '@/lib/ai/browserAI';
 
 const CONFIG_KEY = 'lunaria-ai-config';
-const DEFAULT_API_URL = 'http://127.0.0.1:8000';
-const POLL_MS = 500;
 
 const listeners = new Set();
 const statusListeners = new Set();
 
 let simulatedScore = 85;
 let simulationInterval = null;
-let pollInterval = null;
 let browserAIActive = false;
 let browserVideoElement = null;
 let connectionStatus = 'offline'; // offline | connecting | live | error
-let liveAttentionScore = 85;
 
-// aiMode: 'simulation' | 'live' | 'browser'
+// aiMode: 'simulation' | 'browser'
 function loadConfig() {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
-    if (!raw) return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
-    const parsed = { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser', ...JSON.parse(raw) };
-    // migrate old useLiveAI flag
-    if (parsed.useLiveAI && parsed.aiMode === 'simulation') {
-      parsed.aiMode = 'live';
-    }
-    return parsed;
+    if (!raw) return { aiMode: 'browser' };
+    return { aiMode: 'browser', ...JSON.parse(raw) };
   } catch {
-    return { apiUrl: DEFAULT_API_URL, useLiveAI: false, aiMode: 'browser' };
+    return { aiMode: 'browser' };
   }
 }
 
@@ -77,52 +67,6 @@ export function getConnectionStatus() {
   return connectionStatus;
 }
 
-/**
- * Map Python TrackerState → game attention event (0–100 score).
- */
-export function mapTrackerStateToEvent(trackerState) {
-  const {
-    is_phone_detected,
-    is_face_detected,
-    is_user_focused,
-    focus_score,
-    warning_message,
-  } = trackerState;
-
-  // Gradual score changes instead of preset patterns
-  let targetScore = 85;
-  if (is_phone_detected) {
-    targetScore = 22;
-  } else if (!is_face_detected) {
-    targetScore = 38;
-  } else if (!is_user_focused) {
-    targetScore = 52;
-  } else {
-    const bonus = Math.min(30, Math.log1p(focus_score) * 4);
-    targetScore = Math.min(100, 70 + bonus);
-  }
-
-  // Gradually move current score toward target
-  const scoreDiff = targetScore - liveAttentionScore;
-  const maxChange = 2.0; // Maximum change per tick
-  if (Math.abs(scoreDiff) <= maxChange) {
-    liveAttentionScore = targetScore;
-  } else {
-    liveAttentionScore += Math.sign(scoreDiff) * maxChange;
-  }
-  liveAttentionScore = Math.max(0, Math.min(100, liveAttentionScore));
-
-  return {
-    phone_detected: Boolean(is_phone_detected),
-    attention_score: Math.round(liveAttentionScore),
-    user_present: Boolean(is_face_detected),
-    timestamp: Date.now(),
-    warning_message: warning_message || '',
-    tracker_score: focus_score,
-    source: 'live',
-  };
-}
-
 export function onAttentionEvent(callback) {
   listeners.add(callback);
   return () => listeners.delete(callback);
@@ -140,50 +84,6 @@ export function processAIEvent(event) {
   };
   listeners.forEach((cb) => cb(normalized));
   return normalized;
-}
-
-export async function checkAIHealth(apiUrl = loadConfig().apiUrl) {
-  const base = apiUrl.replace(/\/$/, '');
-  try {
-    const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return { ok: true, data: await res.json() };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-async function pollTrackerState() {
-  const { apiUrl } = loadConfig();
-  const base = apiUrl.replace(/\/$/, '');
-  try {
-    const res = await fetch(`${base}/state`, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const trackerState = await res.json();
-    setConnectionStatus('live');
-    processAIEvent(mapTrackerStateToEvent(trackerState));
-  } catch (err) {
-    setConnectionStatus('error', err.message);
-  }
-}
-
-/**
- * Poll the Python API for live camera / attention data.
- */
-export function startLiveTracking() {
-  if (pollInterval) return;
-  setConnectionStatus('connecting');
-  pollTrackerState();
-  pollInterval = setInterval(pollTrackerState, POLL_MS);
-}
-
-export function stopLiveTracking() {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
-  }
-  liveAttentionScore = 85;
-  if (!simulationInterval) setConnectionStatus('offline');
 }
 
 export function startSimulation() {
@@ -210,7 +110,7 @@ export function stopSimulation() {
     clearInterval(simulationInterval);
     simulationInterval = null;
   }
-  if (!pollInterval) setConnectionStatus('offline');
+  if (!browserAIActive) setConnectionStatus('offline');
 }
 
 /**
@@ -240,7 +140,7 @@ export function stopBrowserTracking() {
   stopBrowserAI();
   browserAIActive = false;
   browserVideoElement = null;
-  if (!simulationInterval && !pollInterval) setConnectionStatus('offline');
+  if (!simulationInterval) setConnectionStatus('offline');
 }
 
 export function getBrowserVideoElement() {
@@ -251,15 +151,12 @@ export function getBrowserVideoElement() {
  * Start AI feed for focus sessions based on the configured mode.
  */
 export function startAttentionFeed() {
-  const { aiMode, useLiveAI } = loadConfig();
+  const { aiMode } = loadConfig();
   stopSimulation();
-  stopLiveTracking();
   stopBrowserTracking();
 
   if (aiMode === 'browser') {
     startBrowserTracking();
-  } else if (aiMode === 'live' || useLiveAI) {
-    startLiveTracking();
   } else {
     startSimulation();
   }
@@ -267,16 +164,11 @@ export function startAttentionFeed() {
 
 export function stopAttentionFeed() {
   stopSimulation();
-  stopLiveTracking();
   stopBrowserTracking();
   setConnectionStatus('offline');
 }
 
 export { isBrowserAISupported, getBrowserAIStatus };
-
-export function getStreamUrl(apiUrl = loadConfig().apiUrl) {
-  return `${apiUrl.replace(/\/$/, '')}/stream`;
-}
 
 export function getChaosStage(score) {
   if (score >= 70) return { level: 0, name: 'Calm', color: '#7ec8a0' };

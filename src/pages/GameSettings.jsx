@@ -3,11 +3,10 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Monitor, Cpu } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu } from 'lucide-react';
 import {
   getAIConfig,
   setAIConfig,
-  checkAIHealth,
   onConnectionStatus,
   isBrowserAISupported,
 } from '@/lib/ai/aiIntegration';
@@ -53,20 +52,11 @@ export default function GameSettings() {
   const { audio } = state;
   const [aiConfig, setAiConfigState] = useState(getAIConfig);
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
-  const [aiTesting, setAiTesting] = useState(false);
 
   useEffect(() => onConnectionStatus(setAiStatus), []);
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const saveAi = (updates) => setAiConfigState(setAIConfig(updates));
-
-  //Dont sure if the following function is used anymore.
-  const testAi = async () => {
-    setAiTesting(true);
-    const r = await checkAIHealth(aiConfig.apiUrl);
-    setAiTesting(false);
-    setAiStatus(r.ok ? { status: 'live', detail: 'Server reachable' } : { status: 'error', detail: r.error });
-  };
 
   const handleLogout = async () => {
     try {
@@ -128,7 +118,7 @@ export default function GameSettings() {
               <div className="grid gap-2">
                 <button
                   type="button"
-                  onClick={() => saveAi({ aiMode: 'simulation', useLiveAI: false })}
+                  onClick={() => saveAi({ aiMode: 'simulation' })}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                     aiConfig.aiMode === 'simulation'
                       ? 'border-primary bg-primary/10 text-foreground'
@@ -144,7 +134,7 @@ export default function GameSettings() {
 
                 <button
                   type="button"
-                  onClick={() => saveAi({ aiMode: 'browser', useLiveAI: false })}
+                  onClick={() => saveAi({ aiMode: 'browser' })}
                   disabled={!isBrowserAISupported()}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                     aiConfig.aiMode === 'browser'
@@ -167,11 +157,9 @@ export default function GameSettings() {
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
               {`Status: ${aiStatus.status}${aiStatus.detail ? `\n${aiStatus.detail}` : ''}${
-                aiConfig.aiMode === 'live'
-                  ? '\n\nuvicorn focus_api:app --host 127.0.0.1 --port 8000'
-                  : aiConfig.aiMode === 'browser'
-                    ? '\n\nBrowser AI uses your webcam directly.\nCamera permission will be requested when you start a focus session.'
-                    : '\n\nSimulation mode — no camera or server needed.'
+                aiConfig.aiMode === 'browser'
+                  ? '\n\nBrowser AI uses your webcam directly.\nCamera permission will be requested when you start a focus session.'
+                  : '\n\nSimulation mode — no camera or server needed.'
               }`}
             </pre>
           </div>
