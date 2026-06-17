@@ -53,7 +53,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           <X className="h-3.5 w-3.5" />
         </Button>
 
-        <section className="absolute left-[12.2%] top-[14.2%] h-[63.5%] w-[29.5%]">
+        <section className="absolute left-[17%] top-[14.2%] h-[63.5%] w-[34%]">
           <textarea
             value={journal?.note ?? ''}
             onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
@@ -63,7 +63,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           />
         </section>
 
-        <section className="absolute left-[56.3%] top-[14%] flex h-[63.5%] w-[27.8%] flex-col">
+        <section className="absolute left-[56.3%] top-[14%] flex h-[63.5%] w-[33%] flex-col">
           <form onSubmit={addTodo} className="mb-2 flex items-center gap-1.5">
             <input
               value={todoText}
