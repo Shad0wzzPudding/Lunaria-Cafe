@@ -46,7 +46,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
         />
 
         {/* All interactive content sits above the art */}
-        <div role="dialog" aria-modal="true" aria-label="Journal" className="relative h-full w-full">
+        <div role="dialog" aria-modal="true" aria-label="Journal" className="relative z-20 h-full w-full">
 
           <Button
             type="button"
@@ -61,19 +61,24 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
 
           {/* Left Header */}
           <input
-            type="text"
-            value={journal?.noteHeader ?? ''}
-            onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE_HEADER', payload: event.target.value })}
-            className="absolute border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
-            style={{ left: '19%', top: '14.2%', width: '25%' }}
-            placeholder="Title..."
-          />
+          type="text"
+          value={journal?.noteHeader ?? ''}
+          onChange={(event) =>
+            dispatch({
+              type: 'SET_JOURNAL_NOTE_HEADER',
+              payload: event.target.value
+            })
+          }
+          className="absolute z-20 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+          style={{ left: '19%', top: '14.2%', width: '25%' }}
+          placeholder="Title..."
+        />
 
           {/* Left Body */}
           <textarea
             value={journal?.note ?? ''}
             onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
-            className="absolute resize-none border-0 bg-transparent p-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
+            className="absolute z-20 resize-none border-0 bg-transparent p-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
             style={{ left: '15%', top: '18%', width: '30%', height: '59.7%' }}
             placeholder="Write your cafe notes..."
             spellCheck
@@ -86,7 +91,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
               type="text"
               value={journal?.todoHeader ?? ''}
               onChange={(event) => dispatch({ type: 'SET_TODO_HEADER', payload: event.target.value })}
-              className="w-[90%] shrink-0 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+              className="z-20 w-[90%] shrink-0 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
               placeholder="Title..."
             />
             {/* Right Body */}
