@@ -72,7 +72,7 @@ def _draw_text_with_bg(frame, text, origin, font=Config.FONT, scale=Config.FONT_
 def draw_hud(frame: np.ndarray, state: TrackerState, cfg: Config) -> None:
     h, w = frame.shape[:2]
     _draw_text_with_bg(frame, f"Focus Score: {state.focus_score:.0f}", (20, 40), bg_color=(20, 20, 20))
-    mins, secs = divmod(int(state.session_seconds), 60)
+    mins, secs = divmod(int(state.session_seconds), 30)
     _draw_text_with_bg(frame, f"Session: {mins:02d}:{secs:02d}", (20, 80), bg_color=(20, 20, 20))
 
     if state.is_user_focused:
