@@ -53,18 +53,36 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
           <X className="h-3.5 w-3.5" />
         </Button>
 
-        <section className="absolute left-[17%] top-[14.2%] h-[63.5%] w-[34%]">
+        <section className="absolute left-[2%] top-[14.2%] flex h-[63.5%] w-[34%] flex-col">
+          {/* Header */}
+          <input
+            type="text"
+            value={journal?.noteHeader ?? ''}
+            onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE_HEADER', payload: event.target.value })}
+            className="w-full shrink-0 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+            placeholder="Title..."
+          />
+          {/* Body */}
           <textarea
             value={journal?.note ?? ''}
             onChange={(event) => dispatch({ type: 'SET_JOURNAL_NOTE', payload: event.target.value })}
-            className="h-full w-full resize-none border-0 bg-transparent p-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
+            className="mt-1.5 h-full w-full resize-none border-0 bg-transparent pl-[15%] pr-1 pt-1 font-body text-[13px] leading-[1.7] text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:text-sm"
             placeholder="Write your cafe notes..."
             spellCheck
           />
         </section>
 
         <section className="absolute left-[56.3%] top-[14%] flex h-[63.5%] w-[33%] flex-col">
-          <form onSubmit={addTodo} className="mb-2 flex items-center gap-1.5">
+          {/* Header */}
+          <input
+            type="text"
+            value={journal?.todoHeader ?? ''}
+            onChange={(event) => dispatch({ type: 'SET_TODO_HEADER', payload: event.target.value })}
+            className="w-[90%] shrink-0 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+            placeholder="Title..."
+          />
+          {/* Body */}
+          <form onSubmit={addTodo} className="mb-2 mt-2 flex items-center gap-1.5">
             <input
               value={todoText}
               onChange={(event) => setTodoText(event.target.value)}
