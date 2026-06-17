@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const WARNING_DURATION_MS = 60000; // 1 minute
+const WARNING_DURATION_MS = 30000; // 30 seconds
 
 export default function PhoneWarning() {
   const { state, dispatch } = useGame();
