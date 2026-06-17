@@ -11,6 +11,7 @@ import {
   isBrowserAISupported,
 } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/AuthProvider';
+const { isGuest } = useAuth()
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
