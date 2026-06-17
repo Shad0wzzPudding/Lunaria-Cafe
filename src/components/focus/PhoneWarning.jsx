@@ -110,7 +110,7 @@ export default function PhoneWarning() {
                 <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: '100%' }}
-                    animate={{ width: `${(remainingSeconds / 60) * 100}%` }}
+                    animate={{ width: `${(remainingSeconds / 30) * 100}%` }}
                     transition={{ duration: 1 }}
                     className="h-full bg-gradient-to-r from-amber-400 to-orange-400"
                   />
