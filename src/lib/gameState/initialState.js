@@ -38,10 +38,33 @@ export const initialState = {
     gazeFocusedSince: null,
   },
   journal: {
-    noteHeader: '',
-    note: '',
-    todoHeader: '',
-    todos: [],
+    noteHeader: 'Extra notes.',
+    note: 'All of the Potion must brews with Heart, so don\'t forget to put all of your effort into it <3\n\n(...Actully, it\'s Penisinalia for curing Mana sickness...) \n\n- From Lulys the cafe staff.',
+    todoHeader: 'To-do list for the week.',
+    todos: [{
+        "id": "todo-1781717297908-98pz1x",
+        "text": "Clean the tables.",
+        "completed": false,
+        "createdAt": 1781717297908
+      },
+      {
+        "id": "todo-1781717305452-fs9ygy",
+        "text": "Feed Rabbits",
+        "completed": false,
+        "createdAt": 1781717305452
+      },
+      {
+        "id": "todo-1781717375100-fctfnl",
+        "text": "Go gather suppiles from the town.",
+        "completed": false,
+        "createdAt": 1781717375100
+      },
+      {
+        "id": "todo-1781717385583-szwthd",
+        "text": "Wandering into the night....",
+        "completed": false,
+        "createdAt": 1781717385583
+      }],
   },
   npcs: {
     customers: [],
