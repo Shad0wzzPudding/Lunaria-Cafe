@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { initialState } from './initialState';
 
 function getDateString(date = new Date()) {
   return date.toISOString().split('T')[0];
