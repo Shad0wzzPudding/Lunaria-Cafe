@@ -59,6 +59,8 @@ export default function GameSettings() {
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const saveAi = (updates) => setAiConfigState(setAIConfig(updates));
+
+  //Dont sure if the following function is used anymore.
   const testAi = async () => {
     setAiTesting(true);
     const r = await checkAIHealth(aiConfig.apiUrl);
@@ -162,9 +164,6 @@ export default function GameSettings() {
                 </button>
               </div>
             </div>
-
-            
-            
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
               {`Status: ${aiStatus.status}${aiStatus.detail ? `\n${aiStatus.detail}` : ''}${

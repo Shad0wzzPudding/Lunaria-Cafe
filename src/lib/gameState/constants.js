@@ -1,4 +1,4 @@
-export const WARNING_DURATION_MS = 60_000; // 1 minute
+export const WARNING_DURATION_MS = 30_000; // 1 minute
 export const CLEAR_CONDITION_MS  = 2_000;  // 2 seconds of continuous good behaviour
 export const AUTO_SAVE_INTERVAL  = 30_000; // 30 seconds
 
