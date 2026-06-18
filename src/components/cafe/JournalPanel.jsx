@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { playJournalOpen } from '@/lib/audio/useCafeAudio';
+import { playJournalOpen, playJournalClose } from '@/lib/audio/useCafeAudio';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Check, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,16 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
     playJournalOpen(sfxVolume, masterVolume);
   }, []);
 
+  // Handle journal close with sound effect
+  const handleClose = () => {
+  playJournalClose(sfxVolume, masterVolume);
+  onClose();
+};
+
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') 
+        handleClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -42,7 +49,8 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget)
+          handleClose();
       }}
     >
       <div
@@ -63,7 +71,7 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute right-[6.8%] top-[6.4%] z-10 h-7 w-7 rounded-full bg-[#f3caa0]/70 text-[#744225] shadow-sm hover:bg-[#f7d8b6]"
             title="Close journal"
           >

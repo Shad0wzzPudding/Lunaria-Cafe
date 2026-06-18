@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { playPhoneWarning } from '@/lib/audio/useCafeAudio';
 
 const WARNING_DURATION_MS = 30000; // 30 seconds
 
@@ -11,24 +12,19 @@ export default function PhoneWarning() {
   const { sfxVolume, masterVolume } = state.audio;
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [soundPlayed, setSoundPlayed] = useState(false);
-  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!phoneWarningStart || !phoneDetected) {
       setRemainingSeconds(0);
       setSoundPlayed(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
       return;
     }
 
     // Play warning sound when warning starts
     if (!soundPlayed) {
-      playWarningSound();
-      setSoundPlayed(true);
-    }
+  playPhoneWarning(sfxVolume, masterVolume);
+  setSoundPlayed(true);
+}
 
     const updateCountdown = () => {
       const elapsed = Date.now() - phoneWarningStart;
@@ -41,33 +37,6 @@ export default function PhoneWarning() {
 
     return () => clearInterval(interval);
   }, [phoneWarningStart, phoneDetected, soundPlayed]);
-
-  const playWarningSound = () => {
-    // Calculate final volume (master * sfx)
-    const finalVolume = (masterVolume / 100) * (sfxVolume / 100);
-    
-    // If volume is 0, don't play sound
-    if (finalVolume === 0) {
-      return;
-    }
-
-    try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-
-      const audio = new Audio('/assets/warning-sound.mp3');
-      audio.volume = finalVolume;
-      audioRef.current = audio;
-      
-      audio.play().catch((err) => {
-        console.warn('Failed to play warning sound:', err);
-      });
-    } catch (err) {
-      console.warn('Failed to play warning sound:', err);
-    }
-  };
 
   const handleDismiss = () => {
     dispatch({ 
