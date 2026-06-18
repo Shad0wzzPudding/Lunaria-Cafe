@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Coins } from 'lucide-react';
+import { Coins, Armchair } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
@@ -43,6 +43,10 @@ export default function GameFeedback() {
               <div className="flex items-center gap-2">
               {popup.icon === 'coins' && (
                 <Coins className="h-4 w-4 text-amber-300 shrink-0" />
+              )}
+
+              {popup.icon === 'furniture' && (
+                <Armchair className="h-4 w-4 text-amber-300 shrink-0" />
               )}
 
               <p className="font-body text-sm text-foreground">

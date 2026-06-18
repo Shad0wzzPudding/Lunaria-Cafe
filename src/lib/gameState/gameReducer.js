@@ -4,7 +4,6 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
-import { Coins } from 'lucide-react';
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -396,7 +395,11 @@ export function gameReducer(state, action) {
             { ...item, id: item.id ?? `furn-${Date.now()}` },
           ],
         },
-        ui: pushPopup(state, { icon: 'coins', message: `Furniture Placed! -${price} coins` }, -price),
+       ui: pushPopup(state, {
+      icon: 'furniture',
+      message: `Furniture placed`,
+      amount: -price,
+    }),
       };
     }
 
