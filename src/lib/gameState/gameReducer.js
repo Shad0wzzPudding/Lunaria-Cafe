@@ -396,7 +396,7 @@ export function gameReducer(state, action) {
             { ...item, id: item.id ?? `furn-${Date.now()}` },
           ],
         },
-        ui: pushPopup(state, `🛋️ Placed! -${price} coins`, -price),
+        ui: pushPopup(state, { icon: 'coins', message: `Furniture Placed! -${price} coins` }, -price),
       };
     }
 
