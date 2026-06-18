@@ -123,3 +123,61 @@ export function stopAllCafeAudio() {
     el.currentTime = 0;
   });
 }
+
+export async function playJournalOpen(sfxVolume = 0.7, masterVolume = 0.8) {
+  try {
+    const ctx = ensureSfxCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.3 * sfxVolume * masterVolume;
+    master.connect(ctx.destination);
+
+    // Soft thud — book landing open
+    const bufferSize = ctx.sampleRate * 0.18;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.value = 400;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.001, now);
+    noiseGain.gain.linearRampToValueAtTime(1, now + 0.01);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(master);
+    noise.start(now);
+
+    // Page rustle — filtered noise sweep
+    const rustleSize = ctx.sampleRate * 0.35;
+    const rustleBuffer = ctx.createBuffer(1, rustleSize, ctx.sampleRate);
+    const rustleData = rustleBuffer.getChannelData(0);
+    for (let i = 0; i < rustleSize; i++) {
+      rustleData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rustleSize, 1.5);
+    }
+    const rustle = ctx.createBufferSource();
+    rustle.buffer = rustleBuffer;
+    const rustleFilter = ctx.createBiquadFilter();
+    rustleFilter.type = 'bandpass';
+    rustleFilter.frequency.setValueAtTime(2000, now + 0.05);
+    rustleFilter.frequency.linearRampToValueAtTime(800, now + 0.35);
+    rustleFilter.Q.value = 0.8;
+    const rustleGain = ctx.createGain();
+    rustleGain.gain.setValueAtTime(0.001, now + 0.05);
+    rustleGain.gain.linearRampToValueAtTime(0.6, now + 0.1);
+    rustleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    rustle.connect(rustleFilter);
+    rustleFilter.connect(rustleGain);
+    rustleGain.connect(master);
+    rustle.start(now + 0.05);
+  } catch {
+    /* ignore */
+  }
+}

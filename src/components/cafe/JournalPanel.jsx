@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { playJournalOpen } from '@/lib/audio/useCafeAudio';
 import { Check, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -8,6 +9,14 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
   const panelRef = useRef(null);
   const [todoText, setTodoText] = useState('');
   const todos = Array.isArray(journal?.todos) ? journal.todos : [];
+
+  // Play journal open sound on mount
+  useEffect(() => {
+    playJournalOpen(
+      journal?.sfxVolume ?? 0.7,
+      journal?.masterVolume ?? 0.8,
+    );
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {

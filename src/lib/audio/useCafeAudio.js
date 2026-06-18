@@ -21,4 +21,4 @@ export function useCafeAudio() {
   }, [audio, state.phase]);
 }
 
-export { playCoinChime } from './cafeAudioEngine';
+export { playCoinChime, playJournalOpen } from './cafeAudioEngine';
