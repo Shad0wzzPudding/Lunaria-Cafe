@@ -407,7 +407,7 @@ export function gameReducer(state, action) {
     ui: pushPopup(state, {
       icon: 'furniture',
       message: `Furniture placed`,
-      amount: -price,
+      coins: -price,
     }),
   };
 }
