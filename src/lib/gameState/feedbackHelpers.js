@@ -16,6 +16,7 @@ export function makePopup(payload, legacyCoins = 0) {
     id,
     icon: payload.icon ?? null,
     message: payload.message ?? '',
+    amount: payload.amount,
     coins: payload.amount > 0 ? payload.amount : 0,
   };
 }

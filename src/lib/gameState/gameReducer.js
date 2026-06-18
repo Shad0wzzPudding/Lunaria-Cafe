@@ -379,43 +379,29 @@ export function gameReducer(state, action) {
       };
     }
 
-  case 'BUY_AND_PLACE_FURNITURE': {
-  const { item } = action.payload;
-
-  const price = action.payload.price ?? item.price ?? 0;
-
-  if (state.coins < price) {
-    return {
-      ...state,
-      ui: pushPopup(
-        state,
-        `❌ Not enough coins! Need ${price} coins.`,
-        0
-      )
-    };
-  }
-
-  return {
-    ...state,
-    coins: state.coins - price,
-    cafe: {
-      ...state.cafe,
-      pendingFurniture: null,
-      furniture: [
-        ...state.cafe.furniture,
-        { ...item, id: item.id ?? `furn-${Date.now()}` },
-      ],
-    },
-    ui: pushPopup(
-      state,
-      {
-        icon: 'furniture',
-        message: 'Furniture placed',
-      },
-      -price
-    ),
-  };
-}
+    case 'BUY_AND_PLACE_FURNITURE': {
+      const { item, price } = action.payload;
+      if (state.coins < price) {
+        return { ...state, ui: pushPopup(state, `❌ Not enough coins! Need ${price} coins.`, 0) };
+      }
+      return {
+        ...state,
+        coins: state.coins - price,
+        cafe: {
+          ...state.cafe,
+          pendingFurniture: null,
+          furniture: [
+            ...state.cafe.furniture,
+            { ...item, id: item.id ?? `furn-${Date.now()}` },
+          ],
+        },
+       ui: pushPopup(state, {
+      icon: 'furniture',
+      message: `Furniture placed`,
+      amount: -price,
+    }),
+      };
+    }
 
     case 'ADD_FURNITURE':
       return {
