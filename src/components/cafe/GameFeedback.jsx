@@ -53,10 +53,10 @@ export default function GameFeedback() {
                 {popup.message}
               </p>
             </div>
-              {popup.amount !== undefined ? (
+              {popup.amount !== undefined || popup.coins !== undefined ? (
               <p className="font-pixel text-xs text-amber-300 mt-0.5">
-                {popup.amount > 0 ? '+' : ''}
-                {popup.amount} coins
+                {((popup.amount ?? popup.coins) > 0) ? '+' : ''}
+                {popup.amount ?? popup.coins} coins
               </p>
             ) : null}
             </motion.div>
