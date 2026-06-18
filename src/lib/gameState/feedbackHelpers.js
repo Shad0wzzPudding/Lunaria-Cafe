@@ -1,18 +1,41 @@
 let nextId = 1;
 
-export function makePopup(message, coins = 0) {
+export function makePopup(payload, legacyCoins = 0) {
   const id = `popup-${Date.now()}-${nextId++}`;
-  return { id, message, coins: coins > 0 ? coins : 0 };
+
+  if (typeof payload === 'string') {
+    return {
+      id,
+      icon: null,
+      message: payload,
+      coins: legacyCoins > 0 ? legacyCoins : 0,
+    };
+  }
+
+  return {
+    id,
+    icon: payload.icon ?? null,
+    message: payload.message ?? '',
+    coins: payload.amount > 0 ? payload.amount : 0,
+  };
 }
 
 export function makeCoinFloat(amount) {
-  return { id: `coin-${Date.now()}-${nextId++}`, amount };
+  return {
+    id: `coin-${Date.now()}-${nextId++}`,
+    amount,
+  };
 }
 
-export function pushPopup(state, message, coins = 0) {
+export function pushPopup(state, payload, legacyCoins = 0) {
+  const popup = makePopup(payload, legacyCoins);
+
   return {
     ...state.ui,
-    popups: [...state.ui.popups.slice(-6), makePopup(message, coins)],
-    coinFloat: coins > 0 ? makeCoinFloat(coins) : state.ui.coinFloat,
+    popups: [...state.ui.popups.slice(-6), popup],
+    coinFloat:
+      popup.coins > 0
+        ? makeCoinFloat(popup.coins)
+        : state.ui.coinFloat,
   };
 }

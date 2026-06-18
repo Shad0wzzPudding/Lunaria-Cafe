@@ -4,6 +4,7 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
+import { Coins } from 'lucide-react';
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -412,20 +413,32 @@ export function gameReducer(state, action) {
       };
 
     case 'REMOVE_FURNITURE': {
-      const target = state.cafe.furniture.find((f) => f.id === action.payload);
-      if (!target) return state;
-      const refund = Math.floor((FURNITURE_CATALOG[target.type]?.price ?? 0) * 0.5);
-      return {
-        ...state,
-        coins: state.coins + refund,
-        cafe: {
-          ...state.cafe,
-          furniture: state.cafe.furniture.filter((f) => f.id !== action.payload),
-        },
-        ui: refund > 0 ? pushPopup(state, `🪙 Sold for ${refund} coins`, refund) : state.ui,
-      };
-    }
+  const target = state.cafe.furniture.find((f) => f.id === action.payload);
+  if (!target) return state;
 
+  const refund = Math.floor(
+    (FURNITURE_CATALOG[target.type]?.price ?? 0) * 0.5
+  );
+
+  return {
+    ...state,
+    coins: state.coins + refund,
+    cafe: {
+      ...state.cafe,
+      furniture: state.cafe.furniture.filter(
+        (f) => f.id !== action.payload
+      ),
+    },
+    ui:
+      refund > 0
+        ? pushPopup(state, {
+            icon: 'coins',
+            message: `Furniture sold`,
+            amount: refund,
+          })
+        : state.ui,
+  };
+}
     // ── UI ───────────────────────────────────────────────────────────────────
 
     case 'DISMISS_UI_POPUP':

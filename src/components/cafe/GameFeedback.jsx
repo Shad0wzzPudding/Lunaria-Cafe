@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Coins } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
@@ -39,7 +40,15 @@ export default function GameFeedback() {
               exit={{ opacity: 0, x: -12, scale: 0.95 }}
               className="rounded-lg border border-amber-500/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm"
             >
-              <p className="font-body text-sm text-foreground">{popup.message}</p>
+              <div className="flex items-center gap-2">
+              {popup.icon === 'coins' && (
+                <Coins className="h-4 w-4 text-amber-300 shrink-0" />
+              )}
+
+              <p className="font-body text-sm text-foreground">
+                {popup.message}
+              </p>
+            </div>
               {popup.coins ? (
                 <p className="font-pixel text-xs text-amber-300 mt-0.5">+{popup.coins} coins</p>
               ) : null}
