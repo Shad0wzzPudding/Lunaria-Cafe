@@ -150,7 +150,7 @@ export async function playJournalClose(sfxVolume = 0.7, masterVolume = 0.8) {
 
 //Phone warning sound effect
 const PHONE_WARNING_SRC = '/assets/sounds/warning-sound.mp3';
-export async function playPhoneWarning(sfxVolume = 10, masterVolume = 0.8) {
+export async function playPhoneWarning(sfxVolume = 0.7, masterVolume = 0.8) {
   try {
     const audio = new Audio(PHONE_WARNING_SRC);
     audio.volume = Math.min(1, sfxVolume * masterVolume);
