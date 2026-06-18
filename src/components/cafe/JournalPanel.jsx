@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { playJournalOpen } from '@/lib/audio/useCafeAudio';
+import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Check, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -10,12 +11,13 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
   const [todoText, setTodoText] = useState('');
   const todos = Array.isArray(journal?.todos) ? journal.todos : [];
 
-  // Play journal open sound on mount
+  // Pull real audio settings from game state
+  const { state } = useGame();
+  const { sfxVolume, masterVolume } = state.audio;
+
+  // Play journal open sound on mount using real audio settings
   useEffect(() => {
-    playJournalOpen(
-      journal?.sfxVolume ?? 0.7,
-      journal?.masterVolume ?? 0.8,
-    );
+    playJournalOpen(sfxVolume, masterVolume);
   }, []);
 
   useEffect(() => {
@@ -70,18 +72,18 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
 
           {/* Left Header */}
           <input
-          type="text"
-          value={journal?.noteHeader ?? ''}
-          onChange={(event) =>
-            dispatch({
-              type: 'SET_JOURNAL_NOTE_HEADER',
-              payload: event.target.value
-            })
-          }
-          className="absolute z-20 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
-          style={{ left: '19%', top: '14.2%', width: '25%' }}
-          placeholder="Title..."
-        />
+            type="text"
+            value={journal?.noteHeader ?? ''}
+            onChange={(event) =>
+              dispatch({
+                type: 'SET_JOURNAL_NOTE_HEADER',
+                payload: event.target.value
+              })
+            }
+            className="absolute z-20 border-0 border-b border-[#8f5331]/25 bg-transparent px-1 pb-1 font-body text-[13px] font-semibold text-[#5c3825] outline-none placeholder:text-[#9b765a]/70 sm:text-sm"
+            style={{ left: '19%', top: '14.2%', width: '25%' }}
+            placeholder="Title..."
+          />
 
           {/* Left Body */}
           <textarea
