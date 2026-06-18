@@ -53,13 +53,12 @@ export default function GameFeedback() {
                 {popup.message}
               </p>
             </div>
-              {popup.coins ? (
-                <p className="font-pixel text-xs text-amber-300 mt-0.5">+{popup.coins} coins</p>
-              ) : null}
-
-              {popup.furniture ? (
-                <p className="font-pixel text-xs text-amber-300 mt-0.5">-{popup.coins} coins</p>
-              ) : null}
+              {popup.amount !== undefined ? (
+              <p className="font-pixel text-xs text-amber-300 mt-0.5">
+                {popup.amount > 0 ? '+' : ''}
+                {popup.amount} coins
+              </p>
+            ) : null}
             </motion.div>
           ))}
         </AnimatePresence>
