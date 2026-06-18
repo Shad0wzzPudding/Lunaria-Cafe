@@ -379,8 +379,10 @@ export function gameReducer(state, action) {
       };
     }
 
-    case 'BUY_AND_PLACE_FURNITURE': {
-  const { item, price } = action.payload;
+  case 'BUY_AND_PLACE_FURNITURE': {
+  const { item } = action.payload;
+
+  const price = action.payload.price ?? item.price ?? 0;
 
   if (state.coins < price) {
     return {
@@ -404,10 +406,14 @@ export function gameReducer(state, action) {
         { ...item, id: item.id ?? `furn-${Date.now()}` },
       ],
     },
-    ui: pushPopup(state, {
-      icon: 'furniture',
-      message: `Furniture placed`,
-    }, -price),
+    ui: pushPopup(
+      state,
+      {
+        icon: 'furniture',
+        message: 'Furniture placed',
+      },
+      -price
+    ),
   };
 }
 
