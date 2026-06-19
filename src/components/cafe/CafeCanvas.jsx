@@ -194,8 +194,9 @@ function drawCat(ctx, cat, time) {
     ctx.fillText('?', x, y - 28 + bobY + Math.sin(time * 0.003) * 2);
   }
 }
-  if (customer.seatedAt) {
-    const seat = furniture.find(f => f.id === customer.seatedAt);
+  function getCustomerDrawPos(customer, furniture) {
+    if (customer.seatedAt) {
+      const seat = furniture.find(f => f.id === customer.seatedAt);
     if (seat) {
       const cat = FURNITURE_CATALOG[seat.type];
       return { x: seat.x + seat.w / 2 + (cat?.seatDx ?? 0), y: seat.y + seat.h / 2 + (cat?.seatDy ?? 0), seated: true };
