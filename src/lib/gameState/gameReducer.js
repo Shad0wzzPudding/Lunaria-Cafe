@@ -499,6 +499,17 @@ export function gameReducer(state, action) {
         },
       };
 
+    case 'UPDATE_CAT':
+      return {
+        ...state,
+        npcs: {
+          ...state.npcs,
+          cats: state.npcs.cats.map((c) =>
+            c.id === action.payload.id ? { ...c, ...action.payload } : c
+          ),
+        },
+      };
+
     // ── Audio / Cafe meta ────────────────────────────────────────────────────
 
     case 'SET_AUDIO':

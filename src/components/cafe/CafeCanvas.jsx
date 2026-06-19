@@ -72,7 +72,7 @@ function collidesWithFurniture(x, y, radius, furniture) {
   return false;
 }
 
-const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3' };
+const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3', cat: '#c9b89a', catStripe: '#a89070', catInner: '#e8c4b0' };
 
 function drawRabbit(ctx, rabbit, time) {
   const { x, y, mood } = rabbit;
@@ -101,7 +101,99 @@ function drawRabbit(ctx, rabbit, time) {
   }
 }
 
-export function getCustomerDrawPos(customer, furniture) {
+function drawCat(ctx, cat, time) {
+  const { x, y, mood } = cat;
+  // Cats move less — use a slower, smaller bob
+  const bobY = Math.sin(time * 0.0015 + x * 0.5) * 1.5;
+
+  // Body (slightly rounder/larger than rabbit body)
+  ctx.fillStyle = COLORS.cat;
+  ctx.beginPath(); ctx.ellipse(x, y + bobY, 11, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Stripe on body
+  ctx.fillStyle = COLORS.catStripe;
+  ctx.beginPath(); ctx.ellipse(x - 2, y + bobY - 1, 2.5, 5, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 3, y + bobY, 2, 4.5, -0.15, 0, Math.PI * 2); ctx.fill();
+
+  // Head
+  ctx.fillStyle = COLORS.cat;
+  ctx.beginPath(); ctx.arc(x, y - 9 + bobY, 8, 0, Math.PI * 2); ctx.fill();
+
+  // Pointy ears (triangles)
+  ctx.fillStyle = COLORS.cat;
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y - 14 + bobY);
+  ctx.lineTo(x - 12, y - 22 + bobY);
+  ctx.lineTo(x - 2, y - 18 + bobY);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 7, y - 14 + bobY);
+  ctx.lineTo(x + 12, y - 22 + bobY);
+  ctx.lineTo(x + 2, y - 18 + bobY);
+  ctx.closePath(); ctx.fill();
+
+  // Inner ear
+  ctx.fillStyle = COLORS.catInner;
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y - 15 + bobY);
+  ctx.lineTo(x - 10.5, y - 21 + bobY);
+  ctx.lineTo(x - 3, y - 18 + bobY);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 7, y - 15 + bobY);
+  ctx.lineTo(x + 10.5, y - 21 + bobY);
+  ctx.lineTo(x + 3, y - 18 + bobY);
+  ctx.closePath(); ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#2a2040';
+  if (mood === 'lazy') {
+    // Half-closed eyes (slits)
+    ctx.fillRect(x - 5, y - 11 + bobY, 3, 1.5);
+    ctx.fillRect(x + 2, y - 11 + bobY, 3, 1.5);
+  } else {
+    ctx.beginPath(); ctx.arc(x - 3, y - 11 + bobY, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 3, y - 11 + bobY, 2, 0, Math.PI * 2); ctx.fill();
+    // Eye shine for curious
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(x - 2.2, y - 11.8 + bobY, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 3.8, y - 11.8 + bobY, 0.8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Tiny nose
+  ctx.fillStyle = '#d4829a';
+  ctx.beginPath(); ctx.arc(x, y - 8 + bobY, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // Whiskers
+  ctx.strokeStyle = 'rgba(200,190,180,0.7)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(x - 2, y - 8 + bobY); ctx.lineTo(x - 14, y - 9 + bobY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 2, y - 7 + bobY); ctx.lineTo(x - 14, y - 6.5 + bobY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 2, y - 8 + bobY); ctx.lineTo(x + 14, y - 9 + bobY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 2, y - 7 + bobY); ctx.lineTo(x + 14, y - 6.5 + bobY); ctx.stroke();
+
+  // Tail (curved arc)
+  ctx.strokeStyle = COLORS.cat;
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 9, y + 5 + bobY);
+  ctx.quadraticCurveTo(x + 22, y + 2 + bobY, x + 18, y - 6 + bobY);
+  ctx.stroke();
+
+  // Mood indicator
+  if (mood === 'lazy') {
+    ctx.fillStyle = '#c8d8f0'; ctx.font = '8px sans-serif';
+    ctx.fillText('z', x + 16, y - 18 + bobY + Math.sin(time * 0.002) * 3);
+    ctx.fillText('z', x + 20, y - 23 + bobY + Math.sin(time * 0.002 + 1) * 3);
+  }
+  if (mood === 'curious') {
+    ctx.fillStyle = 'rgba(220,200,255,0.5)';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', x, y - 28 + bobY + Math.sin(time * 0.003) * 2);
+  }
+}
   if (customer.seatedAt) {
     const seat = furniture.find(f => f.id === customer.seatedAt);
     if (seat) {
@@ -302,6 +394,14 @@ export default function CafeCanvas() {
     }
 
     // =========================
+    // Draw Cats
+    // =========================
+
+    for (const cat of state.npcs.cats) {
+      drawCat(ctx, cat, time);
+    }
+
+    // =========================
     // Draw Customers
     // =========================
 
@@ -352,7 +452,7 @@ export default function CafeCanvas() {
     }
 
     animRef.current = requestAnimationFrame(draw);
-  }, [state.cafe.furniture, state.cafe.pendingFurniture, state.npcs.rabbits, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
+  }, [state.cafe.furniture, state.cafe.pendingFurniture, state.npcs.rabbits, state.npcs.cats, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
@@ -405,6 +505,54 @@ export default function CafeCanvas() {
   return () => clearInterval(interval);
 
 }, [state.npcs.rabbits, state.cafe.furniture, dispatch]);
+
+  // ── Cat movement (every 4 s; shorter steps — cats are lazier) ──────────────
+  useEffect(() => {
+  const interval = setInterval(() => {
+
+    state.npcs.cats.forEach((c) => {
+      // Cats take smaller, less frequent steps
+      const moveX = (Math.random() - 0.5) * 20;
+      const moveY = (Math.random() - 0.5) * 20;
+
+      const newX = Math.max(
+        40,
+        Math.min(CAFE_W - 40, c.x + moveX)
+      );
+
+      const newY = Math.max(
+        80,
+        Math.min(CAFE_H - 40, c.y + moveY)
+      );
+
+      // Cat collision radius (slightly larger than rabbit)
+      const radius = 14;
+
+      const blocked = collidesWithFurniture(
+        newX,
+        newY,
+        radius,
+        state.cafe.furniture
+      );
+
+      if (!blocked) {
+        dispatch({
+          type: 'UPDATE_CAT',
+          payload: {
+            id: c.id,
+            x: newX,
+            y: newY,
+          },
+        });
+      }
+
+    });
+
+  }, 4000);
+
+  return () => clearInterval(interval);
+
+}, [state.npcs.cats, state.cafe.furniture, dispatch]);
 
   const handleCanvasClick = (event) => {
     if (!state.cafe.decorateMode) return;

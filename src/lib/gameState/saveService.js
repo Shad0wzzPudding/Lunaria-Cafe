@@ -74,6 +74,7 @@ export function serializeGameState(state) {
     },
     npcs: {
       rabbits: state.npcs.rabbits,
+      cats: state.npcs.cats,
       major: state.npcs.major,
       customers: [],
     },
@@ -154,6 +155,10 @@ export function mergeLoadedSave(loaded, initialState) {
         loaded.npcs?.rabbits?.length > 0
           ? loaded.npcs.rabbits
           : initialState.npcs.rabbits,
+      cats:
+        loaded.npcs?.cats?.length > 0
+          ? loaded.npcs.cats
+          : initialState.npcs.cats,
       major:
         loaded.npcs?.major?.length > 0
           ? loaded.npcs.major
