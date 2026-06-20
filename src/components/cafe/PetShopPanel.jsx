@@ -6,10 +6,10 @@ import { Coins, PawPrint, Cat, Rabbit, Heart, X } from 'lucide-react';
 const PET_SHOP_ART = '/assets/pet-shop.png';
 
 const TABS = [
-  { id: 'all',    Icon: PawPrint, label: 'All Pets'  },
-  { id: 'cat',    Icon: Cat,      label: 'Cats'       },
-  { id: 'rabbit', Icon: Rabbit,   label: 'Rabbits'    },
-  { id: 'owned',  Icon: Heart,    label: 'My Pets'    },
+  { id: 'all',    Icon: PawPrint, label: 'All Pets' },
+  { id: 'cat',    Icon: Cat,      label: 'Cats'      },
+  { id: 'rabbit', Icon: Rabbit,   label: 'Rabbits'   },
+  { id: 'owned',  Icon: Heart,    label: 'My Pets'   },
 ];
 
 export default function PetShopPanel({ onClose }) {
@@ -17,12 +17,15 @@ export default function PetShopPanel({ onClose }) {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPet, setSelectedPet] = useState(PET_LIST[0]);
 
-  const ownedTypes = new Set((state.pets?.owned ?? []).map((p) => p.type));
+  const ownedCounts = (state.pets?.owned ?? []).reduce((acc, p) => {
+    acc[p.type] = (acc[p.type] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const filteredPets = PET_LIST.filter((pet) => {
-    if (activeTab === 'owned')  return ownedTypes.has(pet.type);
-    if (activeTab === 'cat')    return pet.category === 'cat';
-    if (activeTab === 'rabbit') return pet.category === 'rabbit';
+    if (activeTab === 'owned')  return (ownedCounts[pet.type] ?? 0) > 0;
+    if (activeTab === 'cat')    return pet.category === 'cat'    || pet.npcType === 'cat';
+    if (activeTab === 'rabbit') return pet.category === 'rabbit' || pet.npcType === 'rabbit';
     return true;
   });
 
@@ -37,9 +40,9 @@ export default function PetShopPanel({ onClose }) {
     dispatch({ type: 'BUY_PET', payload: { petType: selectedPet.type } });
   };
 
-  const isOwned   = selectedPet ? ownedTypes.has(selectedPet.type) : false;
-  const canAfford = selectedPet ? state.coins >= selectedPet.price : false;
-  const rarity    = selectedPet ? RARITY_CONFIG[selectedPet.rarity] : null;
+  const canAfford  = selectedPet ? state.coins >= selectedPet.price : false;
+  const ownedCount = selectedPet ? (ownedCounts[selectedPet.type] ?? 0) : 0;
+  const rarity     = selectedPet ? RARITY_CONFIG[selectedPet.rarity] : null;
 
   return (
     <div
@@ -52,7 +55,7 @@ export default function PetShopPanel({ onClose }) {
         aria-modal="true"
         aria-label="Pet Shop"
       >
-        {/* Background art — pointer-events disabled so it never blocks inputs */}
+        {/* Background art */}
         <img
           src={PET_SHOP_ART}
           className="block h-auto w-auto max-h-[88vh] max-w-[95vw]"
@@ -65,7 +68,7 @@ export default function PetShopPanel({ onClose }) {
         {/* Interactive overlay */}
         <div className="absolute inset-0 z-10">
 
-          {/* Close button — top-right corner of the frame */}
+          {/* Close button */}
           <button
             type="button"
             onClick={onClose}
@@ -100,18 +103,18 @@ export default function PetShopPanel({ onClose }) {
             ))}
           </div>
 
-          {/* Pet grid — 4 columns × 2 rows */}
+          {/* Pet grid — 4 cols to match the art's card slots */}
           <div
             className="absolute grid grid-cols-4 content-start gap-1.5 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             style={{ left: '10%', top: '26%', width: '45.5%', height: '65%' }}
           >
             {filteredPets.length === 0 ? (
               <div className="col-span-4 flex items-center justify-center pt-8 font-body text-xs text-[#8f6a40]/50">
-                {activeTab === 'owned' ? 'No pets owned yet.' : 'None found.'}
+                {activeTab === 'owned' ? 'No pets adopted yet.' : 'None found.'}
               </div>
             ) : (
               filteredPets.map((pet) => {
-                const owned    = ownedTypes.has(pet.type);
+                const count    = ownedCounts[pet.type] ?? 0;
                 const selected = selectedPet?.type === pet.type;
                 const rar      = RARITY_CONFIG[pet.rarity];
                 return (
@@ -136,9 +139,9 @@ export default function PetShopPanel({ onClose }) {
                       <Coins className="h-2.5 w-2.5 text-yellow-500" strokeWidth={2.5} />
                       {pet.price}
                     </span>
-                    {owned && (
-                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] font-bold text-white">
-                        ✓
+                    {count > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#8f5a30] font-pixel text-[8px] text-[#fff0d7]">
+                        {count}
                       </span>
                     )}
                   </button>
@@ -149,7 +152,7 @@ export default function PetShopPanel({ onClose }) {
 
           {/* ── RIGHT PANEL ────────────────────────────────── */}
 
-          {/* Pet name — scroll banner area */}
+          {/* Pet name — scroll banner */}
           <div
             className="absolute flex items-center justify-center"
             style={{ left: '59%', top: '15%', width: '32%', height: '8%' }}
@@ -180,39 +183,37 @@ export default function PetShopPanel({ onClose }) {
                   <Coins className="h-3.5 w-3.5 text-yellow-500" strokeWidth={2.5} />
                   <span className="font-pixel text-[13px] text-[#5c3620]">{selectedPet.price}</span>
                 </div>
+                {ownedCount > 0 && (
+                  <span className="font-body text-[10px] text-[#8f6a40]">
+                    In cafe: {ownedCount}
+                  </span>
+                )}
               </>
             ) : (
               <span className="font-body text-xs text-[#8f6a40]/50">Select a pet</span>
             )}
           </div>
 
-          {/* Buy / Owned button area — purple button at panel bottom */}
+          {/* Buy button area */}
           <div
             className="absolute flex flex-col items-center justify-center gap-1"
             style={{ left: '62%', top: '74%', width: '27%', height: '17%' }}
           >
             {selectedPet && (
-              isOwned ? (
-                <div className="flex items-center gap-1.5 rounded-lg bg-green-700/40 px-4 py-2 font-pixel text-[11px] text-green-300">
-                  <span>✓</span> Owned
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleBuy}
-                  disabled={!canAfford}
-                  className={`flex items-center gap-1.5 rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
-                    canAfford
-                      ? 'bg-[#6b4c8a] text-[#f0d8ff] shadow-md hover:bg-[#7d5ca0]'
-                      : 'cursor-not-allowed bg-[#6b4c8a]/30 text-[#9b88aa]'
-                  }`}
-                >
-                  <Coins className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {canAfford ? `Buy  ${selectedPet.price}` : 'Need more coins'}
-                </button>
-              )
+              <button
+                type="button"
+                onClick={handleBuy}
+                disabled={!canAfford}
+                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
+                  canAfford
+                    ? 'bg-[#6b4c8a] text-[#f0d8ff] shadow-md hover:bg-[#7d5ca0]'
+                    : 'cursor-not-allowed bg-[#6b4c8a]/30 text-[#9b88aa]'
+                }`}
+              >
+                <Coins className="h-3.5 w-3.5" strokeWidth={2.5} />
+                {canAfford ? `Adopt  ${selectedPet.price}` : 'Need more coins'}
+              </button>
             )}
-            {/* Current coins indicator */}
             <div className="flex items-center gap-1">
               <Coins className="h-3 w-3 text-yellow-400" strokeWidth={2.5} />
               <span className="font-pixel text-[9px] text-[#7a5535]">{state.coins} coins</span>

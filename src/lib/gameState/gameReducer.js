@@ -449,20 +449,27 @@ export function gameReducer(state, action) {
       const { petType } = action.payload;
       const pet = PET_CATALOG[petType];
       if (!pet) return state;
-      const alreadyOwned = (state.pets?.owned ?? []).some((p) => p.type === petType);
-      if (alreadyOwned) return state;
       if (state.coins < pet.price) {
         return { ...state, ui: pushPopup(state, `❌ Not enough coins! Need ${pet.price} coins.`, 0) };
       }
+      const npcId = `${pet.npcType}-${Date.now()}`;
+      const newNpc = {
+        id: npcId,
+        x: 100 + Math.random() * 500,
+        y: 100 + Math.random() * 300,
+        mood: pet.mood,
+      };
+      const npcKey = pet.npcType === 'rabbit' ? 'rabbits' : 'cats';
       return {
         ...state,
         coins: state.coins - pet.price,
         pets: {
           ...state.pets,
-          owned: [
-            ...(state.pets?.owned ?? []),
-            { id: `pet-${Date.now()}`, type: petType, acquiredAt: Date.now() },
-          ],
+          owned: [...(state.pets?.owned ?? []), { id: npcId, type: petType, acquiredAt: Date.now() }],
+        },
+        npcs: {
+          ...state.npcs,
+          [npcKey]: [...state.npcs[npcKey], newNpc],
         },
         ui: pushPopup(state, { icon: 'coins', message: `${pet.name} joined your cafe!`, amount: -pet.price }),
       };
