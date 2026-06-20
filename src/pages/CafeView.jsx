@@ -19,10 +19,11 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown } from 'lucide-react';
+import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
+import PetShopPanel from '@/components/cafe/PetShopPanel';
 
 const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
@@ -308,6 +309,7 @@ export default function CafeView() {
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
+  const [showPetShop, setShowPetShop] = useState(false);
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -463,6 +465,10 @@ export default function CafeView() {
         />
       )}
 
+      {showPetShop && (
+        <PetShopPanel onClose={() => setShowPetShop(false)} />
+      )}
+
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
         <motion.div
           className="relative shrink-0"
@@ -551,6 +557,15 @@ export default function CafeView() {
                   {state.cafe.timeOfDay === 'day' ? '🌙 Night' : '☀️ Day'}
                 </Button>
               )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2 font-pixel text-xs"
+                  onClick={() => setShowPetShop(true)}
+                >
+                  <PawPrint className="w-3.5 h-3.5" />
+                  Pet Shop
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"

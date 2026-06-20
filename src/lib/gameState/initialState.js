@@ -112,4 +112,7 @@ export const initialState = {
     popups: [],
     coinFloat: null,
   },
+  pets: {
+    owned: [],
+  },
 };

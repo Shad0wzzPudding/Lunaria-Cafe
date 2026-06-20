@@ -78,6 +78,9 @@ export function serializeGameState(state) {
       major: state.npcs.major,
       customers: [],
     },
+    pets: {
+      owned: state.pets?.owned ?? [],
+    },
   };
 }
 
@@ -163,6 +166,11 @@ export function mergeLoadedSave(loaded, initialState) {
         loaded.npcs?.major?.length > 0
           ? loaded.npcs.major
           : initialState.npcs.major,
+    },
+    pets: {
+      owned: Array.isArray(loaded.pets?.owned)
+        ? loaded.pets.owned.filter((p) => p && typeof p.type === 'string')
+        : initialState.pets.owned,
     },
     phase: 'menu',
     focus: { ...initialState.focus },

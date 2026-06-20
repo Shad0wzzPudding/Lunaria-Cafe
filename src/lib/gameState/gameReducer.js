@@ -1,6 +1,7 @@
 import { getChaosStage } from '@/lib/ai/aiIntegration';
 import { pushPopup } from '@/lib/gameState/feedbackHelpers';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
+import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
@@ -442,6 +443,31 @@ export function gameReducer(state, action) {
         : state.ui,
   };
 }
+    // ── Pet Shop ─────────────────────────────────────────────────────────────
+
+    case 'BUY_PET': {
+      const { petType } = action.payload;
+      const pet = PET_CATALOG[petType];
+      if (!pet) return state;
+      const alreadyOwned = (state.pets?.owned ?? []).some((p) => p.type === petType);
+      if (alreadyOwned) return state;
+      if (state.coins < pet.price) {
+        return { ...state, ui: pushPopup(state, `❌ Not enough coins! Need ${pet.price} coins.`, 0) };
+      }
+      return {
+        ...state,
+        coins: state.coins - pet.price,
+        pets: {
+          ...state.pets,
+          owned: [
+            ...(state.pets?.owned ?? []),
+            { id: `pet-${Date.now()}`, type: petType, acquiredAt: Date.now() },
+          ],
+        },
+        ui: pushPopup(state, { icon: 'coins', message: `${pet.name} joined your cafe!`, amount: -pet.price }),
+      };
+    }
+
     // ── UI ───────────────────────────────────────────────────────────────────
 
     case 'DISMISS_UI_POPUP':
