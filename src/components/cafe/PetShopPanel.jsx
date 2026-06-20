@@ -17,10 +17,15 @@ export default function PetShopPanel({ onClose }) {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPet, setSelectedPet] = useState(PET_LIST[0]);
 
-  const ownedCounts = (state.pets?.owned ?? []).reduce((acc, p) => {
-    acc[p.type] = (acc[p.type] ?? 0) + 1;
-    return acc;
-  }, {});
+  const ownedCounts = {};
+  for (const rabbit of state.npcs.rabbits) {
+    const type = rabbit.mood === 'happy' ? 'happy_rabbit' : rabbit.mood === 'sleepy' ? 'sleepy_rabbit' : null;
+    if (type) ownedCounts[type] = (ownedCounts[type] ?? 0) + 1;
+  }
+  for (const cat of state.npcs.cats) {
+    const type = cat.mood === 'curious' ? 'curious_cat' : cat.mood === 'lazy' ? 'lazy_cat' : null;
+    if (type) ownedCounts[type] = (ownedCounts[type] ?? 0) + 1;
+  }
 
   const filteredPets = PET_LIST.filter((pet) => {
     if (activeTab === 'owned')  return (ownedCounts[pet.type] ?? 0) > 0;
