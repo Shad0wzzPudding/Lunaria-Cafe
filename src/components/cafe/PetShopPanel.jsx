@@ -111,7 +111,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Pet grid — 4 cols × 2 rows to match the art's card slots */}
           <div
             className="absolute grid grid-cols-4 gap-1.5"
-            style={{ left: '10%', top: '26%', width: '45.5%', height: '65%', gridTemplateRows: 'repeat(2, 1fr)' }}
+            style={{ left: '10%', top: '26%', width: '45.5%', height: '42%', gridTemplateRows: 'repeat(2, 1fr)' }}
           >
             {filteredPets.length === 0 ? (
               <div className="col-span-4 row-span-2 flex items-center justify-center font-body text-xs text-[#8f6a40]/50">
@@ -127,7 +127,7 @@ export default function PetShopPanel({ onClose }) {
                     key={pet.type}
                     type="button"
                     onClick={() => setSelectedPet(pet)}
-                    className={`relative h-full flex flex-col items-center justify-center gap-1 rounded-lg border-2 p-1.5 transition-all ${
+                    className={`relative h-full flex flex-col items-center justify-center gap-0.5 rounded-lg border-2 p-1 transition-all ${
                       selected
                         ? 'border-[#8f5a30] bg-[#8f5a30]/20 shadow-sm'
                         : 'border-[#c4956a]/30 bg-[#f5e4c8]/30 hover:border-[#8f5a30]/50 hover:bg-[#8f5a30]/10'
