@@ -111,7 +111,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Pet grid — 4 cols × 2 rows to match the art's card slots */}
           <div
             className="absolute grid grid-cols-4 gap-1.5"
-            style={{ left: '13%', top: '26%', width: '39.2%', height: '42%', gridTemplateRows: 'repeat(2, 1fr)' }}
+            style={{ left: '13%', top: '26%', width: '41.2%', height: '42%', gridTemplateRows: 'repeat(2, 1fr)' }}
           >
             {filteredPets.length === 0 ? (
               <div className="col-span-4 row-span-2 flex items-center justify-center font-body text-xs text-[#8f6a40]/50">
