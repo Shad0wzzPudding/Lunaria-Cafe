@@ -7,4 +7,4 @@ if (!url || !anonKey) {
   console.warn('Supabase env vars missing. Auth/saves disabled.');
 }
 
-export const supabase = createClient(url ?? '', anonKey ?? '');
+export const supabase = url && anonKey ? createClient(url, anonKey) : null;

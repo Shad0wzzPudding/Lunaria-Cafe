@@ -180,6 +180,7 @@ export function mergeLoadedSave(loaded, initialState) {
 }
 
 export async function loadPlayerSave(userId) {
+  if (!supabase) return null;
   const { data, error } = await supabase
     .from('player_saves')
     .select('save_data')
@@ -191,6 +192,7 @@ export async function loadPlayerSave(userId) {
 }
 
 export async function savePlayerSave(userId, state) {
+  if (!supabase) return;
   const save_data = serializeGameState(state);
   const { error } = await supabase.from('player_saves').upsert(
     {

@@ -9,6 +9,8 @@ export function AuthProvider({ children }) {
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -16,7 +18,6 @@ export function AuthProvider({ children }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      // If a real session starts, exit guest mode automatically
       if (session?.user) setIsGuest(false);
     });
 
@@ -24,14 +25,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signUp = (email, password) =>
-    supabase.auth.signUp({ email, password });
+    supabase?.auth.signUp({ email, password });
 
   const signIn = (email, password) =>
-    supabase.auth.signInWithPassword({ email, password });
+    supabase?.auth.signInWithPassword({ email, password });
 
   const signOut = () => {
     setIsGuest(false);
-    return supabase.auth.signOut();
+    return supabase?.auth.signOut();
   };
 
   const signInAsGuest = () => setIsGuest(true);
