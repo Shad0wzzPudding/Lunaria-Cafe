@@ -157,24 +157,31 @@ export default function PetShopPanel({ onClose }) {
 
           {/* ── RIGHT PANEL ────────────────────────────────── */}
 
-          {/* Pet name — scroll banner */}
+          {/* Pet name — scroll banner, moved up 3% */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '59%', top: '20%', width: '32%', height: '8%' }}
+            style={{ left: '59%', top: '17%', width: '32%', height: '8%' }}
           >
             <span className="truncate px-2 font-pixel text-[13px] text-[#5c3620]">
               {selectedPet?.name ?? '—'}
             </span>
           </div>
 
-          {/* Pet detail box */}
+          {/* Emoji — moved up 5% from original 29% */}
           <div
-            className="absolute flex flex-col items-center justify-center gap-2 p-3"
-            style={{ left: '59%', top: '29%', width: '32%', height: '48%' }}
+            className="absolute flex items-center justify-center"
+            style={{ left: '59%', top: '24%', width: '32%', height: '12%' }}
+          >
+            {selectedPet && <span className="text-5xl leading-none">{selectedPet.emoji}</span>}
+          </div>
+
+          {/* Rarity + desc + price + in cafe — moved down 4% from original 29% */}
+          <div
+            className="absolute flex flex-col items-center justify-start gap-2 p-2"
+            style={{ left: '59%', top: '33%', width: '32%', height: '44%' }}
           >
             {selectedPet ? (
               <>
-                <span className="text-5xl leading-none">{selectedPet.emoji}</span>
                 <span
                   className="rounded px-1.5 py-0.5 font-pixel text-[9px]"
                   style={{ color: rarity?.color, background: `${rarity?.color}22` }}
@@ -200,9 +207,10 @@ export default function PetShopPanel({ onClose }) {
           </div>
 
           {/* Buy button area */}
+          {/* Buy button — moved up 4% */}
           <div
-            className="absolute flex flex-col items-center justify-center gap-1"
-            style={{ left: '62%', top: '79%', width: '27%', height: '17%' }}
+            className="absolute flex items-center justify-center"
+            style={{ left: '62%', top: '75%', width: '27%', height: '10%' }}
           >
             {selectedPet && (
               <button
@@ -219,10 +227,15 @@ export default function PetShopPanel({ onClose }) {
                 {canAfford ? `Adopt  ${selectedPet.price}` : 'Need more coins'}
               </button>
             )}
-            <div className="flex items-center gap-1">
-              <Coins className="h-3 w-3 text-yellow-400" strokeWidth={2.5} />
-              <span className="font-pixel text-[9px] text-[#7a5535]">{state.coins} coins</span>
-            </div>
+          </div>
+
+          {/* Coins indicator — moved left 5% from buy button */}
+          <div
+            className="absolute flex items-center justify-center gap-1"
+            style={{ left: '57%', top: '86%', width: '27%', height: '5%' }}
+          >
+            <Coins className="h-3 w-3 text-yellow-400" strokeWidth={2.5} />
+            <span className="font-pixel text-[9px] text-[#7a5535]">{state.coins} coins</span>
           </div>
 
         </div>
