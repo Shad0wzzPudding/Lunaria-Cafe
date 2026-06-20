@@ -170,7 +170,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Emoji — moved up 5% from original 29% */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '59%', top: '29%', width: '32%', height: '12%' }}
+            style={{ left: '59%', top: '34%', width: '32%', height: '12%' }}
           >
             {selectedPet && <span className="text-5xl leading-none">{selectedPet.emoji}</span>}
           </div>
@@ -178,7 +178,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Rarity + desc + price + in cafe — moved down 4% from original 29% */}
           <div
             className="absolute flex flex-col items-center justify-start gap-2 p-2"
-            style={{ left: '59%', top: '58%', width: '32%', height: '44%' }}
+            style={{ left: '59%', top: '43%', width: '32%', height: '44%' }}
           >
             {selectedPet ? (
               <>
@@ -210,7 +210,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Buy button — moved up 4% */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '72%', top: '80%', width: '27%', height: '10%' }}
+            style={{ left: '72%', top: '81%', width: '24.3%', height: '10%' }}
           >
             {selectedPet && (
               <button
@@ -232,7 +232,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Coins indicator — moved left 5% from buy button */}
           <div
             className="absolute flex items-center justify-center gap-1"
-            style={{ left: '54%', top: '82%', width: '27%', height: '5%' }}
+            style={{ left: '55%', top: '84%', width: '27%', height: '5%' }}
           >
             <span className="font-pixel text-[14px] text-[#7a5535]">{state.coins} coins</span>
           </div>
