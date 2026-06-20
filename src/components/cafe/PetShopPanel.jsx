@@ -160,7 +160,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Pet name — scroll banner */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '59%', top: '15%', width: '32%', height: '8%' }}
+            style={{ left: '59%', top: '20%', width: '32%', height: '8%' }}
           >
             <span className="truncate px-2 font-pixel text-[13px] text-[#5c3620]">
               {selectedPet?.name ?? '—'}
@@ -170,7 +170,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Pet detail box */}
           <div
             className="absolute flex flex-col items-center justify-center gap-2 p-3"
-            style={{ left: '59%', top: '24%', width: '32%', height: '48%' }}
+            style={{ left: '59%', top: '29%', width: '32%', height: '48%' }}
           >
             {selectedPet ? (
               <>
@@ -202,7 +202,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Buy button area */}
           <div
             className="absolute flex flex-col items-center justify-center gap-1"
-            style={{ left: '62%', top: '74%', width: '27%', height: '17%' }}
+            style={{ left: '62%', top: '79%', width: '27%', height: '17%' }}
           >
             {selectedPet && (
               <button
