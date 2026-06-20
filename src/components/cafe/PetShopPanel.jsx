@@ -167,18 +167,18 @@ export default function PetShopPanel({ onClose }) {
             </span>
           </div>
 
-          {/* Emoji — moved up 5% from original 29% */}
+          {/* Emoji */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '59%', top: '32%', width: '32%', height: '12%' }}
+            style={{ left: '59%', top: '35%', width: '32%', height: '12%' }}
           >
             {selectedPet && <span className="text-5xl leading-none">{selectedPet.emoji}</span>}
           </div>
 
-          {/* Rarity + desc + price + in cafe — moved down 4% from original 29% */}
+          {/* Rarity + desc + price + in cafe */}
           <div
             className="absolute flex flex-col items-center justify-start gap-2 p-2"
-            style={{ left: '59%', top: '44%', width: '32%', height: '44%' }}
+            style={{ left: '59%', top: '43%', width: '32%', height: '44%' }}
           >
             {selectedPet ? (
               <>
@@ -206,18 +206,17 @@ export default function PetShopPanel({ onClose }) {
             )}
           </div>
 
-          {/* Buy button area */}
-          {/* Buy button — moved up 4% */}
+          {/* Buy button */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '72%', top: '81%', width: '21.9%', height: '10%' }}
+            style={{ left: '72%', top: '81%', width: '24.3%', height: '10%' }}
           >
             {selectedPet && (
               <button
                 type="button"
                 onClick={handleBuy}
                 disabled={!canAfford}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
+                className={`w-full flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
                   canAfford
                     ? 'bg-[#6b4c8a] text-[#f0d8ff] shadow-md hover:bg-[#7d5ca0]'
                     : 'cursor-not-allowed bg-[#6b4c8a]/30 text-[#9b88aa]'
@@ -229,10 +228,10 @@ export default function PetShopPanel({ onClose }) {
             )}
           </div>
 
-          {/* Coins indicator — moved left 5% from buy button */}
+          {/* Coins indicator */}
           <div
             className="absolute flex items-center justify-center gap-1"
-            style={{ left: '55.5%', top: '84%', width: '27%', height: '5%' }}
+            style={{ left: '55%', top: '84%', width: '27%', height: '5%' }}
           >
             <span className="font-pixel text-[14px] text-[#7a5535]">{state.coins} coins</span>
           </div>
