@@ -89,7 +89,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Tab row */}
           <div
             className="absolute flex items-center"
-            style={{ left: '5%', top: '14.5%', width: '45.5%', height: '5.5%' }}
+            style={{ left: '15%', top: '18.5%', width: '45.5%', height: '5.5%' }}
           >
             {TABS.map(({ id, Icon, label }) => (
               <button
