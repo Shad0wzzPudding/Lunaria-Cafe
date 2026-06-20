@@ -24,6 +24,7 @@ import { motion } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
+import { Sounds } from '@/lib/sounds';
 
 const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
@@ -320,6 +321,7 @@ export default function CafeView() {
 
   useEffect(() => {
     if (state.focus.status === 'distracted') {
+      Sounds.sessionFinishFail();
       dispatch({ type: 'END_FOCUS' });
     }
   }, [state.focus.status, dispatch]);
@@ -466,7 +468,7 @@ export default function CafeView() {
       )}
 
       {showPetShop && (
-        <PetShopPanel onClose={() => setShowPetShop(false)} />
+        <PetShopPanel onClose={() => { Sounds.petShopClose(); setShowPetShop(false); }} />
       )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
@@ -561,7 +563,7 @@ export default function CafeView() {
                   variant="secondary"
                   size="sm"
                   className="gap-2 font-pixel text-xs"
-                  onClick={() => setShowPetShop(true)}
+                  onClick={() => { Sounds.petShopOpen(); setShowPetShop(true); }}
                 >
                   <PawPrint className="w-3.5 h-3.5" />
                   Pet Shop
