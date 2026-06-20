@@ -231,7 +231,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Coins indicator */}
           <div
             className="absolute flex items-center justify-center gap-1"
-            style={{ left: '55%', top: '84%', width: '27%', height: '5%' }}
+            style={{ left: '55.5%', top: '84%', width: '27%', height: '5%' }}
           >
             <span className="font-pixel text-[14px] text-[#7a5535]">{state.coins} coins</span>
           </div>
