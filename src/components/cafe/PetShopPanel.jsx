@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { PET_LIST, RARITY_CONFIG } from '@/lib/cafe/petCatalog.js';
 import { Coins, PawPrint, Cat, Rabbit, Heart, X } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function PetShopPanel({ onClose }) {
   const { state, dispatch } = useGame();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPet, setSelectedPet] = useState(PET_LIST[0]);
+  const [notification, setNotification] = useState(null);
 
   const ownedCounts = {};
   for (const rabbit of state.npcs.rabbits) {
@@ -40,8 +42,14 @@ export default function PetShopPanel({ onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  const showNotif = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 2500);
+  };
+
   const handleBuy = () => {
     if (!selectedPet) return;
+    if (!canAfford) { showNotif("Not enough coins!"); return; }
     dispatch({ type: 'BUY_PET', payload: { petType: selectedPet.type } });
   };
 
@@ -137,17 +145,25 @@ export default function PetShopPanel({ onClose }) {
                     <span className="line-clamp-1 text-center font-pixel text-[8px] leading-tight text-[#5c3620]">
                       {pet.name}
                     </span>
-                    <span
-                      className="flex items-center gap-0.5 font-pixel text-[8px]"
-                      style={{ color: rar.color }}
-                    >
-                      <Coins className="h-2.5 w-2.5 text-yellow-500" strokeWidth={2.5} />
-                      {pet.price}
-                    </span>
-                    {count > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#8f5a30] font-pixel text-[8px] text-[#fff0d7]">
-                        {count}
+                    {activeTab === 'owned' ? (
+                      <span className="font-pixel text-[8px]" style={{ color: rar.color }}>
+                        Owned: {count}
                       </span>
+                    ) : (
+                      <>
+                        <span
+                          className="flex items-center gap-0.5 font-pixel text-[8px]"
+                          style={{ color: rar.color }}
+                        >
+                          <Coins className="h-2.5 w-2.5 text-yellow-500" strokeWidth={2.5} />
+                          {pet.price}
+                        </span>
+                        {count > 0 && (
+                          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#8f5a30] font-pixel text-[8px] text-[#fff0d7]">
+                            {count}
+                          </span>
+                        )}
+                      </>
                     )}
                   </button>
                 );
@@ -170,7 +186,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Emoji */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '59%', top: '35%', width: '32%', height: '12%' }}
+            style={{ left: '59%', top: '33%', width: '32%', height: '12%' }}
           >
             {selectedPet && <span className="text-5xl leading-none">{selectedPet.emoji}</span>}
           </div>
@@ -178,7 +194,7 @@ export default function PetShopPanel({ onClose }) {
           {/* Rarity + desc + price + in cafe */}
           <div
             className="absolute flex flex-col items-center justify-start gap-2 p-2"
-            style={{ left: '59%', top: '43%', width: '32%', height: '44%' }}
+            style={{ left: '59%', top: '53%', width: '32%', height: '44%' }}
           >
             {selectedPet ? (
               <>
@@ -209,22 +225,42 @@ export default function PetShopPanel({ onClose }) {
           {/* Buy button */}
           <div
             className="absolute flex items-center justify-center"
-            style={{ left: '72%', top: '81%', width: '24.3%', height: '10%' }}
+            style={{ left: '75.9%', top: '81%', width: '14.6%', height: '10%' }}
           >
             {selectedPet && (
-              <button
-                type="button"
-                onClick={handleBuy}
-                disabled={!canAfford}
-                className={`w-full flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
-                  canAfford
-                    ? 'bg-[#6b4c8a] text-[#f0d8ff] shadow-md hover:bg-[#7d5ca0]'
-                    : 'cursor-not-allowed bg-[#6b4c8a]/30 text-[#9b88aa]'
-                }`}
-              >
-                <Coins className="h-3.5 w-3.5" strokeWidth={2.5} />
-                {canAfford ? `Adopt  ${selectedPet.price}` : 'Need more coins'}
-              </button>
+              <>
+                <AnimatePresence>
+                  {notification && (
+                    <motion.div
+                      key="toast"
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#5c3620]/80 px-3 py-1 font-pixel text-[9px] text-[#f5d9b0] shadow-md"
+                      initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                      animate={{ opacity: 1, y: [8, -6, 2, -3, 0], scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.9 }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                    >
+                      {notification}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div
+                  className="w-full"
+                  onClick={!canAfford ? () => showNotif('Not enough coins!') : undefined}
+                >
+                  <button
+                    type="button"
+                    onClick={handleBuy}
+                    disabled={!canAfford}
+                    className={`w-full flex items-center justify-center rounded-lg px-4 py-2 font-pixel text-[11px] transition-colors ${
+                      canAfford
+                        ? 'text-[#f0d8ff] shadow-md'
+                        : 'pointer-events-none text-[#9b88aa]/60'
+                    }`}
+                  >
+                    {canAfford ? `Adopt ${selectedPet.price}` : 'Need more coins'}
+                  </button>
+                </div>
+              </>
             )}
           </div>
 
