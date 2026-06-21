@@ -11,6 +11,7 @@ import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
+import CafeStatusPopup from '@/pages/CafeStatusPopup'
 
 function GameRouter() {
   const { state } = useGame()
@@ -89,6 +90,9 @@ function AppShell() {
 }
 
 function App() {
+  if (window.name === 'cafe-status-popup') {
+    return <CafeStatusPopup />;
+  }
   return (
     <AuthProvider>
       <AppShell />

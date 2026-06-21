@@ -314,6 +314,12 @@ export default function CafeView() {
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
   const [showModePrompt, setShowModePrompt] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupClosing, setPopupClosing] = useState(false);
+  const notifCooldownRef = useRef(false);
+  const focusActiveRef = useRef(false);
+  const popupRef = useRef(null);
+  const popupCheckRef = useRef(null);
   const focusViewMode = state.settings?.focusViewMode ?? null;
   const isZenMode = isFocusing && focusViewMode === 'zen';
 
@@ -442,6 +448,126 @@ export default function CafeView() {
     }
   }, [state.cafe.bgMode, isFocusing, dispatch]);
 
+  const openStatusPopup = () => {
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.focus();
+      return;
+    }
+    popupRef.current = window.open(
+      '/',
+      'cafe-status-popup',
+      'width=380,height=460,popup=true,left=80,top=80',
+    );
+    setPopupOpen(true);
+
+    // Poll until the user closes the popup window.
+    popupCheckRef.current = setInterval(() => {
+      if (popupRef.current?.closed) {
+        clearInterval(popupCheckRef.current);
+        popupRef.current = null;
+        setPopupOpen(false);
+        setPopupClosing(true);
+        setTimeout(() => setPopupClosing(false), 800);
+      }
+    }, 500);
+  };
+
+  // Broadcast live state to the popup window via BroadcastChannel.
+  useEffect(() => {
+    if (!isFocusing) return;
+
+    const channel = new BroadcastChannel('cafe-status');
+
+    const send = () => {
+      channel.postMessage({
+        coins: state.coins,
+        reputation: state.reputation,
+        customers: state.cafe.currentCustomers,
+        maxCustomers: state.cafe.maxCustomers,
+        attentionScore: state.attention.score,
+        elapsed: state.focus.elapsed,
+        status: state.focus.status,
+      });
+    };
+
+    send(); // immediate first push
+    const interval = setInterval(send, 2000);
+
+    return () => {
+      clearInterval(interval);
+      channel.close();
+    };
+  }, [
+    isFocusing,
+    state.coins,
+    state.reputation,
+    state.cafe.currentCustomers,
+    state.cafe.maxCustomers,
+    state.attention.score,
+    state.focus.elapsed,
+    state.focus.status,
+  ]);
+
+  // Clean up popup when the focus session ends.
+  useEffect(() => {
+    if (!isFocusing) {
+      clearInterval(popupCheckRef.current);
+      if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+      popupRef.current = null;
+      setPopupOpen(false);
+      setPopupClosing(false);
+    }
+  }, [isFocusing]);
+
+  // Keep ref in sync so the visibility handler always sees the current status.
+  useEffect(() => {
+    focusActiveRef.current = state.focus.status === 'active';
+  }, [state.focus.status]);
+
+  // Native "Leave site?" dialog when closing/refreshing during an active session.
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!focusActiveRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []); // stable — reads runtime state via focusActiveRef
+
+  // OS-level notification when user switches tabs during an active session.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (!focusActiveRef.current) return;
+      if (notifCooldownRef.current) return;
+
+      const permission =
+        Notification.permission === 'granted'
+          ? 'granted'
+          : await Notification.requestPermission().catch(() => 'denied');
+
+      if (permission !== 'granted') return;
+
+      notifCooldownRef.current = true;
+      setTimeout(() => { notifCooldownRef.current = false; }, 60_000);
+
+      const notif = new Notification('Lunaria Cafe ☕', {
+        body: 'The cafe is still going! Click to check in.',
+        icon: '/favicon.ico',
+      });
+
+      notif.onclick = () => {
+        window.focus();
+        openStatusPopup();
+      };
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []); // stable — reads runtime state via refs
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
       {isFocusing && <PhoneWarning />}
@@ -497,23 +623,62 @@ export default function CafeView() {
       )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
-        {isZenMode ? (
-          <ZenFocusView state={state} />
-        ) : (
-          <motion.div
-            className="relative shrink-0"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-          >
-            <CafeCanvas />
-            <ParticleOverlay />
-            <ChaosEventLog />
-            <GameFeedback />
-            <DecoratePanel />
-          </motion.div>
-        )}
-        {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
+        <AnimatePresence mode="wait">
+          {popupClosing ? (
+            <motion.div
+              key="restoring"
+              className="flex flex-col items-center justify-center gap-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              <p className="font-pixel text-xs text-muted-foreground">Reloading cafe view...</p>
+            </motion.div>
+          ) : popupOpen ? (
+            <motion.div
+              key="popup-placeholder"
+              className="flex flex-col items-center justify-center gap-6 text-center"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <img
+                src="/assets/focus_picture/sitting_by_the_window.gif"
+                alt=""
+                className="rounded-2xl shadow-xl"
+                style={{ maxHeight: '220px', imageRendering: 'pixelated' }}
+              />
+              <div className="space-y-2">
+                <p className="font-pixel text-sm text-primary">(´• ω •`) ☕</p>
+                <p className="font-display text-base text-foreground">
+                  Your cafe is in a pop-out window!
+                </p>
+                <p className="font-body text-xs text-muted-foreground">
+                  Close the window to bring the view back here~
+                </p>
+              </div>
+            </motion.div>
+          ) : isZenMode ? (
+            <ZenFocusView key="zen" state={state} />
+          ) : (
+            <motion.div
+              key="canvas"
+              className="relative shrink-0"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+            >
+              <CafeCanvas />
+              <ParticleOverlay />
+              <ChaosEventLog />
+              <GameFeedback />
+              <DecoratePanel />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {isFocusing && !popupOpen && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
       </main>
 
       <footer className="shrink-0 z-30 px-4 py-3 border-t border-border/30 bg-card/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
