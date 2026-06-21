@@ -9,6 +9,10 @@ export default function SessionSummary() {
   const [shake, setShake] = useState(false);
   const [hint, setHint] = useState(false);
   const s = state.lastSession;
+  const isFail = s?.endReason === 'distracted';
+  const characterImg = isFail
+    ? '/assets/Character/lulys_finish(fail).png'
+    : '/assets/Character/Lulys_finish(done).png';
 
   const handleBackdropClick = () => {
     setShake(true);
@@ -33,6 +37,20 @@ export default function SessionSummary() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+          />
+
+          {/* Character art — fixed to left side */}
+          <motion.img
+            src={characterImg}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="fixed bottom-0 left-0 z-50 h-[489px] w-auto object-contain drop-shadow-xl pointer-events-none select-none"
+            style={{ imageRendering: 'pixelated' }}
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
           />
 
           {/* Modal wrapper */}

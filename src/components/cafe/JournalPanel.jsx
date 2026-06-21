@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { playJournalOpen, playJournalClose } from '@/lib/audio/useCafeAudio';
+import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Check, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const JOURNAL_ART = '/assets/journal-open.png';
+const JOURNAL_ART = '/assets/UI/journal-open.png';
 
 export default function JournalPanel({ journal, dispatch, onClose }) {
   const panelRef = useRef(null);
@@ -17,12 +17,12 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
 
   // Play journal open sound on mount using real audio settings
   useEffect(() => {
-    playJournalOpen(sfxVolume, masterVolume);
+    Sounds.journalOpen(sfxVolume, masterVolume, state.audio.sfxJournalOpen);
   }, []);
 
   // Handle journal close with sound effect
   const handleClose = () => {
-  playJournalClose(sfxVolume, masterVolume);
+  Sounds.journalClose(sfxVolume, masterVolume, state.audio.sfxJournalClose);
   onClose();
 };
 

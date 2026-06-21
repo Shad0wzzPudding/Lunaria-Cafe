@@ -124,38 +124,3 @@ export function stopAllCafeAudio() {
   });
 }
 
-//Journal open sound effect
-const JOURNAL_OPEN_SRC = '/assets/sounds/Journal_opening.mp3';
-export async function playJournalOpen(sfxVolume = 0.7, masterVolume = 0.8) {
-  try {
-    const audio = new Audio(JOURNAL_OPEN_SRC);
-    audio.volume = Math.min(1, sfxVolume * masterVolume);
-    await audio.play();
-  } catch {
-    /* ignore */
-  }
-}
-
-//Journal close sound effect
-const JOURNAL_CLOSE_SRC = '/assets/sounds/journal_closing.mp3';
-export async function playJournalClose(sfxVolume = 0.7, masterVolume = 0.8) {
-  try {
-    const audio = new Audio(JOURNAL_CLOSE_SRC);
-    audio.volume = Math.min(1, sfxVolume * masterVolume);
-    await audio.play();
-  } catch {
-    /* ignore */
-  }
-}
-
-//Phone warning sound effect
-const PHONE_WARNING_SRC = '/assets/sounds/warning-sound.mp3';
-export async function playPhoneWarning(sfxVolume = 0.7, masterVolume = 0.8) {
-  try {
-    const audio = new Audio(PHONE_WARNING_SRC);
-    audio.volume = Math.min(1, sfxVolume * masterVolume);
-    await audio.play();
-  } catch {
-    /* ignore */
-  }
-}

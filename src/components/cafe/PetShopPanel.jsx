@@ -4,7 +4,7 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { PET_LIST, RARITY_CONFIG } from '@/lib/cafe/petCatalog.js';
 import { Coins, PawPrint, Cat, Rabbit, Heart, X } from 'lucide-react';
 
-const PET_SHOP_ART = '/assets/pet-shop.png';
+const PET_SHOP_ART = '/assets/UI/pet-shop.png';
 
 const TABS = [
   { id: 'all',    Icon: PawPrint, label: 'All Pets' },

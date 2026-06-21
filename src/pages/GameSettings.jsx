@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins } from 'lucide-react';
 import {
   getAIConfig,
   setAIConfig,
@@ -56,6 +56,7 @@ export default function GameSettings() {
   useEffect(() => onConnectionStatus(setAiStatus), []);
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
+  const [sfxOpen, setSfxOpen] = useState(false);
   const saveAi = (updates) => setAiConfigState(setAIConfig(updates));
 
   const handleLogout = async () => {
@@ -91,6 +92,32 @@ export default function GameSettings() {
             <AudioSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
             <AudioSlider icon={Volume2} label="SFX" value={audio.sfxVolume} onChange={(v) => setAudio({ sfxVolume: v })} />
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setSfxOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h2 className="font-display text-base text-foreground flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-primary" /> Sound Effects
+            </h2>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${sfxOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {sfxOpen && (
+            <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-2">
+              <ToggleSetting icon={Coins}         label="Coin Chime"       checked={audio.sfxCoinChime}         onCheckedChange={(v) => setAudio({ sfxCoinChime: v })} />
+              <ToggleSetting icon={Play}          label="Session Start"    checked={audio.sfxSessionStart}      onCheckedChange={(v) => setAudio({ sfxSessionStart: v })} />
+              <ToggleSetting icon={CheckCircle}   label="Session Complete" checked={audio.sfxSessionFinishDone} onCheckedChange={(v) => setAudio({ sfxSessionFinishDone: v })} />
+              <ToggleSetting icon={XCircle}       label="Session Failed"   checked={audio.sfxSessionFinishFail} onCheckedChange={(v) => setAudio({ sfxSessionFinishFail: v })} />
+              <ToggleSetting icon={ShoppingBag}   label="Pet Shop Open"    checked={audio.sfxPetShopOpen}       onCheckedChange={(v) => setAudio({ sfxPetShopOpen: v })} />
+              <ToggleSetting icon={ShoppingBag}   label="Pet Shop Close"   checked={audio.sfxPetShopClose}      onCheckedChange={(v) => setAudio({ sfxPetShopClose: v })} />
+              <ToggleSetting icon={BookOpen}      label="Journal Open"     checked={audio.sfxJournalOpen}       onCheckedChange={(v) => setAudio({ sfxJournalOpen: v })} />
+              <ToggleSetting icon={BookOpen}      label="Journal Close"    checked={audio.sfxJournalClose}      onCheckedChange={(v) => setAudio({ sfxJournalClose: v })} />
+              <ToggleSetting icon={AlertTriangle} label="Phone Warning"    checked={audio.sfxPhoneWarning}      onCheckedChange={(v) => setAudio({ sfxPhoneWarning: v })} />
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">

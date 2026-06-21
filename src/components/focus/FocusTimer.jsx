@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
-import { Sounds } from '@/lib/sounds';
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
@@ -21,7 +20,6 @@ export default function FocusTimer({ compact = false }) {
 
   useEffect(() => {
     if (status === 'active' && elapsed >= duration) {
-      Sounds.sessionFinishDone();
       dispatch({ type: 'COMPLETE_FOCUS' });
     }
   }, [elapsed, duration, status, dispatch]);
@@ -43,7 +41,7 @@ export default function FocusTimer({ compact = false }) {
       <span className="text-xs text-muted-foreground">of {formatTime(duration)}</span>
       <span className="flex gap-2">
         {(status === 'idle' || status === 'completed') && (
-          <Button size="sm" onClick={() => { Sounds.sessionStart(); dispatch({ type: 'START_FOCUS' }); }}>
+          <Button size="sm" onClick={() => dispatch({ type: 'START_FOCUS' })}>
             Start
           </Button>
         )}

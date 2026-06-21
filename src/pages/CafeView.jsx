@@ -321,8 +321,11 @@ export default function CafeView() {
 
   useEffect(() => {
     if (state.focus.status === 'distracted') {
-      Sounds.sessionFinishFail();
+      Sounds.sessionFinishFail(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishFail);
       dispatch({ type: 'END_FOCUS' });
+    }
+    if (state.focus.status === 'completed') {
+      Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone);
     }
   }, [state.focus.status, dispatch]);
 
@@ -388,6 +391,7 @@ export default function CafeView() {
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
   }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const startFocusSession = () => {
+    Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
   };
@@ -468,7 +472,7 @@ export default function CafeView() {
       )}
 
       {showPetShop && (
-        <PetShopPanel onClose={() => { Sounds.petShopClose(); setShowPetShop(false); }} />
+        <PetShopPanel onClose={() => { Sounds.petShopClose(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxPetShopClose); setShowPetShop(false); }} />
       )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
@@ -563,7 +567,7 @@ export default function CafeView() {
                   variant="secondary"
                   size="sm"
                   className="gap-2 font-pixel text-xs"
-                  onClick={() => { Sounds.petShopOpen(); setShowPetShop(true); }}
+                  onClick={() => { Sounds.petShopOpen(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxPetShopOpen); setShowPetShop(true); }}
                 >
                   <PawPrint className="w-3.5 h-3.5" />
                   Pet Shop
@@ -613,7 +617,7 @@ export default function CafeView() {
                   variant="destructive"
                   size="sm"
                   className="gap-2 font-pixel text-xs"
-                  onClick={() => dispatch({ type: 'END_FOCUS' })}
+                  onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
                 >
                   <Square className="w-3.5 h-3.5" />
                   Stop Focus

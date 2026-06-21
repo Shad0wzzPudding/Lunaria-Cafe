@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { playPhoneWarning } from '@/lib/audio/useCafeAudio';
+import { Sounds } from '@/lib/sounds';
 
 const WARNING_DURATION_MS = 30000; // 30 seconds
 
@@ -22,7 +22,7 @@ export default function PhoneWarning() {
 
     // Play warning sound when warning starts
     if (!soundPlayed) {
-  playPhoneWarning(sfxVolume, masterVolume);
+  Sounds.phoneWarning(sfxVolume, masterVolume, state.audio.sfxPhoneWarning);
   setSoundPlayed(true);
 }
 

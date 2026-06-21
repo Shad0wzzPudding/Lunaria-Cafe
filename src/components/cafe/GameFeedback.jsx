@@ -13,7 +13,7 @@ export default function GameFeedback() {
     popups.forEach((popup) => {
       if (popup.coins && !playedRef.current.has(popup.id)) {
         playedRef.current.add(popup.id);
-        playCoinChime(state.audio.sfxVolume, state.audio.masterVolume);
+        if (state.audio.sfxCoinChime) playCoinChime(state.audio.sfxVolume, state.audio.masterVolume);
       }
     });
   }, [popups, state.audio.sfxVolume, state.audio.masterVolume]);
