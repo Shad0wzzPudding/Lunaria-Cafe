@@ -300,6 +300,8 @@ export default function CafeCanvas() {
   const bgImages = useRef({ day: null, night: null });
   const furnitureImages = useRef({});
   const { state, dispatch } = useGame();
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; });
 
   useEffect(() => {
     const day = new Image(); day.src = '/C_Daylight.png';
@@ -325,18 +327,18 @@ export default function CafeCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const s = stateRef.current;
     ctx.clearRect(0, 0, CAFE_W, CAFE_H);
 
-    const bg = bgImages.current[state.cafe.timeOfDay ?? 'night'];
+    const bg = bgImages.current[s.cafe.timeOfDay ?? 'night'];
     if (bg) { ctx.drawImage(bg, 0, 0, CAFE_W, CAFE_H); }
     else { ctx.fillStyle = '#1a1833'; ctx.fillRect(0, 0, CAFE_W, CAFE_H); }
-  
 
     // =========================
     // Draw Furniture First
     // =========================
 
-    const sortedFurniture = [...state.cafe.furniture].sort(
+    const sortedFurniture = [...s.cafe.furniture].sort(
       (a, b) => (a.y + a.h) - (b.y + b.h)
     );
 
@@ -344,7 +346,7 @@ export default function CafeCanvas() {
 
       const { type, x, y, w, h, rotation } = furn;
 
-      const isNight = state.cafe.timeOfDay === 'night';
+      const isNight = s.cafe.timeOfDay === 'night';
       const catalog = FURNITURE_CATALOG[type];
       const img = (isNight && catalog?.nightFile)
         ? (furnitureImages.current[`${type}_night`] ?? furnitureImages.current[type])
@@ -407,11 +409,11 @@ export default function CafeCanvas() {
     // =========================
     // Draw AmbientLight
     // =========================
-    if (state.cafe.timeOfDay === 'night'){
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    drawAmbientLights(ctx, state.cafe.furniture, time);
-    ctx.restore();
+    if (s.cafe.timeOfDay === 'night') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      drawAmbientLights(ctx, s.cafe.furniture, time);
+      ctx.restore();
     }
 
     // =========================
@@ -433,7 +435,7 @@ export default function CafeCanvas() {
     // Draw Rabbits
     // =========================
 
-    for (const rabbit of state.npcs.rabbits) {
+    for (const rabbit of s.npcs.rabbits) {
       drawRabbit(ctx, rabbit, time);
     }
 
@@ -441,7 +443,7 @@ export default function CafeCanvas() {
     // Draw Cats
     // =========================
 
-    for (const cat of state.npcs.cats) {
+    for (const cat of s.npcs.cats) {
       drawCat(ctx, cat, time);
     }
 
@@ -449,18 +451,12 @@ export default function CafeCanvas() {
     // Draw Customers
     // =========================
 
-    for (const customer of state.npcs.customers) {
-      drawCustomer(
-        ctx,
-        customer,
-        time,
-        state.cafe.furniture
-      );
+    for (const customer of s.npcs.customers) {
+      drawCustomer(ctx, customer, time, s.cafe.furniture);
     }
 
-
     // Draw pending furniture ghost
-    const pf = state.cafe.pendingFurniture;
+    const pf = s.cafe.pendingFurniture;
     if (pf) {
       const img = furnitureImages.current[pf.type];
       const rad = ((pf.rotation ?? 0) * Math.PI) / 180;
@@ -490,13 +486,13 @@ export default function CafeCanvas() {
 
     drawParticles(ctx, time);
 
-    if (state.attention.chaosLevel >= 2) {
-      ctx.fillStyle = `rgba(140,100,200,${0.02 + state.attention.chaosLevel * 0.01})`;
+    if (s.attention.chaosLevel >= 2) {
+      ctx.fillStyle = `rgba(140,100,200,${0.02 + s.attention.chaosLevel * 0.01})`;
       ctx.fillRect(0, 0, CAFE_W, CAFE_H);
     }
 
     animRef.current = requestAnimationFrame(draw);
-  }, [state.cafe.furniture, state.cafe.pendingFurniture, state.npcs.rabbits, state.npcs.cats, state.npcs.customers, state.attention.chaosLevel, state.cafe.timeOfDay]);
+  }, []);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
