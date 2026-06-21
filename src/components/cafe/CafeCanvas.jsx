@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/cafe/furnitureCatalog.js';
@@ -6,6 +6,34 @@ import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/cafe/furnitureCatalog.
 const CAFE_W = 740;
 const CAFE_H = 500;
 const DEBUG_COLLISION = false;
+const DEBUG_WALKABLE = false;
+
+// Each zone is a rectangle { x, y, w, h }.
+// A point is walkable if it falls inside ANY zone (union).
+const WALKABLE_ZONES = [
+  { x: 37,  y: 152, w: 668, h: 233 }, // main floor
+  { x: 103, y: 385, w: 534, h:  48 }, // lower floor strip (rug area)
+];
+
+function isInsideWalkableZone(x, y) {
+  return WALKABLE_ZONES.some(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
+}
+
+// Search outward from (x, y) in expanding rings until a valid spot is found.
+// Returns { x, y } of the nearest open position, or null if none found within range.
+function findNearestValidSpot(x, y, radius, furniture) {
+  for (let dist = 10; dist <= 200; dist += 10) {
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      const cx = x + Math.cos(angle) * dist;
+      const cy = y + Math.sin(angle) * dist;
+      if (isInsideWalkableZone(cx, cy) && !collidesWithFurniture(cx, cy, radius, furniture)) {
+        return { x: cx, y: cy };
+      }
+    }
+  }
+  return null;
+}
 
 function findFurnitureAt(furniture, x, y) {
   for (let i = furniture.length - 1; i >= 0; i--) {
@@ -387,6 +415,21 @@ export default function CafeCanvas() {
     }
 
     // =========================
+    // Debug: Walkable Zone
+    // =========================
+    if (DEBUG_WALKABLE) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0, 255, 100, 0.9)';
+      ctx.fillStyle = 'rgba(0, 255, 100, 0.12)';
+      ctx.lineWidth = 2;
+      for (const z of WALKABLE_ZONES) {
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.strokeRect(z.x, z.y, z.w, z.h);
+      }
+      ctx.restore();
+    }
+
+    // =========================
     // Draw Rabbits
     // =========================
 
@@ -465,38 +508,30 @@ export default function CafeCanvas() {
 
     state.npcs.rabbits.forEach((r) => {
 
-      const moveX = (Math.random() - 0.5) * 30;
-      const moveY = (Math.random() - 0.5) * 30;
-
-      const newX = Math.max(
-        40,
-        Math.min(CAFE_W - 40, r.x + moveX)
-      );
-
-      const newY = Math.max(
-        80,
-        Math.min(CAFE_H - 40, r.y + moveY)
-      );
-
-      // Rabbit collision radius
       const radius = 12;
 
-      const blocked = collidesWithFurniture(
-        newX,
-        newY,
-        radius,
-        state.cafe.furniture
-      );
+      // If already stuck, nudge to the nearest open spot
+      const currentlyStuck =
+        !isInsideWalkableZone(r.x, r.y) ||
+        collidesWithFurniture(r.x, r.y, radius, state.cafe.furniture);
+
+      if (currentlyStuck) {
+        const safe = findNearestValidSpot(r.x, r.y, radius, state.cafe.furniture);
+        if (safe) dispatch({ type: 'UPDATE_RABBIT', payload: { id: r.id, x: safe.x, y: safe.y } });
+        return;
+      }
+
+      const moveX = (Math.random() - 0.5) * 30;
+      const moveY = (Math.random() - 0.5) * 30;
+      const newX = r.x + moveX;
+      const newY = r.y + moveY;
+
+      const blocked =
+        !isInsideWalkableZone(newX, newY) ||
+        collidesWithFurniture(newX, newY, radius, state.cafe.furniture);
 
       if (!blocked) {
-        dispatch({
-          type: 'UPDATE_RABBIT',
-          payload: {
-            id: r.id,
-            x: newX,
-            y: newY,
-          },
-        });
+        dispatch({ type: 'UPDATE_RABBIT', payload: { id: r.id, x: newX, y: newY } });
       }
 
     });
@@ -512,39 +547,32 @@ export default function CafeCanvas() {
   const interval = setInterval(() => {
 
     state.npcs.cats.forEach((c) => {
-      // Cats take smaller, less frequent steps
-      const moveX = (Math.random() - 0.5) * 20;
-      const moveY = (Math.random() - 0.5) * 20;
-
-      const newX = Math.max(
-        40,
-        Math.min(CAFE_W - 40, c.x + moveX)
-      );
-
-      const newY = Math.max(
-        80,
-        Math.min(CAFE_H - 40, c.y + moveY)
-      );
-
       // Cat collision radius (slightly larger than rabbit)
       const radius = 14;
 
-      const blocked = collidesWithFurniture(
-        newX,
-        newY,
-        radius,
-        state.cafe.furniture
-      );
+      // If already stuck, nudge to the nearest open spot
+      const currentlyStuck =
+        !isInsideWalkableZone(c.x, c.y) ||
+        collidesWithFurniture(c.x, c.y, radius, state.cafe.furniture);
+
+      if (currentlyStuck) {
+        const safe = findNearestValidSpot(c.x, c.y, radius, state.cafe.furniture);
+        if (safe) dispatch({ type: 'UPDATE_CAT', payload: { id: c.id, x: safe.x, y: safe.y } });
+        return;
+      }
+
+      // Cats take smaller, less frequent steps
+      const moveX = (Math.random() - 0.5) * 20;
+      const moveY = (Math.random() - 0.5) * 20;
+      const newX = c.x + moveX;
+      const newY = c.y + moveY;
+
+      const blocked =
+        !isInsideWalkableZone(newX, newY) ||
+        collidesWithFurniture(newX, newY, radius, state.cafe.furniture);
 
       if (!blocked) {
-        dispatch({
-          type: 'UPDATE_CAT',
-          payload: {
-            id: c.id,
-            x: newX,
-            y: newY,
-          },
-        });
+        dispatch({ type: 'UPDATE_CAT', payload: { id: c.id, x: newX, y: newY } });
       }
 
     });
@@ -554,6 +582,25 @@ export default function CafeCanvas() {
   return () => clearInterval(interval);
 
 }, [state.npcs.cats, state.cafe.furniture, dispatch]);
+
+  // Respawn any pet that is outside the walkable zone to the entrance.
+  // Runs on mount and whenever a pet is added or removed.
+  useEffect(() => {
+    const entranceX = () => 290 + Math.random() * 160;
+    const entranceY = () => 390 + Math.random() * 40; // stays within lower zone (y 385–433)
+
+    state.npcs.rabbits.forEach((r) => {
+      if (!isInsideWalkableZone(r.x, r.y)) {
+        dispatch({ type: 'UPDATE_RABBIT', payload: { id: r.id, x: entranceX(), y: entranceY() } });
+      }
+    });
+
+    state.npcs.cats.forEach((c) => {
+      if (!isInsideWalkableZone(c.x, c.y)) {
+        dispatch({ type: 'UPDATE_CAT', payload: { id: c.id, x: entranceX(), y: entranceY() } });
+      }
+    });
+  }, [state.npcs.rabbits.length, state.npcs.cats.length, dispatch]);
 
   const handleCanvasClick = (event) => {
     if (!state.cafe.decorateMode) return;
