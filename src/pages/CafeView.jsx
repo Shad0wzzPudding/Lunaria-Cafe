@@ -346,7 +346,7 @@ export default function CafeView() {
   // ก้อนที่ 2: จัดการระบบคาเฟ่ (ลูกค้าเดินเข้า-ออก, Event ต่างๆ)
   // ==========================================
   useEffect(() => {
-    if (!isFocusing) return;
+    if (!isFocusing || state.focus.status === 'paused') return;
 
     // 1. ลูกค้าเข้าและออกร้าน
     const customerInterval = setInterval(() => {
@@ -389,7 +389,7 @@ export default function CafeView() {
       clearInterval(chaosInterval);
     };
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
-  }, [isFocusing, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
+  }, [isFocusing, state.focus.status, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const startFocusSession = () => {
     Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
