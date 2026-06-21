@@ -19,11 +19,13 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
+import FocusModePrompt from '@/components/cafe/FocusModePrompt';
+import ZenFocusView from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 
 const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
@@ -311,6 +313,9 @@ export default function CafeView() {
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
+  const [showModePrompt, setShowModePrompt] = useState(false);
+  const focusViewMode = state.settings?.focusViewMode ?? null;
+  const isZenMode = isFocusing && focusViewMode === 'zen';
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -391,9 +396,25 @@ export default function CafeView() {
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
   }, [isFocusing, state.focus.status, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const startFocusSession = () => {
+    if (focusViewMode === null) {
+      setShowModePrompt(true);
+      return;
+    }
     Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
+  };
+
+  const handleModeSelect = (mode) => {
+    dispatch({ type: 'SET_FOCUS_VIEW_MODE', payload: mode });
+    setShowModePrompt(false);
+    Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
+    dispatch({ type: 'SET_PHASE', payload: 'focus' });
+    dispatch({ type: 'START_FOCUS' });
+  };
+
+  const toggleFocusViewMode = () => {
+    dispatch({ type: 'SET_FOCUS_VIEW_MODE', payload: focusViewMode === 'zen' ? 'game' : 'zen' });
   };
 
 
@@ -476,19 +497,23 @@ export default function CafeView() {
       )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
-        <motion.div
-          className="relative shrink-0"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          <CafeCanvas />
-          <ParticleOverlay />
-          <ChaosEventLog />
-          <GameFeedback />
-          <DecoratePanel />
+        {isZenMode ? (
+          <ZenFocusView state={state} />
+        ) : (
+          <motion.div
+            className="relative shrink-0"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+          >
+            <CafeCanvas />
+            <ParticleOverlay />
+            <ChaosEventLog />
+            <GameFeedback />
+            <DecoratePanel />
           </motion.div>
-          {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
+        )}
+        {isFocusing && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
       </main>
 
       <footer className="shrink-0 z-30 px-4 py-3 border-t border-border/30 bg-card/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
@@ -593,6 +618,19 @@ export default function CafeView() {
             )}
             {isFocusing && (
               <>
+                {/* Mode toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 font-pixel text-xs text-muted-foreground hover:text-foreground"
+                  onClick={toggleFocusViewMode}
+                  title={focusViewMode === 'zen' ? 'Switch to Game Mode' : 'Switch to Zen Mode'}
+                >
+                  {focusViewMode === 'zen'
+                    ? <><Gamepad2 className="w-3.5 h-3.5" /> Game Mode</>
+                    : <><Sparkles className="w-3.5 h-3.5" /> Zen Mode</>}
+                </Button>
+
                 {state.focus.status === 'active' ? (
                   <Button
                     variant="secondary"
@@ -627,6 +665,7 @@ export default function CafeView() {
           </div>
         </div>
       </footer>
+      <AnimatePresence>{showModePrompt && <FocusModePrompt onSelect={handleModeSelect} />}</AnimatePresence>
       <SessionSummary />
     </div>
   );

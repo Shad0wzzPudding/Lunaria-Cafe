@@ -1,8 +1,67 @@
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const DONE_MESSAGES = [
+  "Great work today! ☆",
+  "The cafe is proud of you!",
+  "Another session done~",
+  "You're on a roll! Keep it up!",
+  "The customers loved your energy!",
+  "One step closer to your goals!",
+  "Rest well, you earned it!",
+  "Wonderful focus today!",
+  "You make this cafe shine!",
+  "See you next session~ ♪",
+];
+
+const FAIL_MESSAGES = [
+  "It's okay! Try again~",
+  "Don't worry, tomorrow is new!",
+  "The cafe still loves you!",
+  "Rest up and come back stronger!",
+  "Even heroes take breaks...",
+  "A stumble is not a fall!",
+];
+
+function PixelBubble({ message }) {
+  return (
+    <motion.div
+      className="fixed z-50 pointer-events-none select-none"
+      style={{ bottom: '356px', left: '316px' }}
+      initial={{ opacity: 0, scale: 0.7, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.7, y: 8 }}
+      transition={{ duration: 0.25, ease: 'easeOut', delay: 0.5 }}
+    >
+      <div className="relative">
+        {/* Bubble body */}
+        <div
+          className="font-pixel text-[13px] leading-snug text-[#2a2040] bg-[#fef9f0] max-w-[192px]"
+          style={{
+            border: '4px solid #2a2040',
+            padding: '10px 14px',
+            imageRendering: 'pixelated',
+          }}
+        >
+          {message}
+        </div>
+
+        {/* Pixel tail — points left toward Lulys */}
+        <div className="absolute" style={{ left: '-11px', top: '50%', transform: 'translateY(-50%)' }}>
+          {/* outer step */}
+          <div style={{ width: '4px', height: '22px', background: '#2a2040', position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)' }} />
+          {/* inner step */}
+          <div style={{ width: '4px', height: '14px', background: '#2a2040', position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)' }} />
+          {/* fill (matches bubble bg) */}
+          <div style={{ width: '4px', height: '7px', background: '#fef9f0', position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', marginTop: '4px' }} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function SessionSummary() {
   const { state, dispatch } = useGame();
@@ -10,6 +69,12 @@ export default function SessionSummary() {
   const [hint, setHint] = useState(false);
   const s = state.lastSession;
   const isFail = s?.endReason === 'distracted';
+
+  const message = useMemo(() => {
+    if (!s) return '';
+    const pool = isFail ? FAIL_MESSAGES : DONE_MESSAGES;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }, [s]);
   const characterImg = isFail
     ? '/assets/Character/lulys_finish(fail).png'
     : '/assets/Character/Lulys_finish(done).png';
@@ -52,6 +117,9 @@ export default function SessionSummary() {
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
           />
+
+          {/* Speech bubble near Lulys' head */}
+          <PixelBubble message={message} />
 
           {/* Modal wrapper */}
           <motion.div

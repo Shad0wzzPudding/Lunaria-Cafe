@@ -72,10 +72,7 @@ export const initialState = {
       { id: 'rabbit-1', x: 200, y: 350, mood: 'happy' },
       { id: 'rabbit-2', x: 500, y: 400, mood: 'sleepy' },
     ],
-    cats: [
-      { id: 'cat-1', x: 320, y: 300, mood: 'curious' },
-      { id: 'cat-2', x: 600, y: 370, mood: 'lazy' },
-    ],
+    cats: [],
     major: [
       { id: 'npc-1', name: 'Mira', emoji: '🦊', role: 'Regular', personality: 'Cheerful and curious', schedule: 'Every evening', favoriteOrder: 'Moon Latte'    },
       { id: 'npc-2', name: 'Theo', emoji: '🧙', role: 'Scholar', personality: 'Quiet and studious',   schedule: 'Late nights',   favoriteOrder: 'Dark Brew'     },
@@ -123,5 +120,8 @@ export const initialState = {
   },
   pets: {
     owned: [],
+  },
+  settings: {
+    focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
   },
 };

@@ -12,6 +12,9 @@ export function gameReducer(state, action) {
     case 'SET_PHASE':
       return { ...state, phase: action.payload };
 
+    case 'SET_FOCUS_VIEW_MODE':
+      return { ...state, settings: { ...state.settings, focusViewMode: action.payload } };
+
     case 'ADD_COINS':
       return { ...state, coins: state.coins + action.payload };
 
