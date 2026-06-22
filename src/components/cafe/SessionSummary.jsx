@@ -30,7 +30,7 @@ function PixelBubble({ message }) {
   return (
     <motion.div
       className="fixed z-50 pointer-events-none select-none"
-      style={{ bottom: '356px', left: '316px' }}
+      style={{ bottom: 'min(356px, 51vh)', left: '316px' }}
       initial={{ opacity: 0, scale: 0.7, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.7, y: 8 }}
@@ -110,7 +110,7 @@ export default function SessionSummary() {
             alt=""
             aria-hidden="true"
             draggable={false}
-            className="fixed bottom-0 left-0 z-50 h-[489px] w-auto object-contain drop-shadow-xl pointer-events-none select-none"
+            className="fixed bottom-0 left-0 z-50 h-[min(489px,70vh)] w-auto object-contain drop-shadow-xl pointer-events-none select-none"
             style={{ imageRendering: 'pixelated' }}
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
