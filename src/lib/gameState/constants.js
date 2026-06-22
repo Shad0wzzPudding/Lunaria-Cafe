@@ -3,8 +3,8 @@ export const CLEAR_CONDITION_MS  = 2_000;  // 2 seconds of continuous good behav
 export const AUTO_SAVE_INTERVAL  = 30_000; // 30 seconds
 
 export const INITIAL_FURNITURE = [
-  { id: 'built-counter',            type: 'bar_counter1',       x: 36.68,  y: 158.73, w: 160, h: 70 },
-  { id: 'built-counter2',           type: 'bar_counter2',       x: 204.23, y: 159.72, w: 160, h: 70 },
+  { id: 'built-counter1',           type: 'bar_counter1',       x: 204.23, y: 159.72, w: 160, h: 70 },
+  { id: 'built-counter2',           type: 'bar_counter2',       x: 36.68,  y: 158.73, w: 160, h: 70 },
   { id: 'built-fireplace',          type: 'fireplace',          x: 494.53, y: 110.90, w: 100, h: 80 },
   { id: 'built-bookcase',           type: 'bookcase_small',     x: 616.24, y: 100.92, w: 70,  h: 90 },
   { id: 'built-plant',              type: 'plant_big',          x: 576.39, y: 422.71, w: 40,  h: 50 },
