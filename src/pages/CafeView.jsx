@@ -19,14 +19,18 @@ import PhoneWarning from '@/components/focus/PhoneWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
 import FocusModePrompt from '@/components/cafe/FocusModePrompt';
-import ZenFocusView from '@/components/cafe/ZenFocusView';
+import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
+import { toast } from 'sonner';
+
+const IS_MAC     = navigator.userAgent.includes('Mac');
+const IS_WINDOWS = navigator.userAgent.includes('Win');
 
 const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
@@ -322,6 +326,7 @@ export default function CafeView() {
   const popupCheckRef = useRef(null);
   const focusViewMode = state.settings?.focusViewMode ?? null;
   const isZenMode = isFocusing && focusViewMode === 'zen';
+  const popupPicture = useRef(ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]).current;
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -401,11 +406,18 @@ export default function CafeView() {
     };
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
   }, [isFocusing, state.focus.status, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
+  const requestNotifPermission = () => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  };
+
   const startFocusSession = () => {
     if (focusViewMode === null) {
       setShowModePrompt(true);
       return;
     }
+    requestNotifPermission();
     Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
@@ -414,6 +426,7 @@ export default function CafeView() {
   const handleModeSelect = (mode) => {
     dispatch({ type: 'SET_FOCUS_VIEW_MODE', payload: mode });
     setShowModePrompt(false);
+    requestNotifPermission();
     Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
@@ -424,7 +437,6 @@ export default function CafeView() {
   };
 
 
-  // 👇 ADD HERE
   useEffect(() => {
     const bgMode = state.cafe.bgMode ?? 'freestyle';
 
@@ -536,32 +548,45 @@ export default function CafeView() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []); // stable — reads runtime state via focusActiveRef
 
-  // OS-level notification when user switches tabs during an active session.
+  // Notification when user switches tabs during an active session.
+  // OS notifications are attempted if permission is granted, but macOS can silently
+  // block them at the system level with no detectable error — so we always show an
+  // in-app toast as a reliable fallback.
   useEffect(() => {
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
       if (!focusActiveRef.current) return;
       if (notifCooldownRef.current) return;
 
-      const permission =
-        Notification.permission === 'granted'
-          ? 'granted'
-          : await Notification.requestPermission().catch(() => 'denied');
-
-      if (permission !== 'granted') return;
-
       notifCooldownRef.current = true;
       setTimeout(() => { notifCooldownRef.current = false; }, 60_000);
 
-      const notif = new Notification('Lunaria Cafe ☕', {
-        body: 'The cafe is still going! Click to check in.',
-        icon: '/favicon.ico',
-      });
+      // Try OS notification
+      if (Notification.permission === 'granted') {
+        const notif = new Notification('Lunaria Cafe ☕', {
+          body: 'The cafe is still going! Click to check in.',
+          icon: '/favicon.svg',
+        });
+        notif.onclick = () => { window.focus(); openStatusPopup(); };
+      }
 
-      notif.onclick = () => {
-        window.focus();
-        openStatusPopup();
-      };
+      // In-app toast — always shown so the user never misses the alert,
+      // even when macOS silently blocks the OS notification.
+      let notifHint;
+      if (Notification.permission !== 'granted') {
+        if (IS_MAC)          notifHint = 'Allow notifications in Chrome and in macOS System Settings → Notifications → Chrome to get OS-level alerts.';
+        else if (IS_WINDOWS) notifHint = 'Allow notifications in Chrome and in Windows Settings → System → Notifications → Chrome to get OS-level alerts.';
+        else                 notifHint = 'Allow notifications in your browser and system settings to get OS-level alerts.';
+      }
+      toast('Cafe window can be minimized too!', {
+        description: notifHint,
+        classNames: { description: '!text-black' },
+        action: {
+          label: 'Open popup',
+          onClick: openStatusPopup,
+        },
+        duration: 10_000,
+      });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -645,8 +670,8 @@ export default function CafeView() {
               transition={{ duration: 0.4 }}
             >
               <img
-                src="/assets/focus_picture/sitting_by_the_window.gif"
-                alt=""
+                src={popupPicture.src}
+                alt={popupPicture.alt}
                 className="rounded-2xl shadow-xl"
                 style={{ maxHeight: '220px', imageRendering: 'pixelated' }}
               />
