@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const IS_PHONE = /iPhone|Android.*Mobile/i.test(navigator.userAgent);
+
 const DONE_MESSAGES = [
   "Great work today! ☆",
   "The cafe is proud of you!",
@@ -104,22 +106,24 @@ export default function SessionSummary() {
             exit={{ opacity: 0 }}
           />
 
-          {/* Character art — fixed to left side */}
-          <motion.img
-            src={characterImg}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            className="fixed bottom-0 left-0 z-50 h-[min(489px,70vh)] w-auto object-contain drop-shadow-xl pointer-events-none select-none"
-            style={{ imageRendering: 'pixelated' }}
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
-          />
-
-          {/* Speech bubble near Lulys' head */}
-          <PixelBubble message={message} />
+          {/* Character art + speech bubble — hidden on phones */}
+          {!IS_PHONE && (
+            <>
+              <motion.img
+                src={characterImg}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="fixed bottom-0 left-0 z-50 h-[min(489px,70vh)] w-auto object-contain drop-shadow-xl pointer-events-none select-none"
+                style={{ imageRendering: 'pixelated' }}
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
+              />
+              <PixelBubble message={message} />
+            </>
+          )}
 
           {/* Modal wrapper */}
           <motion.div
