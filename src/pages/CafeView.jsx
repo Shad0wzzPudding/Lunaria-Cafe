@@ -29,8 +29,12 @@ import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
 
-const IS_MAC     = navigator.userAgent.includes('Mac');
-const IS_WINDOWS = navigator.userAgent.includes('Win');
+const IS_MAC          = navigator.userAgent.includes('Mac');
+const IS_WINDOWS      = navigator.userAgent.includes('Win');
+const NOTIF_SUPPORTED = typeof Notification !== 'undefined';
+// iPadOS 13+ in desktop mode reports as Mac but has touch points
+const IS_MOBILE_OR_TABLET = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (IS_MAC && navigator.maxTouchPoints > 1);
 
 const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
@@ -407,6 +411,7 @@ export default function CafeView() {
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
   }, [isFocusing, state.focus.status, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const requestNotifPermission = () => {
+    if (!NOTIF_SUPPORTED) return;
     if (Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
@@ -549,20 +554,21 @@ export default function CafeView() {
   }, []); // stable — reads runtime state via focusActiveRef
 
   // Notification when user switches tabs during an active session.
-  // OS notifications are attempted if permission is granted, but macOS can silently
-  // block them at the system level with no detectable error — so we always show an
-  // in-app toast as a reliable fallback.
+  // OS notifications are tried if permission is granted (macOS can silently block them).
+  // On desktop an in-app toast is also shown as a reliable fallback.
+  // Both are skipped entirely on mobile/tablet where popup windows don't work.
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'hidden') return;
       if (!focusActiveRef.current) return;
       if (notifCooldownRef.current) return;
+      if (IS_MOBILE_OR_TABLET) return;
 
       notifCooldownRef.current = true;
       setTimeout(() => { notifCooldownRef.current = false; }, 60_000);
 
       // Try OS notification
-      if (Notification.permission === 'granted') {
+      if (NOTIF_SUPPORTED && Notification.permission === 'granted') {
         const notif = new Notification('Lunaria Cafe ☕', {
           body: 'The cafe is still going! Click to check in.',
           icon: '/favicon.svg',
@@ -570,10 +576,9 @@ export default function CafeView() {
         notif.onclick = () => { window.focus(); openStatusPopup(); };
       }
 
-      // In-app toast — always shown so the user never misses the alert,
-      // even when macOS silently blocks the OS notification.
+      // In-app toast — desktop only (mobile/tablet already returned above).
       let notifHint;
-      if (Notification.permission !== 'granted') {
+      if (!NOTIF_SUPPORTED || Notification.permission !== 'granted') {
         if (IS_MAC)          notifHint = 'Allow notifications in Chrome and in macOS System Settings → Notifications → Chrome to get OS-level alerts.';
         else if (IS_WINDOWS) notifHint = 'Allow notifications in Chrome and in Windows Settings → System → Notifications → Chrome to get OS-level alerts.';
         else                 notifHint = 'Allow notifications in your browser and system settings to get OS-level alerts.';
