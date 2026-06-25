@@ -1,7 +1,7 @@
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Coins, Star, Zap, AlertTriangle } from 'lucide-react';
+import { Clock, Coins, Heart, Sparkles, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const IS_PHONE = /iPhone|Android.*Mobile/i.test(navigator.userAgent);
@@ -170,13 +170,13 @@ export default function SessionSummary() {
                 <StatCard icon={<Clock className="w-3.5 h-3.5 text-blue-400" />}
                   label="Focused" value={formatDuration(s.durationSeconds)} color="text-white" />
 
-                <StatCard icon={<Zap className="w-3.5 h-3.5 text-yellow-400" />}
-                  label="Focus Score" value={s.attentionScore} color="text-white" />
+                <StatCard icon={<Sparkles className="w-3.5 h-3.5 text-emerald-300" />}
+                  label="Focus Score" value={s.attentionScore} color="text-emerald-300" />
 
                 <StatCard icon={<Coins className="w-3.5 h-3.5 text-amber-400" />}
                   label="Coins Earned" value={`+${s.coinsEarned}`} color="text-amber-300" />
 
-                <StatCard icon={<Star className="w-3.5 h-3.5 text-rose-400" />}
+                <StatCard icon={<Heart className="w-3.5 h-3.5 text-rose-300" />}
                   label="Reputation"
                   value={s.reputationGain > 0 ? `+${s.reputationGain}%` : `${s.reputationGain}%`}
                   color={s.reputationGain > 0 ? 'text-green-400' : s.reputationGain < 0 ? 'text-red-400' : 'text-muted-foreground'} />

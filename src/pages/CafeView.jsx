@@ -655,6 +655,14 @@ export default function CafeView() {
       )}
 
       <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
+        {isZenMode && !popupOpen && (
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+            <div className="relative">
+              <CafeCanvas frozen={true} />
+              <div className="absolute inset-0 rounded-xl bg-background" />
+            </div>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {popupClosing ? (
             <motion.div

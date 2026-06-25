@@ -294,14 +294,16 @@ function drawParticles(ctx, time) {
   }
 }
 
-export default function CafeCanvas() {
+export default function CafeCanvas({ frozen = false }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const bgImages = useRef({ day: null, night: null });
   const furnitureImages = useRef({});
+  const frozenRef = useRef(frozen);
   const { state, dispatch } = useGame();
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
+  useEffect(() => { frozenRef.current = frozen; }, [frozen]);
 
   useEffect(() => {
     const day = new Image(); day.src = '/C_Daylight.png';
@@ -491,15 +493,16 @@ export default function CafeCanvas() {
       ctx.fillRect(0, 0, CAFE_W, CAFE_H);
     }
 
-    animRef.current = requestAnimationFrame(draw);
+    if (!frozenRef.current) animRef.current = requestAnimationFrame(draw);
   }, []);
 
   useEffect(() => {
-    animRef.current = requestAnimationFrame(draw);
+    if (!frozen) animRef.current = requestAnimationFrame(draw);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [draw]);
+  }, [draw, frozen]);
 
   useEffect(() => {
+  if (frozen) return;
   const interval = setInterval(() => {
 
     state.npcs.rabbits.forEach((r) => {
@@ -536,10 +539,11 @@ export default function CafeCanvas() {
 
   return () => clearInterval(interval);
 
-}, [state.npcs.rabbits, state.cafe.furniture, dispatch]);
+}, [frozen, state.npcs.rabbits, state.cafe.furniture, dispatch]);
 
   // ── Cat movement (every 4 s; shorter steps — cats are lazier) ──────────────
   useEffect(() => {
+  if (frozen) return;
   const interval = setInterval(() => {
 
     state.npcs.cats.forEach((c) => {
@@ -577,7 +581,7 @@ export default function CafeCanvas() {
 
   return () => clearInterval(interval);
 
-}, [state.npcs.cats, state.cafe.furniture, dispatch]);
+}, [frozen, state.npcs.cats, state.cafe.furniture, dispatch]);
 
   // Respawn any pet that is outside the walkable zone to the entrance.
   // Runs on mount and whenever a pet is added or removed.

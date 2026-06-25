@@ -533,7 +533,8 @@ export function gameReducer(state, action) {
           coinsEarned:    state.stats.coinsEarned    + coinsGain,
         },
       };
-      if (customer) {
+      const isZen = state.settings.focusViewMode === 'zen';
+      if (customer && !isZen) {
         next = { ...next, ui: pushPopup(next, `${emoji} Customer served!`, coinsGain) };
       }
       return next;
