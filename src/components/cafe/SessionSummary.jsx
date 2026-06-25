@@ -177,7 +177,9 @@ export default function SessionSummary() {
                   label="Coins Earned" value={`+${s.coinsEarned}`} color="text-amber-300" />
 
                 <StatCard icon={<Star className="w-3.5 h-3.5 text-rose-400" />}
-                  label="Reputation" value={`+${s.reputationGain}%`} color="text-rose-300" />
+                  label="Reputation"
+                  value={s.reputationGain > 0 ? `+${s.reputationGain}%` : `${s.reputationGain}%`}
+                  color={s.reputationGain > 0 ? 'text-green-400' : s.reputationGain < 0 ? 'text-red-400' : 'text-muted-foreground'} />
 
                 <StatCard icon={<AlertTriangle className="w-3.5 h-3.5 text-orange-400" />}
                   label="Distractions" value={s.distractions}

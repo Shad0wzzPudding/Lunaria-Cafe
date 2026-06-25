@@ -6,6 +6,8 @@ import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
 
+const REP_PENALTY_INTERVAL_MS = 3000;
+
 export function gameReducer(state, action) {
   switch (action.type) {
 
@@ -45,6 +47,7 @@ export function gameReducer(state, action) {
           elapsed: 0,
           coinsAtStart: state.coins,
           reputationAtStart: state.reputation,
+          repPenaltyLastAt: null,
         },
         attention: { ...state.attention, chaosEvents: [] },
       };
@@ -74,7 +77,7 @@ export function gameReducer(state, action) {
           durationSeconds: state.focus.elapsed,
           durationMinutes: sessionMins,
           coinsEarned,
-          reputationGain: Math.max(0, state.reputation - (state.focus.reputationAtStart ?? state.reputation)),
+          reputationGain: state.reputation - (state.focus.reputationAtStart ?? state.reputation),
           attentionScore:  Math.round(state.attention.score),
           distractions:    state.attention.chaosEvents.length,
           endReason: state.focus.status === 'distracted' ? 'distracted' : 'manual',
@@ -140,7 +143,7 @@ export function gameReducer(state, action) {
           durationSeconds: state.focus.elapsed,
           durationMinutes: sessionMins,
           coinsEarned,
-          reputationGain:  0,
+          reputationGain:  state.reputation - (state.focus.reputationAtStart ?? state.reputation),
           attentionScore:  Math.round(state.attention.score),
           distractions:    sessionChaos,
         },
@@ -213,8 +216,21 @@ export function gameReducer(state, action) {
         }
       }
 
+      const canPenalise = action.payload.phone_detected
+        && state.focus.status === 'active'
+        && (state.focus.repPenaltyLastAt === null || now - state.focus.repPenaltyLastAt >= REP_PENALTY_INTERVAL_MS);
+      const reputation = canPenalise
+        ? Math.max(0, state.reputation - 1)
+        : state.reputation;
+
       return {
         ...state,
+        reputation,
+        focus: {
+          ...state.focus,
+          status: newFocusStatus,
+          repPenaltyLastAt: canPenalise ? now : state.focus.repPenaltyLastAt,
+        },
         attention: {
           ...state.attention,
           score,
@@ -228,7 +244,6 @@ export function gameReducer(state, action) {
           phoneFreeSince,
           gazeFocusedSince,
         },
-        focus: { ...state.focus, status: newFocusStatus },
       };
     }
 

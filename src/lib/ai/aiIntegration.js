@@ -91,8 +91,8 @@ export function startSimulation() {
   setConnectionStatus('live', 'simulation');
 
   simulationInterval = setInterval(() => {
-    const drift = (Math.random() - 0.45) * 8;
-    simulatedScore = Math.max(20, Math.min(100, simulatedScore + drift));
+    const drift = (Math.random() - 0.45) * 4;
+    simulatedScore = Math.max(0, Math.min(100, simulatedScore + drift));
     const phoneChance = Math.random() < 0.02;
 
     processAIEvent({

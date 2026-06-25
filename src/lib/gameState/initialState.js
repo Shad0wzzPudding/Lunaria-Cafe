@@ -24,6 +24,7 @@ export const initialState = {
     elapsed: 0,
     duration: 25 * 60,
     mode: 'pomodoro',
+    repPenaltyLastAt: null,
   },
   attention: {
     score: 85,

@@ -211,21 +211,15 @@ function processDetections(faceResult, phones) {
     }
   }
 
-  let targetScore = 85;
-  if (isPhoneDetected) targetScore = 22;
-  else if (!hasFace && noFaceWarning) targetScore = 38;
-  else if (!isGazeFocused) targetScore = 52;
-  else if (isUserFocused) {
-    const bonus = Math.min(30, Math.log1p(focusScore) * 4);
-    targetScore = Math.min(100, 70 + bonus);
-  }
-
-  const scoreDiff = targetScore - currentAttentionScore;
-  const maxChange = 2.0;
-  if (Math.abs(scoreDiff) <= maxChange) {
-    currentAttentionScore = targetScore;
-  } else {
-    currentAttentionScore += Math.sign(scoreDiff) * maxChange;
+  if (isPhoneDetected) {
+    currentAttentionScore -= 1.5;
+  } else if (!hasFace && noFaceWarning) {
+    currentAttentionScore -= 1.0;
+  } else if (!isGazeFocused) {
+    currentAttentionScore -= 0.5;
+  } else if (isUserFocused) {
+    const gain = 0.3 + Math.min(0.5, Math.log1p(focusScore) * 0.03);
+    currentAttentionScore += gain;
   }
   currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
 
