@@ -518,7 +518,7 @@ export function gameReducer(state, action) {
       const customer  = state.npcs.customers.find((c) => c.id === action.payload);
       const remaining = state.npcs.customers.filter((c) => c.id !== action.payload);
       const coinsGain = customer ? 8 + Math.floor(Math.random() * 7) : 0;
-      const repGain   = customer ? 2 : 0;
+      const repGain   = customer ? 1 : 0;
       const emoji     = customer?.emoji ?? '☕';
 
       let next = {
