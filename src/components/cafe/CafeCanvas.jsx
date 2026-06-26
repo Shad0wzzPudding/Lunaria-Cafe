@@ -102,6 +102,117 @@ function collidesWithFurniture(x, y, radius, furniture) {
 
 const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3', cat: '#c9b89a', catStripe: '#a89070', catInner: '#e8c4b0' };
 
+function randomWalkablePoint() {
+  const zone = WALKABLE_ZONES[Math.floor(Math.random() * WALKABLE_ZONES.length)];
+  return { x: zone.x + Math.random() * zone.w, y: zone.y + Math.random() * zone.h };
+}
+
+function drawGhost(ctx, e, time) {
+  if (e.alpha <= 0) return;
+  const floatY = e.y + Math.sin(time * 0.0012 + e.phase) * 7;
+
+  ctx.save();
+  ctx.globalAlpha = e.alpha * 0.85;
+
+  // Body: dome top + wavy 3-bump bottom
+  ctx.fillStyle = '#dce8ff';
+  ctx.beginPath();
+  ctx.moveTo(e.x - 12, floatY + 8);
+  ctx.lineTo(e.x - 12, floatY);
+  ctx.arc(e.x, floatY, 12, Math.PI, 0);          // clockwise left→top→right
+  ctx.lineTo(e.x + 12, floatY + 8);
+  ctx.quadraticCurveTo(e.x + 8,  floatY + 14, e.x + 4,  floatY + 8);
+  ctx.quadraticCurveTo(e.x,      floatY + 14, e.x - 4,  floatY + 8);
+  ctx.quadraticCurveTo(e.x - 8,  floatY + 14, e.x - 12, floatY + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#2a2040';
+  ctx.beginPath(); ctx.arc(e.x - 4, floatY - 3, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(e.x + 4, floatY - 3, 2.2, 0, Math.PI * 2); ctx.fill();
+  // Eye shine
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.beginPath(); ctx.arc(e.x - 3,   floatY - 4, 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(e.x + 4.8, floatY - 4, 0.8, 0, Math.PI * 2); ctx.fill();
+  // Mouth
+  ctx.fillStyle = '#2a2040';
+  ctx.beginPath(); ctx.arc(e.x, floatY + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawMist(ctx, e, time, lowPerf = false) {
+  if (e.alpha <= 0) return;
+  const swayX = e.x + Math.sin(time * 0.0004 + e.phase) * 60;
+  const swayY = e.y + Math.sin(time * 0.0003 + e.phase * 1.3) * 10;
+
+  ctx.save();
+  if (!lowPerf) ctx.filter = 'blur(4px)';
+  ctx.globalAlpha = e.alpha * 0.65;
+  ctx.fillStyle = '#6b2fa0';
+
+  const puffs = [
+    { dx:   0, dy:  0, rx: 30, ry: 14 },
+    { dx: -24, dy:  6, rx: 22, ry: 11 },
+    { dx:  26, dy:  5, rx: 22, ry: 11 },
+    { dx: -12, dy: -9, rx: 18, ry:  9 },
+    { dx:  14, dy: -8, rx: 16, ry:  9 },
+  ];
+  for (const p of puffs) {
+    ctx.beginPath();
+    ctx.ellipse(swayX + p.dx, swayY + p.dy, p.rx, p.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawFire(ctx, e, time, lowPerf = false) {
+  if (e.alpha <= 0) return;
+  const { x, y } = e;
+  const flicker  = Math.sin(time * 0.018 + x * 0.1) * 3;
+  const flicker2 = Math.sin(time * 0.025 + x * 0.07) * 2;
+
+  ctx.save();
+  ctx.globalAlpha = e.alpha;
+
+  // Base glow (skipped in perf mode)
+  if (!lowPerf) {
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, 28);
+    glow.addColorStop(0, 'rgba(255,140,40,0.35)');
+    glow.addColorStop(1, 'rgba(255,80,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y, 28, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Outer flame — orange
+  ctx.fillStyle = 'rgba(255,100,30,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y + 2);
+  ctx.quadraticCurveTo(x - 10 + flicker,      y - 8, x + flicker,      y - 22);
+  ctx.quadraticCurveTo(x + 10 + flicker,      y - 8, x + 8,            y + 2);
+  ctx.closePath(); ctx.fill();
+
+  // Mid flame — yellow
+  ctx.fillStyle = 'rgba(255,210,60,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y + 2);
+  ctx.quadraticCurveTo(x - 6 + flicker2,      y - 5, x + flicker2,     y - 14);
+  ctx.quadraticCurveTo(x + 6 + flicker2,      y - 5, x + 5,            y + 2);
+  ctx.closePath(); ctx.fill();
+
+  // Inner core — white-yellow
+  ctx.fillStyle = 'rgba(255,255,210,0.95)';
+  ctx.beginPath();
+  ctx.moveTo(x - 2.5, y + 2);
+  ctx.quadraticCurveTo(x + flicker2 * 0.3,    y - 4, x + flicker2 * 0.3, y - 8);
+  ctx.quadraticCurveTo(x + 3,                  y - 4, x + 2.5,            y + 2);
+  ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+}
+
 function drawRabbit(ctx, rabbit, time) {
   const { x, y, mood } = rabbit;
   const bobY = Math.sin(time * 0.003 + x) * 2;
@@ -246,39 +357,53 @@ function drawCustomer(ctx, customer, time, furniture) {
   }
 }
 
-function drawAmbientLights(ctx, furniture, time) {
+function drawAmbientLights(ctx, furniture, time, dim = 1, lowPerf = false) {
   for (const f of furniture) {
     const cx = f.x + f.w / 2;
     const cy = f.y + f.h / 2;
 
     if (f.type === 'fireplace') {
-    const flicker = 0.22 + Math.sin(time * 0.01 + f.x) * 0.05;
-    // Outer glow
-    const outer = ctx.createRadialGradient(cx,cy + 10,10,cx,cy + 10,220);
-    outer.addColorStop(0, `rgba(255,180,80,${flicker})`);
-    outer.addColorStop(0.35, `rgba(255,120,40,${flicker * 0.7})`);
-    outer.addColorStop(0.7, `rgba(255,80,20,${flicker * 0.25})`);
-    outer.addColorStop(1, 'rgba(255,80,20,0)');
-    ctx.fillStyle = outer;
-    ctx.fillRect(cx - 220,cy - 120,440,440);
-    // Inner bright core
-    const core = ctx.createRadialGradient(cx,cy + 18,0,cx,cy + 18,70);
-    core.addColorStop(0, 'rgba(255,240,180,0.45)');
-    core.addColorStop(0.4, 'rgba(255,180,80,0.2)');
-    core.addColorStop(1, 'rgba(255,180,80,0)');
-    ctx.fillStyle = core;
-    ctx.fillRect(cx - 70,cy - 50,140,140);
+      const flicker = (0.22 + Math.sin(time * 0.01 + f.x) * 0.05) * dim;
+      if (lowPerf) {
+        ctx.save();
+        ctx.globalAlpha = flicker * 0.55;
+        ctx.fillStyle = 'rgba(255,140,40,1)';
+        ctx.beginPath(); ctx.arc(cx, cy + 10, 75, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else {
+        const outer = ctx.createRadialGradient(cx,cy + 10,10,cx,cy + 10,220);
+        outer.addColorStop(0, `rgba(255,180,80,${flicker})`);
+        outer.addColorStop(0.35, `rgba(255,120,40,${flicker * 0.7})`);
+        outer.addColorStop(0.7, `rgba(255,80,20,${flicker * 0.25})`);
+        outer.addColorStop(1, 'rgba(255,80,20,0)');
+        ctx.fillStyle = outer;
+        ctx.fillRect(cx - 220,cy - 120,440,440);
+        const core = ctx.createRadialGradient(cx,cy + 18,0,cx,cy + 18,70);
+        core.addColorStop(0, `rgba(255,240,180,${0.45 * dim})`);
+        core.addColorStop(0.4, `rgba(255,180,80,${0.2 * dim})`);
+        core.addColorStop(1, 'rgba(255,180,80,0)');
+        ctx.fillStyle = core;
+        ctx.fillRect(cx - 70,cy - 50,140,140);
+      }
     }
 
     if (f.type === 'lantern') {
-    const pulse = 0.14 + Math.sin(time * 0.004 + f.x * 0.1) * 0.03;
-    const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,140);
-    grad.addColorStop(0, `rgba(255,230,140,${pulse})`);
-    grad.addColorStop(0.25, `rgba(255,190,90,${pulse * 0.7})`);
-    grad.addColorStop(0.6, `rgba(255,140,40,${pulse * 0.3})`);
-    grad.addColorStop(1, 'rgba(255,140,40,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(cx - 140,cy - 140,280,280);
+      const pulse = (0.14 + Math.sin(time * 0.004 + f.x * 0.1) * 0.03) * dim;
+      if (lowPerf) {
+        ctx.save();
+        ctx.globalAlpha = pulse * 0.9;
+        ctx.fillStyle = 'rgba(255,210,100,1)';
+        ctx.beginPath(); ctx.arc(cx, cy, 50, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else {
+        const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,140);
+        grad.addColorStop(0, `rgba(255,230,140,${pulse})`);
+        grad.addColorStop(0.25, `rgba(255,190,90,${pulse * 0.7})`);
+        grad.addColorStop(0.6, `rgba(255,140,40,${pulse * 0.3})`);
+        grad.addColorStop(1, 'rgba(255,140,40,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(cx - 140,cy - 140,280,280);
+      }
     }
   }
 }
@@ -300,10 +425,18 @@ export default function CafeCanvas({ frozen = false }) {
   const bgImages = useRef({ day: null, night: null });
   const furnitureImages = useRef({});
   const frozenRef = useRef(frozen);
+  const chaosEntitiesRef = useRef(null);
+  const lastDrawTimeRef = useRef(0);
+  const sortedFurnitureRef = useRef([]);
   const { state, dispatch } = useGame();
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+  useEffect(() => {
+    sortedFurnitureRef.current = [...state.cafe.furniture].sort(
+      (a, b) => (a.y + a.h) - (b.y + b.h)
+    );
+  }, [state.cafe.furniture]);
 
   useEffect(() => {
     const day = new Image(); day.src = '/C_Daylight.png';
@@ -328,8 +461,17 @@ export default function CafeCanvas({ frozen = false }) {
   const draw = useCallback((time) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
     const s = stateRef.current;
+    const perfMode = s.settings.performanceMode;
+
+    // 30fps cap in performance mode
+    if (perfMode && time - lastDrawTimeRef.current < 33.3) {
+      animRef.current = requestAnimationFrame(draw);
+      return;
+    }
+    lastDrawTimeRef.current = time;
+
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, CAFE_W, CAFE_H);
 
     const bg = bgImages.current[s.cafe.timeOfDay ?? 'night'];
@@ -340,9 +482,9 @@ export default function CafeCanvas({ frozen = false }) {
     // Draw Furniture First
     // =========================
 
-    const sortedFurniture = [...s.cafe.furniture].sort(
-      (a, b) => (a.y + a.h) - (b.y + b.h)
-    );
+    const sortedFurniture = perfMode
+      ? sortedFurnitureRef.current
+      : [...s.cafe.furniture].sort((a, b) => (a.y + a.h) - (b.y + b.h));
 
     for (const furn of sortedFurniture) {
 
@@ -412,9 +554,12 @@ export default function CafeCanvas({ frozen = false }) {
     // Draw AmbientLight
     // =========================
     if (s.cafe.timeOfDay === 'night') {
+      const mistAlphaEarly = chaosEntitiesRef.current
+        ? chaosEntitiesRef.current.mists.reduce((sum, e) => sum + e.alpha, 0) / Math.max(1, chaosEntitiesRef.current.mists.length)
+        : 0;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      drawAmbientLights(ctx, s.cafe.furniture, time);
+      drawAmbientLights(ctx, s.cafe.furniture, time, 1 - mistAlphaEarly * 0.65, perfMode);
       ctx.restore();
     }
 
@@ -457,6 +602,112 @@ export default function CafeCanvas({ frozen = false }) {
       drawCustomer(ctx, customer, time, s.cafe.furniture);
     }
 
+    // =========================
+    // Draw Chaos Entities
+    // =========================
+    if (!chaosEntitiesRef.current) {
+      chaosEntitiesRef.current = {
+        ghosts: [], ghostsAbove: false,
+        mists:  [], mistsAbove:  false,
+        fires:  [], firesAbove:  false,
+      };
+    }
+    const entities    = chaosEntitiesRef.current;
+    const chaosLevel  = s.attention.chaosLevel;
+    const sessionActive = s.focus.status === 'active' || s.focus.status === 'paused';
+    const FADE = 1 / 120;
+    const mk   = () => ({ ...randomWalkablePoint(), alpha: 0, phase: Math.random() * Math.PI * 2 });
+    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+    // Respawn with fresh count + positions when threshold is crossed from below
+    const ghostsAbove = sessionActive && chaosLevel >= 1;
+    const mistsAbove  = sessionActive && chaosLevel >= 2;
+    const firesAbove  = sessionActive && chaosLevel >= 3;
+
+    if (ghostsAbove && !entities.ghostsAbove) entities.ghosts = Array.from({ length: rand(1, 5) }, mk);
+    if (mistsAbove  && !entities.mistsAbove)  entities.mists  = Array.from({ length: rand(2, 5) }, mk);
+    if (firesAbove  && !entities.firesAbove)  entities.fires  = Array.from({ length: rand(1, 5) }, mk);
+
+    entities.ghostsAbove = ghostsAbove;
+    entities.mistsAbove  = mistsAbove;
+    entities.firesAbove  = firesAbove;
+
+    // Update fire alpha and draw BEFORE mist layers (fire goes behind mist)
+    for (const e of entities.fires) {
+      if (!sessionActive) e.alpha = 0;
+      else e.alpha = chaosLevel >= 3 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
+      drawFire(ctx, e, time, perfMode);
+    }
+
+    for (const e of entities.ghosts) {
+      if (!sessionActive) e.alpha = 0;
+      else e.alpha = chaosLevel >= 1 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
+      drawGhost(ctx, e, time);
+    }
+    for (const e of entities.mists) {
+      if (!sessionActive) e.alpha = 0;
+      else e.alpha = chaosLevel >= 2 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
+    }
+
+    // Silent Hill-style mist atmosphere — multi-layer, driven by average mist alpha
+    const mistAlpha = entities.mists.reduce((sum, e) => sum + e.alpha, 0) / Math.max(1, entities.mists.length);
+    if (mistAlpha > 0) {
+      ctx.save();
+
+      // Layer 1: Pixelated ground fog — discrete horizontal bands rising from the floor
+      const BAND = 8;
+      const fogBottom = CAFE_H;
+      const fogTop    = CAFE_H * 0.15;
+      const bands     = Math.ceil((fogBottom - fogTop) / BAND);
+      for (let i = 0; i < bands; i++) {
+        const t = i / bands; // 0 = bottom, 1 = top
+        const opacity = mistAlpha * 0.82 * Math.pow(1 - t, 2.2);
+        if (opacity < 0.01) continue;
+        ctx.fillStyle = `rgba(30,8,70,${opacity})`;
+        ctx.fillRect(0, fogBottom - (i + 1) * BAND, CAFE_W, BAND);
+      }
+
+      // Layer 2: Oppressive dark purple pressing down from above
+      const topDark = ctx.createLinearGradient(0, 0, 0, CAFE_H * 0.55);
+      topDark.addColorStop(0, `rgba(10,3,40,${mistAlpha * 0.55})`);
+      topDark.addColorStop(1, `rgba(10,3,40,0)`);
+      ctx.fillStyle = topDark;
+      ctx.fillRect(0, 0, CAFE_W, CAFE_H);
+
+      // Layer 3: Crushing edge vignette — near-black at corners
+      const vign = ctx.createRadialGradient(CAFE_W / 2, CAFE_H / 2, CAFE_H * 0.18, CAFE_W / 2, CAFE_H / 2, CAFE_W * 0.72);
+      vign.addColorStop(0,   `rgba(8,0,25,0)`);
+      vign.addColorStop(0.55,`rgba(8,0,25,${mistAlpha * 0.40})`);
+      vign.addColorStop(1,   `rgba(4,0,15,${mistAlpha * 0.78})`);
+      ctx.fillStyle = vign;
+      ctx.fillRect(0, 0, CAFE_W, CAFE_H);
+
+      // Layer 4: Animated floor wisps drifting through the walkable zone (skipped in performance mode)
+      if (!perfMode) {
+        const floorY = CAFE_H * 0.73;
+        for (let i = 0; i < 6; i++) {
+          const wx = ((Math.sin(time * 0.00018 + i * 1.9) * 0.5 + 0.5) * CAFE_W * 1.3) - CAFE_W * 0.15;
+          const wy = floorY + Math.sin(time * 0.00025 + i * 0.8) * 18;
+          const rw = 160 + Math.sin(time * 0.0003 + i * 1.1) * 55;
+          const rh = 28  + Math.sin(time * 0.00035 + i * 0.6) * 10;
+          const wa = mistAlpha * (0.28 + Math.sin(time * 0.0004 + i * 2.3) * 0.10);
+          const wisp = ctx.createRadialGradient(wx, wy, 0, wx, wy, rw);
+          wisp.addColorStop(0, `rgba(90,40,160,${wa})`);
+          wisp.addColorStop(1, `rgba(90,40,160,0)`);
+          ctx.fillStyle = wisp;
+          ctx.beginPath();
+          ctx.ellipse(wx, wy, rw, rh, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    for (const e of entities.mists) {
+      drawMist(ctx, e, time, perfMode);
+    }
+
     // Draw pending furniture ghost
     const pf = s.cafe.pendingFurniture;
     if (pf) {
@@ -486,12 +737,7 @@ export default function CafeCanvas({ frozen = false }) {
       ctx.restore();
     }
 
-    drawParticles(ctx, time);
-
-    if (s.attention.chaosLevel >= 2) {
-      ctx.fillStyle = `rgba(140,100,200,${0.02 + s.attention.chaosLevel * 0.01})`;
-      ctx.fillRect(0, 0, CAFE_W, CAFE_H);
-    }
+    if (!perfMode) drawParticles(ctx, time);
 
     if (!frozenRef.current) animRef.current = requestAnimationFrame(draw);
   }, []);

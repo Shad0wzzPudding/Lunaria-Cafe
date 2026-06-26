@@ -38,6 +38,7 @@ export const initialState = {
     phoneFreeSince: null,
     gazeFocusedSince: null,
     userAbsentSince: null,
+    debugAttentionLock: false,
   },
   journal: {
     noteHeader: 'Extra notes.',
@@ -125,5 +126,6 @@ export const initialState = {
   },
   settings: {
     focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
+    performanceMode: false,
   },
 };

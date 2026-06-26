@@ -12,10 +12,77 @@ import Statistics from '@/pages/Statistics'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
+import DebugPanel from '@/components/debug/DebugPanel'
+import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
+import { Sounds } from '@/lib/sounds'
+
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter']
 
 function GameRouter() {
   const { state } = useGame()
   useCafeAudio()
+
+  const [debugOpen,  setDebugOpen]  = React.useState(false)
+  const [easyDebug,  setEasyDebug]  = React.useState(false)
+  const konamiRef      = React.useRef([])
+  const easyEnterRef   = React.useRef(0)
+  const phaseRef       = React.useRef(state.phase)
+  const easyDebugRef   = React.useRef(easyDebug)
+  React.useEffect(() => {
+    phaseRef.current = state.phase
+    if (state.phase !== 'settings') setEasyDebug(false)
+  }, [state.phase])
+  React.useEffect(() => { easyDebugRef.current = easyDebug }, [easyDebug])
+
+  const openDebug = React.useCallback(() => {
+    setDebugOpen(true)
+    Sounds.debugToolOpen(0.8, 0.9, true)
+  }, [])
+
+  React.useEffect(() => {
+    const handleKey = (e) => {
+      if (phaseRef.current !== 'settings') {
+        konamiRef.current    = []
+        easyEnterRef.current = 0
+        return
+      }
+
+      // Switch not yet ON — listen for Enter ×3 to flip it on
+      if (!easyDebugRef.current) {
+        if (e.key === 'Enter') {
+          easyEnterRef.current += 1
+          playDancePadNote('Enter')
+          if (easyEnterRef.current >= 3) {
+            easyEnterRef.current = 0
+            setEasyDebug(true)
+          }
+        } else {
+          easyEnterRef.current = 0
+        }
+        return
+      }
+
+      // Switch is ON — accept the full Konami sequence
+      const seq      = konamiRef.current
+      const expected = KONAMI[seq.length]
+      if (e.key === expected) {
+        const next = [...seq, e.key]
+        konamiRef.current = next
+        playDancePadNote(e.key)
+        if (next.length === KONAMI.length) {
+          konamiRef.current = []
+          openDebug()
+        }
+      } else if (e.key === KONAMI[0]) {
+        konamiRef.current = [e.key]
+        playDancePadNote(e.key)
+      } else {
+        konamiRef.current = []
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [openDebug])
 
   const phase = state.phase
   const isCafePhase = phase === 'loading' || phase === 'management' || phase === 'focus'
@@ -57,7 +124,9 @@ function GameRouter() {
 
       {phase === 'menu'     && <MainMenu />}
       {phase === 'stats'    && <Statistics />}
-      {phase === 'settings' && <GameSettings />}
+      {phase === 'settings' && <GameSettings easyDebug={easyDebug} setEasyDebug={setEasyDebug} />}
+
+      {debugOpen && <DebugPanel onClose={() => setDebugOpen(false)} />}
     </>
   )
 }

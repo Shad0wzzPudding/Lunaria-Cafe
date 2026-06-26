@@ -24,6 +24,14 @@ export function gameReducer(state, action) {
     case 'ADD_REPUTATION':
       return { ...state, reputation: state.reputation + action.payload };
 
+    case 'DEBUG_SET_ATTENTION_SCORE': {
+      const score = Math.max(0, Math.min(100, action.payload));
+      return { ...state, attention: { ...state.attention, score, chaosLevel: getChaosStage(score).level, debugAttentionLock: true } };
+    }
+
+    case 'DEBUG_UNLOCK_ATTENTION':
+      return { ...state, attention: { ...state.attention, debugAttentionLock: false } };
+
     case 'SET_DAILY_GOAL': {
       const dailyGoal = Number(action.payload);
       if (!Number.isFinite(dailyGoal) || dailyGoal <= 0) return state;
@@ -50,7 +58,7 @@ export function gameReducer(state, action) {
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
         },
-        attention: { ...state.attention, chaosEvents: [], userAbsentSince: null },
+        attention: { ...state.attention, chaosEvents: [], userAbsentSince: null, debugAttentionLock: false },
       };
 
     case 'PAUSE_FOCUS':
@@ -173,7 +181,8 @@ export function gameReducer(state, action) {
     // ── AI / Attention ───────────────────────────────────────────────────────
 
     case 'PROCESS_AI_EVENT': {
-      const score     = action.payload.attention_score ?? state.attention.score;
+      const locked    = state.attention.debugAttentionLock;
+      const score     = locked ? state.attention.score : (action.payload.attention_score ?? state.attention.score);
       const chaos     = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const now       = Date.now();
@@ -585,6 +594,9 @@ export function gameReducer(state, action) {
 
     case 'SET_BG_MODE':
       return { ...state, cafe: { ...state.cafe, bgMode: action.payload } };
+
+    case 'SET_SETTINGS':
+      return { ...state, settings: { ...state.settings, ...action.payload } };
 
     // ── Meta ─────────────────────────────────────────────────────────────────
 

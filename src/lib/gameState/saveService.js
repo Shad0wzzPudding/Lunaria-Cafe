@@ -64,6 +64,7 @@ export function serializeGameState(state) {
       decorateMode: false,
     },
     audio: state.audio,
+    settings: state.settings,
     journal: normalizeJournal(state.journal, initialState.journal),
     stats: {
       ...stats,
@@ -141,6 +142,7 @@ export function mergeLoadedSave(loaded, initialState) {
       decorateMode: false,
     },
     audio: { ...initialState.audio, ...loaded.audio },
+    settings: { ...initialState.settings, ...loaded.settings },
     journal: normalizeJournal(loaded.journal, initialState.journal),
     stats: {
       ...initialState.stats,

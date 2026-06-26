@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap } from 'lucide-react';
 import {
   getAIConfig,
   setAIConfig,
@@ -46,7 +46,7 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
   );
 }
 
-export default function GameSettings() {
+export default function GameSettings({ easyDebug, setEasyDebug }) {
   const { state, dispatch, saveNow, saveError } = useGame();
   const { signOut, user, isGuest } = useAuth();
   const { audio } = state;
@@ -194,6 +194,38 @@ export default function GameSettings() {
 
         <section className="space-y-4">
           <h2 className="font-display text-base text-foreground flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary" /> Performance
+          </h2>
+          <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-2">
+            <ToggleSetting
+              icon={Zap}
+              label="Performance Mode"
+              description="Reduces visual effects (mist blur, floor wisps) for better frame rate on lower-end devices."
+              checked={!!state.settings.performanceMode}
+              onCheckedChange={(v) => dispatch({ type: 'SET_SETTINGS', payload: { performanceMode: v } })}
+            />
+          </div>
+        </section>
+
+        {/* Developer section — hidden intentionally (secret debug tool)
+        <section className="space-y-4">
+          <h2 className="font-display text-base text-foreground flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-primary" /> Developer
+          </h2>
+          <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5">
+            <ToggleSetting
+              icon={AlertTriangle}
+              label="Cheat code ready"
+              description="Press Enter 3 times to enable, then input the sequence to open the debug panel."
+              checked={!!easyDebug}
+              onCheckedChange={setEasyDebug}
+            />
+          </div>
+        </section>
+        */}
+
+        <section className="space-y-4">
+          <h2 className="font-display text-base text-foreground flex items-center gap-2">
             <LogOut className="w-4 h-4 text-primary" /> Account
           </h2>
           <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-4">
@@ -220,6 +252,7 @@ export default function GameSettings() {
           </div>
         </section>
       </main>
+
     </div>
   );
 }

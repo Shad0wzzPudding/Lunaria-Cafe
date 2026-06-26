@@ -7,6 +7,7 @@ const FILES = [
   'Journal_opening.mp3',
   'journal_closing.mp3',
   'warning-sound.mp3',
+  'debugtool_open.mp3',
 ];
 
 const cache = {};
@@ -55,4 +56,5 @@ export const Sounds = {
   journalOpen:       (sfx, master, enabled) => play('Journal_opening.mp3', sfx, master, enabled),
   journalClose:      (sfx, master, enabled) => play('journal_closing.mp3', sfx, master, enabled),
   phoneWarning:      (sfx, master, enabled) => play('warning-sound.mp3', sfx, master, enabled),
+  debugToolOpen:     (sfx, master, enabled) => play('debugtool_open.mp3', sfx, master, enabled),
 };

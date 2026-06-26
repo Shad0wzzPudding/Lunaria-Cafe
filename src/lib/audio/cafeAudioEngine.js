@@ -116,6 +116,42 @@ export async function playCoinChime(sfxVolume = 0.7, masterVolume = 0.8) {
   }
 }
 
+// Each arrow maps to a distinct pitch like FNF note hits.
+const PAD_FREQ = {
+  ArrowLeft:  493.88,   // B4  — purple lane
+  ArrowDown:  659.25,   // E5  — blue lane
+  ArrowUp:    880.00,   // A5  — green lane
+  ArrowRight: 1046.50,  // C6  — red lane
+};
+const PAD_FREQ_DEFAULT = 698.46; // F5 — b / a / Enter
+
+export async function playDancePadNote(key = '', sfxVolume = 0.7, masterVolume = 0.8) {
+  try {
+    const ctx = ensureSfxCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    const freq = PAD_FREQ[key] ?? PAD_FREQ_DEFAULT;
+    const now  = ctx.currentTime;
+
+    // Triangle wave gives the clean, hollow FNF-style "tick"
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.38 * sfxVolume * masterVolume, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.16);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function stopAllCafeAudio() {
   if (!tracks) return;
   Object.values(tracks).forEach((el) => {
