@@ -7,6 +7,7 @@ import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 3000;
+const USER_ABSENT_GRACE_MS    = 2000;
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -49,7 +50,7 @@ export function gameReducer(state, action) {
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
         },
-        attention: { ...state.attention, chaosEvents: [] },
+        attention: { ...state.attention, chaosEvents: [], userAbsentSince: null },
       };
 
     case 'PAUSE_FOCUS':
@@ -185,7 +186,7 @@ export function gameReducer(state, action) {
         });
       }
 
-      let { phoneWarningStart, phoneFreeSince, gazeFocusedSince } = state.attention;
+      let { phoneWarningStart, phoneFreeSince, gazeFocusedSince, userAbsentSince } = state.attention;
       let newFocusStatus = state.focus.status;
 
       const isGazeFocused = !action.payload.warning_message?.includes('GAZE DISTRACTED');
@@ -216,8 +217,19 @@ export function gameReducer(state, action) {
         }
       }
 
-      const canPenalise = action.payload.phone_detected
+      if (action.payload.user_present) {
+        userAbsentSince = null;
+      } else if (!userAbsentSince) {
+        userAbsentSince = now;
+      }
+
+      const userAbsentLongEnough = !action.payload.user_present
+        && userAbsentSince !== null
+        && now - userAbsentSince >= USER_ABSENT_GRACE_MS;
+
+      const canPenalise = (action.payload.phone_detected || userAbsentLongEnough)
         && state.focus.status === 'active'
+        && score <= 75
         && (state.focus.repPenaltyLastAt === null || now - state.focus.repPenaltyLastAt >= REP_PENALTY_INTERVAL_MS);
       const reputation = canPenalise
         ? Math.max(0, state.reputation - 1)
@@ -243,6 +255,7 @@ export function gameReducer(state, action) {
           phoneWarningStart,
           phoneFreeSince,
           gazeFocusedSince,
+          userAbsentSince,
         },
       };
     }

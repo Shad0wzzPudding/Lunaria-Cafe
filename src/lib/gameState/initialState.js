@@ -37,6 +37,7 @@ export const initialState = {
     phoneWarningStart: null,
     phoneFreeSince: null,
     gazeFocusedSince: null,
+    userAbsentSince: null,
   },
   journal: {
     noteHeader: 'Extra notes.',

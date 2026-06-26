@@ -584,15 +584,39 @@ export default function CafeView() {
         else if (IS_WINDOWS) notifHint = 'Allow notifications in Chrome and in Windows Settings → System → Notifications → Chrome to get OS-level alerts.';
         else                 notifHint = 'Allow notifications in your browser and system settings to get OS-level alerts.';
       }
-      toast('Cafe window can be minimized too!', {
-        description: notifHint,
-        classNames: { description: '!text-black' },
-        action: {
-          label: 'Open popup',
-          onClick: openStatusPopup,
-        },
-        duration: 10_000,
-      });
+      if (notifHint) {
+        toast.custom((id) => (
+          <div className="rounded-xl border border-border/50 bg-card text-foreground shadow-lg px-4 py-3 w-[356px] space-y-2">
+            <p className="font-body text-sm font-semibold">Cafe window can be minimized too!</p>
+            <p className="font-body text-xs text-muted-foreground">{notifHint}</p>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <button
+                onClick={() => toast.dismiss(id)}
+                className="w-full rounded-md border border-border/40 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => { openStatusPopup(); toast.dismiss(id); }}
+                className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-body text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Open popup
+              </button>
+            </div>
+          </div>
+        ), { duration: 10_000 });
+      } else {
+        toast('Cafe window can be minimized too!', {
+          action: {
+            label: 'Open popup',
+            onClick: openStatusPopup,
+          },
+          cancel: {
+            label: 'Dismiss',
+          },
+          duration: 10_000,
+        });
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
