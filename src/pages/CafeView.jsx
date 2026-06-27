@@ -12,6 +12,7 @@ import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
 import ChaosEventLog from '@/components/cafe/ChaosEventLog';
+import ChaosGauge from '@/components/cafe/ChaosGauge';
 import ParticleOverlay from '@/components/cafe/ParticleOverlay';
 import NPCPanel from '@/components/cafe/NPCPanel';
 import FocusTimer from '@/components/focus/FocusTimer';
@@ -736,6 +737,7 @@ export default function CafeView() {
             >
               <CafeCanvas />
               <ParticleOverlay />
+              <ChaosGauge />
               <ChaosEventLog />
               <GameFeedback />
               <DecoratePanel />

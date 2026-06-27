@@ -1,16 +1,25 @@
+import { useState, useEffect } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function ChaosEventLog() {
   const { state } = useGame();
   const events = state.attention.chaosEvents;
+  const [now, setNow] = useState(Date.now());
 
-  if (!events.length) return null;
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const visible = events.filter(e => now - e.timestamp < 10000).slice(-4);
+
+  if (!visible.length) return null;
 
   return (
-    <motion.div className="absolute top-3 right-3 z-20 w-64 space-y-2 pointer-events-none">
+    <motion.div className="absolute top-20 right-3 z-20 w-64 space-y-2 pointer-events-none">
       <AnimatePresence>
-        {events.slice(-4).map((event, i) => (
+        {visible.map((event, i) => (
           <motion.div
             key={`${event.timestamp}-${i}`}
             initial={{ opacity: 0, x: 20 }}

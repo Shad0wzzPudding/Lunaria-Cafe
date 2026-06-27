@@ -6,7 +6,7 @@ import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
 import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
 
-const REP_PENALTY_INTERVAL_MS = 3000;
+const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;
 
 export function gameReducer(state, action) {
@@ -539,8 +539,11 @@ export function gameReducer(state, action) {
     case 'REMOVE_CUSTOMER': {
       const customer  = state.npcs.customers.find((c) => c.id === action.payload);
       const remaining = state.npcs.customers.filter((c) => c.id !== action.payload);
-      const coinsGain = customer ? 8 + Math.floor(Math.random() * 7) : 0;
-      const repGain   = customer ? 1 : 0;
+      const baseCoins = customer ? 8 + Math.floor(Math.random() * 7) : 0;
+      const coinsGain = state.attention.chaosLevel >= 3 ? 0
+        : state.attention.chaosLevel >= 1 ? Math.floor(baseCoins * 0.5)
+        : baseCoins;
+      const repGain   = customer && state.attention.chaosLevel < 2 ? 1 : 0;
       const emoji     = customer?.emoji ?? '☕';
 
       let next = {
