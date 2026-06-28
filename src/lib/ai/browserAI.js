@@ -10,7 +10,8 @@ let videoStream = null;
 let videoElement = null;
 let canvasElement = null; 
 let animFrameId = null;
-let renderFrameId = null; 
+let renderFrameId = null;
+let visibilityIntervalId = null;
 let lastProcessTime = 0;
 
 // Worker variables
@@ -219,7 +220,11 @@ function processDetections(faceResult, phones) {
     currentAttentionScore -= 0.5;
   } else if (isUserFocused) {
     const gain = 0.3 + Math.min(0.5, Math.log1p(focusScore) * 0.03);
-    currentAttentionScore += gain;
+    // Diminishing returns above 85: the closer to 100 the slower the gain
+    const dimFactor = currentAttentionScore >= 85
+      ? Math.max(0.05, (100 - currentAttentionScore) / 15)
+      : 1;
+    currentAttentionScore += gain * dimFactor;
   }
   currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
 
@@ -230,41 +235,57 @@ function processDetections(faceResult, phones) {
     timestamp: now,
     warning_message: warningMessage,
     tracker_score: focusScore,
+    phones: latestPhones,
     source: 'browser',
   };
 }
 
-async function processFrame() {
+async function runProcessFrame() {
   if (!videoElement || videoElement.readyState < 2) return;
+  try {
+    const now = performance.now();
+    const faceResult = faceLandmarker.detectForVideo(videoElement, now);
+    if (isYoloReady && !isProcessingYolo && workerCanvasCtx) {
+      isProcessingYolo = true;
+      workerCanvasCtx.drawImage(videoElement, 0, 0, 640, 640);
+      const imageData = workerCanvasCtx.getImageData(0, 0, 640, 640);
+      yoloWorker.postMessage({ type: 'detect', payload: { imageData } });
+    }
+    const event = processDetections(faceResult, latestPhones);
+    if (_onEvent) _onEvent(event);
+  } catch (err) {
+    console.warn('[BrowserAI] Frame processing error:', err.message);
+  }
+}
 
+async function processFrame() {
+  if (!videoElement || videoElement.readyState < 2) {
+    animFrameId = requestAnimationFrame(processFrame);
+    return;
+  }
   const now = performance.now();
   if (now - lastProcessTime < PROCESS_INTERVAL_MS) {
     animFrameId = requestAnimationFrame(processFrame);
     return;
   }
   lastProcessTime = now;
-
-  try {
-    const faceResult = faceLandmarker.detectForVideo(videoElement, now);
-    
-    // ส่งภาพไป YOLO
-    if (isYoloReady && !isProcessingYolo && workerCanvasCtx) {
-      isProcessingYolo = true; // ล็อคทันที! ไม่ให้เฟรมอื่นแทรก
-      
-      console.log("ส่งภาพ 1 เฟรม... รอ AI ตอบกลับ"); // เปลี่ยน log ให้ดูง่ายขึ้น
-      workerCanvasCtx.drawImage(videoElement, 0, 0, 640, 640);
-      const imageData = workerCanvasCtx.getImageData(0, 0, 640, 640);
-      
-      yoloWorker.postMessage({ type: 'detect', payload: { imageData } });
-    }
-
-    const event = processDetections(faceResult, latestPhones);
-    if (_onEvent) _onEvent(event);
-  } catch (err) {
-    console.warn('[BrowserAI] Frame processing error:', err.message);
-  }
-
+  await runProcessFrame();
   animFrameId = requestAnimationFrame(processFrame);
+}
+
+function handleVisibilityChange() {
+  if (_status !== 'active') return;
+  if (document.visibilityState === 'hidden') {
+    if (animFrameId)  { cancelAnimationFrame(animFrameId);  animFrameId  = null; }
+    if (renderFrameId){ cancelAnimationFrame(renderFrameId); renderFrameId = null; }
+    if (!visibilityIntervalId) {
+      visibilityIntervalId = setInterval(() => { runProcessFrame(); }, 2000);
+    }
+  } else {
+    if (visibilityIntervalId) { clearInterval(visibilityIntervalId); visibilityIntervalId = null; }
+    if (!animFrameId)   animFrameId   = requestAnimationFrame(processFrame);
+    if (!renderFrameId) renderFrameId = requestAnimationFrame(renderLoop);
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -419,7 +440,8 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     lastProcessTime = 0;
 
     setStatus('active', 'Browser AI running');
-    
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     animFrameId = requestAnimationFrame(processFrame);
     renderFrameId = requestAnimationFrame(renderLoop);
 
@@ -431,6 +453,8 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
 }
 
 export function stopBrowserAI() {
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  if (visibilityIntervalId) { clearInterval(visibilityIntervalId); visibilityIntervalId = null; }
   if (animFrameId) {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;

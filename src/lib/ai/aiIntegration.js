@@ -80,6 +80,7 @@ export function processAIEvent(event) {
     timestamp: event.timestamp ?? Date.now(),
     warning_message: event.warning_message ?? '',
     tracker_score: event.tracker_score,
+    phones: event.phones ?? [],
     source: event.source ?? 'simulation',
   };
   listeners.forEach((cb) => cb(normalized));

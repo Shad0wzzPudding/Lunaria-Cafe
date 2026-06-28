@@ -491,41 +491,32 @@ export default function CafeView() {
     }, 500);
   };
 
+  // Keep a ref to the latest state so the broadcast interval never needs to restart.
+  const broadcastDataRef = useRef({});
+  broadcastDataRef.current = {
+    coins: state.coins,
+    reputation: state.reputation,
+    customers: state.cafe.currentCustomers,
+    maxCustomers: state.cafe.maxCustomers,
+    attentionScore: state.attention.score,
+    chaosLevel: state.attention.chaosLevel,
+    phoneDetected: state.attention.phoneDetected,
+    userPresent: state.attention.userPresent,
+    warningMessage: state.attention.warningMessage,
+    phones: state.attention.phones,
+    elapsed: state.focus.elapsed,
+    status: state.focus.status,
+  };
+
   // Broadcast live state to the popup window via BroadcastChannel.
+  // Channel is created once per focus session; data is read from the ref each tick.
   useEffect(() => {
     if (!isFocusing) return;
-
     const channel = new BroadcastChannel('cafe-status');
-
-    const send = () => {
-      channel.postMessage({
-        coins: state.coins,
-        reputation: state.reputation,
-        customers: state.cafe.currentCustomers,
-        maxCustomers: state.cafe.maxCustomers,
-        attentionScore: state.attention.score,
-        elapsed: state.focus.elapsed,
-        status: state.focus.status,
-      });
-    };
-
-    send(); // immediate first push
-    const interval = setInterval(send, 2000);
-
-    return () => {
-      clearInterval(interval);
-      channel.close();
-    };
-  }, [
-    isFocusing,
-    state.coins,
-    state.reputation,
-    state.cafe.currentCustomers,
-    state.cafe.maxCustomers,
-    state.attention.score,
-    state.focus.elapsed,
-    state.focus.status,
-  ]);
+    channel.postMessage(broadcastDataRef.current); // immediate first push
+    const interval = setInterval(() => channel.postMessage(broadcastDataRef.current), 2000);
+    return () => { clearInterval(interval); channel.close(); };
+  }, [isFocusing]);
 
   // Clean up popup when the focus session ends.
   useEffect(() => {

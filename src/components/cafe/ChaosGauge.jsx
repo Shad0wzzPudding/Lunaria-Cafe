@@ -1,16 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 
-// Fill color per chaos level
-const FILL_COLOR = {
-  0: '#876ade',
-  1: '#876ade',
-  2: '#876ade',
-  3: '#876ade',
-};
+const FILL_COLOR = '#876ade';
 
-
-export default function ChaosGauge() {
+export default function ChaosGauge({ className = "absolute top-3 left-3 z-20 w-56 -translate-y-[20%]" }) {
   const { state } = useGame();
   const { chaosLevel } = state.attention;
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
@@ -19,7 +12,7 @@ export default function ChaosGauge() {
     <AnimatePresence>
       {isFocusing && (
         <motion.div
-          className="absolute top-3 left-3 z-20 w-56 select-none pointer-events-none -translate-y-[20%]"
+          className={`${className} select-none pointer-events-none`}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
@@ -38,10 +31,8 @@ export default function ChaosGauge() {
             >
               <motion.div
                 className="h-full w-full origin-left rounded-sm"
-                animate={{
-                  scaleX:          chaosLevel / 3,
-                  backgroundColor: FILL_COLOR[chaosLevel] ?? FILL_COLOR[0],
-                }}
+                style={{ backgroundColor: FILL_COLOR }}
+                animate={{ scaleX: chaosLevel / 3 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
               />
             </div>

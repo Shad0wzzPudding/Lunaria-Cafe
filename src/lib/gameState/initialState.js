@@ -33,6 +33,7 @@ export const initialState = {
     userPresent: true,
     chaosEvents: [],
     warningMessage: '',
+    phones: [],
     source: 'offline',
     phoneWarningStart: null,
     phoneFreeSince: null,

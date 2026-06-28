@@ -8,6 +8,7 @@ import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;
+const EMPTY_PHONES = [];
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -259,6 +260,7 @@ export function gameReducer(state, action) {
           phoneDetected:  action.payload.phone_detected  ?? state.attention.phoneDetected,
           userPresent:    action.payload.user_present    ?? state.attention.userPresent,
           warningMessage: action.payload.warning_message ?? '',
+          phones:         action.payload.phones?.length ? action.payload.phones : EMPTY_PHONES,
           source:         action.payload.source          ?? state.attention.source,
           chaosEvents:    nextEvents.slice(-10),
           phoneWarningStart,
