@@ -1,16 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { initialState } from './initialState';
-
-function getDateString(date = new Date()) {
-  return date.toISOString().split('T')[0];
-}
-
-function getWeekStart(dateStr) {
-  const d = new Date(dateStr);
-  const diff = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - diff);
-  return d.toISOString().split('T')[0];
-}
+import { getDateString, getWeekStart } from './gameHelpers';
 
 function normalizePositiveNumber(value, fallback) {
   const number = Number(value);
@@ -95,21 +85,28 @@ export function mergeLoadedSave(loaded, initialState) {
     initialState.stats.dailyGoal
   );
 
-  // ── Daily reset ──────────────────────────────────────────────
+  // ── Daily / weekly reset ─────────────────────────────────────
+  const resetPeriod = loadedStats.resetPeriod ?? 'daily';
   const loadedTodayDate = loadedStats.todayDate ?? loadedStats.lastSessionDate;
   const isToday = loadedTodayDate === today;
-  const todayMinutes = isToday ? normalizeNonNegativeNumber(loadedStats.todayMinutes) : 0;
-  const todaySeconds = isToday
+  const currentWeekStart = getWeekStart(today);
+  const isSameWeek = loadedStats.weekStartDate === currentWeekStart;
+
+  const keepTodayProgress = resetPeriod === 'weekly' ? isSameWeek : isToday;
+  const todayMinutes = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.todayMinutes) : 0;
+  const todaySeconds = keepTodayProgress
     ? normalizeNonNegativeNumber(
         loadedStats.todaySeconds,
         normalizeNonNegativeNumber(loadedStats.todayMinutes) * 60
       )
     : 0;
+  const periodSessions       = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodSessions)       : 0;
+  const periodFocusSeconds   = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodFocusSeconds)   : 0;
+  const periodCoinsEarned    = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodCoinsEarned)    : 0;
+  const periodCustomersTotal = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodCustomersTotal) : 0;
+  const periodChaosEvents    = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodChaosEvents)    : 0;
 
-  // ── Weekly reset ─────────────────────────────────────────────
-  const currentWeekStart = getWeekStart(today);
-  const isSameWeek = loadedStats.weekStartDate === currentWeekStart;
-
+  // ── Weekly chart reset ────────────────────────────────────────
   let weeklyData;
   if (!isSameWeek) {
     // New week — reset entirely
@@ -148,10 +145,15 @@ export function mergeLoadedSave(loaded, initialState) {
       ...initialState.stats,
       ...loadedStats,
       dailyGoal,
-      todayMinutes,          // ← overwrite with reset-aware value
-      todaySeconds,          // ← overwrite with reset-aware value
-      weeklyData,            // ← overwrite with reset-aware value
-      weekStartDate: currentWeekStart, // ← persist so next load can compare
+      todayMinutes,
+      todaySeconds,
+      periodSessions,
+      periodFocusSeconds,
+      periodCoinsEarned,
+      periodCustomersTotal,
+      periodChaosEvents,
+      weeklyData,
+      weekStartDate: currentWeekStart,
     },
     npcs: {
       ...initialState.npcs,

@@ -4,7 +4,7 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
-import { calcSessionTotals, calcNewStreak, getDateString } from './gameHelpers';
+import { calcSessionTotals, calcNewStreak, getDateString, getTodayIndex, getWeekStart } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;
@@ -32,6 +32,93 @@ export function gameReducer(state, action) {
 
     case 'DEBUG_UNLOCK_ATTENTION':
       return { ...state, attention: { ...state.attention, debugAttentionLock: false } };
+
+    case 'DEBUG_SET_STAT': {
+      const { key, value } = action.payload;
+      const v = Math.max(0, Math.round(Number(value) || 0));
+      if (key === 'totalFocusSeconds') {
+        return {
+          ...state,
+          stats: {
+            ...state.stats,
+            totalFocusSeconds: v,
+            totalFocusMinutes: Math.floor(v / 60),
+            totalMinutes: Math.floor(v / 60),
+          },
+        };
+      }
+      if (key === 'periodFocusSeconds') {
+        return { ...state, stats: { ...state.stats, periodFocusSeconds: v } };
+      }
+      if (key === 'currentStreak') {
+        return {
+          ...state,
+          stats: {
+            ...state.stats,
+            currentStreak: v,
+            bestStreak: Math.max(state.stats.bestStreak, v),
+          },
+        };
+      }
+      return { ...state, stats: { ...state.stats, [key]: v } };
+    }
+
+    case 'DEBUG_SET_TODAY_SECONDS': {
+      const secs = Math.max(0, Math.round(action.payload));
+      const weeklyData = [...state.stats.weeklyData];
+      const dateStr = state.ui.debugDate ?? state.stats.todayDate ?? getDateString();
+      const dayIndex = (new Date(dateStr).getDay() + 6) % 7;
+      weeklyData[dayIndex] = secs;
+      return {
+        ...state,
+        stats: {
+          ...state.stats,
+          todaySeconds: secs,
+          todayMinutes: Math.floor(secs / 60),
+          weeklyData,
+        },
+      };
+    }
+
+    case 'SET_STATS_MODE': {
+      const mode = action.payload === 'lifetime' ? 'lifetime' : 'period';
+      return { ...state, stats: { ...state.stats, statsMode: mode } };
+    }
+
+    case 'SET_RESET_PERIOD': {
+      const period = action.payload === 'weekly' ? 'weekly' : 'daily';
+      return { ...state, stats: { ...state.stats, resetPeriod: period } };
+    }
+
+    case 'DEBUG_SET_DATE': {
+      const newDate = action.payload;
+      const prevDate = state.ui.debugDate ?? state.stats.todayDate ?? getDateString();
+      const newWeekStart = getWeekStart(newDate);
+      const prevWeekStart = getWeekStart(prevDate);
+      const resetPeriod = state.stats.resetPeriod ?? 'daily';
+
+      const weekChanged = newWeekStart !== prevWeekStart;
+      const dayChanged  = newDate !== prevDate;
+      const shouldResetToday = resetPeriod === 'weekly' ? weekChanged : dayChanged;
+
+      const weeklyData = weekChanged ? [0, 0, 0, 0, 0, 0, 0] : [...state.stats.weeklyData];
+
+      return {
+        ...state,
+        ui: { ...state.ui, debugDate: newDate },
+        stats: {
+          ...state.stats,
+          todaySeconds:         shouldResetToday ? 0 : state.stats.todaySeconds,
+          todayMinutes:         shouldResetToday ? 0 : state.stats.todayMinutes,
+          periodSessions:       shouldResetToday ? 0 : state.stats.periodSessions,
+          periodFocusSeconds:   shouldResetToday ? 0 : state.stats.periodFocusSeconds,
+          periodCoinsEarned:    shouldResetToday ? 0 : state.stats.periodCoinsEarned,
+          periodCustomersTotal: shouldResetToday ? 0 : state.stats.periodCustomersTotal,
+          periodChaosEvents:    shouldResetToday ? 0 : state.stats.periodChaosEvents,
+          weeklyData,
+        },
+      };
+    }
 
     case 'SET_DAILY_GOAL': {
       const dailyGoal = Number(action.payload);
@@ -74,7 +161,7 @@ export function gameReducer(state, action) {
     case 'END_FOCUS': {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
 
-      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, false);
+      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, false, state.ui.debugDate);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
       const newStreak   = sessionMins > 0
         ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate)
@@ -103,6 +190,8 @@ export function gameReducer(state, action) {
           todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
           todayDate:         state.focus.elapsed > 0 ? getDateString() : state.stats.todayDate,
           weeklyData,
+          periodSessions:     state.stats.periodSessions     + (sessionMins > 0 ? 1 : 0),
+          periodFocusSeconds: state.stats.periodFocusSeconds + state.focus.elapsed,
           currentStreak:   newStreak,
           lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
         },
@@ -123,7 +212,8 @@ export function gameReducer(state, action) {
 
       if (nextElapsed > 0 && nextElapsed % 60 === 0) {
         const weeklyData = [...state.stats.weeklyData];
-        weeklyData[(new Date().getDay() + 6) % 7] += 60;
+        const dateStr = state.ui.debugDate ?? getDateString();
+        weeklyData[(new Date(dateStr).getDay() + 6) % 7] += 60;
         return {
           ...base,
           stats: {
@@ -140,7 +230,7 @@ export function gameReducer(state, action) {
     }
 
     case 'COMPLETE_FOCUS': {
-      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, true);
+      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, true, state.ui.debugDate);
       const coinsEarned  = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
       const servedCount  = state.npcs.customers.length;
       const sessionChaos = state.attention.chaosEvents.length;
@@ -170,6 +260,10 @@ export function gameReducer(state, action) {
           weeklyData,
           customersTotal: state.stats.customersTotal + servedCount,
           chaosEvents:    state.stats.chaosEvents    + sessionChaos,
+          periodSessions:        state.stats.periodSessions        + 1,
+          periodFocusSeconds:    state.stats.periodFocusSeconds    + state.focus.elapsed,
+          periodCustomersTotal:  state.stats.periodCustomersTotal  + servedCount,
+          periodChaosEvents:     state.stats.periodChaosEvents     + sessionChaos,
           currentStreak:  newStreak,
           bestStreak:     Math.max(state.stats.bestStreak, newStreak),
           lastSessionDate: getDateString(),
@@ -278,7 +372,7 @@ export function gameReducer(state, action) {
           ...state.attention,
           chaosEvents: [...state.attention.chaosEvents.slice(-9), action.payload],
         },
-        stats: { ...state.stats, chaosEvents: state.stats.chaosEvents + 1 },
+        stats: { ...state.stats, chaosEvents: state.stats.chaosEvents + 1, periodChaosEvents: state.stats.periodChaosEvents + 1 },
       };
 
     // ── Journal ──────────────────────────────────────────────────────────────
@@ -556,8 +650,10 @@ export function gameReducer(state, action) {
         reputation: Math.min(100, state.reputation + repGain),
         stats: {
           ...state.stats,
-          customersTotal: state.stats.customersTotal + 1,
-          coinsEarned:    state.stats.coinsEarned    + coinsGain,
+          customersTotal:       state.stats.customersTotal       + 1,
+          coinsEarned:          state.stats.coinsEarned          + coinsGain,
+          periodCustomersTotal: state.stats.periodCustomersTotal + 1,
+          periodCoinsEarned:    state.stats.periodCoinsEarned    + coinsGain,
         },
       };
       const isZen = state.settings.focusViewMode === 'zen';

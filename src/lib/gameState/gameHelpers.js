@@ -3,6 +3,14 @@ export function getDateString() {
   return new Date().toISOString().split('T')[0];
 }
 
+/** Returns the Monday of the week containing dateStr as a YYYY-MM-DD string. */
+export function getWeekStart(dateStr) {
+  const d = new Date(dateStr);
+  const diff = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().split('T')[0];
+}
+
 /** Returns the Monday-based index (0 = Mon … 6 = Sun) for today. */
 export function getTodayIndex() {
   return (new Date().getDay() + 6) % 7;
@@ -38,7 +46,7 @@ export function calcNewStreak(currentStreak, lastSessionDate) {
  *                                If false, only counts if elapsed >= 30s (END_FOCUS).
  * @returns {{ sessionMins: number, extraMins: number, weeklyData: number[] }}
  */
-export function calcSessionTotals(state, requireMin1 = false) {
+export function calcSessionTotals(state, requireMin1 = false, dateStr = null) {
   const tickedMins  = Math.floor(state.focus.elapsed / 60);
   const sessionMins = requireMin1
     ? Math.max(1, Math.ceil(state.focus.elapsed / 60))
@@ -48,8 +56,9 @@ export function calcSessionTotals(state, requireMin1 = false) {
   const extraMins   = Math.max(0, sessionMins - tickedMins);
   const untickedSeconds = Math.max(0, state.focus.elapsed - tickedMins * 60);
 
+  const dayIndex = dateStr ? (new Date(dateStr).getDay() + 6) % 7 : getTodayIndex();
   const weeklyData = [...state.stats.weeklyData];
-  if (untickedSeconds > 0) weeklyData[getTodayIndex()] += untickedSeconds;
+  if (untickedSeconds > 0) weeklyData[dayIndex] += untickedSeconds;
 
   return { sessionMins, extraMins, weeklyData };
 }
