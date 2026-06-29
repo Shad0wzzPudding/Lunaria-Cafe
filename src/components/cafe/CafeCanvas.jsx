@@ -621,12 +621,12 @@ export default function CafeCanvas({ frozen = false }) {
 
     // Respawn with fresh count + positions when threshold is crossed from below
     const ghostsAbove = sessionActive && chaosLevel >= 1;
-    const mistsAbove  = sessionActive && chaosLevel >= 2;
-    const firesAbove  = sessionActive && chaosLevel >= 3;
+    const firesAbove  = sessionActive && chaosLevel >= 2;
+    const mistsAbove  = sessionActive && chaosLevel >= 3;
 
     if (ghostsAbove && !entities.ghostsAbove) entities.ghosts = Array.from({ length: rand(1, 5) }, mk);
-    if (mistsAbove  && !entities.mistsAbove)  entities.mists  = Array.from({ length: rand(2, 5) }, mk);
     if (firesAbove  && !entities.firesAbove)  entities.fires  = Array.from({ length: rand(1, 5) }, mk);
+    if (mistsAbove  && !entities.mistsAbove)  entities.mists  = Array.from({ length: rand(2, 5) }, mk);
 
     entities.ghostsAbove = ghostsAbove;
     entities.mistsAbove  = mistsAbove;
@@ -635,7 +635,7 @@ export default function CafeCanvas({ frozen = false }) {
     // Update fire alpha and draw BEFORE mist layers (fire goes behind mist)
     for (const e of entities.fires) {
       if (!sessionActive) e.alpha = 0;
-      else e.alpha = chaosLevel >= 3 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
+      else e.alpha = chaosLevel >= 2 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
       drawFire(ctx, e, time, perfMode);
     }
 
@@ -646,7 +646,7 @@ export default function CafeCanvas({ frozen = false }) {
     }
     for (const e of entities.mists) {
       if (!sessionActive) e.alpha = 0;
-      else e.alpha = chaosLevel >= 2 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
+      else e.alpha = chaosLevel >= 3 ? Math.min(1, e.alpha + FADE) : Math.max(0, e.alpha - FADE);
     }
 
     // Silent Hill-style mist atmosphere — multi-layer, driven by average mist alpha

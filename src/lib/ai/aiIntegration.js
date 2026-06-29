@@ -195,8 +195,8 @@ export function generateChaosEvent(level) {
       '🦎 A tiny creature escaped its jar!',
       '🌀 The spell on the menu went haywire!',
       '🔮 Crystal ball started floating!',
-      '🌫️ A thick purple mist is creeping across the floor...',
-      '🌫️ The cafe smells of lavender and something unknown.',
+      '🔥 Eerie flames danced up from the floorboards!',
+      '🔥 Spectral fires flickered to life in the corners...',
     ],
     3: [
       '🌑 The cafe lights flickered mysteriously...',
@@ -204,8 +204,8 @@ export function generateChaosEvent(level) {
       '👻 Shadow wisps drifted through the walls...',
       '⚡ The moonstone glowed intensely!',
       '🌧️ It started raining inside the cafe!',
-      '🔥 Eerie flames danced up from the floorboards!',
-      '🔥 Spectral fires flickered to life in the corners...',
+      '🌫️ A thick purple mist is creeping across the floor...',
+      '🌫️ The cafe smells of lavender and something unknown.',
     ],
   };
   const pool = events[level] || events[1];
