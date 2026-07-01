@@ -8,7 +8,7 @@ import {
   generateChaosEvent,
 } from '@/lib/ai/aiIntegration';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
-import CafeCanvas from '@/components/cafe/CafeCanvas';
+import CafeCanvas, { randomWalkablePoint, collidesWithFurniture, findNearestValidSpot } from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
 import ChaosEventLog from '@/components/cafe/ChaosEventLog';
 import ChaosGauge from '@/components/cafe/ChaosGauge';
@@ -42,6 +42,17 @@ const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
+const CUSTOMER_RADIUS = 12;
+
+// Standing (non-seated) customers: pick a spot inside the walkable zone that
+// doesn't overlap furniture, retrying before falling back to a nearby-search.
+function getRandomStandingSpot(furniture) {
+  for (let i = 0; i < 30; i++) {
+    const { x, y } = randomWalkablePoint();
+    if (!collidesWithFurniture(x, y, CUSTOMER_RADIUS, furniture)) return { x, y };
+  }
+  return findNearestValidSpot(370, 260, CUSTOMER_RADIUS, furniture) ?? { x: 370, y: 260 };
+}
 
 const REPUTATION_TIERS = [
   { min: 0,   max: 19,  name: 'Newcomer',  icon: Sprout,   color: '#9ca3af' },
@@ -91,14 +102,14 @@ function CafeStatsPanel({ state, onClose }) {
     { icon: '☕', label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
     { icon: '🔥', label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
     { icon: '⏱️', label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
-    { icon: Coins, label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0 },
+    { icon: Coins, label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0, color: '#f0c674' },
     { icon: '🌀', label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
   ];
 
   return (
     <div
       ref={panelRef}
-      className="absolute bottom-14 right-10 z-50 w-80 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+      className="absolute bottom-14 right-10 z-50 w-[26rem] rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display text-sm text-foreground">Cafe Stats</h3>
@@ -111,12 +122,12 @@ function CafeStatsPanel({ state, onClose }) {
       <div className="mb-4 rounded-lg border border-border/30 p-3" style={{ background: `${currentTier.color}10` }}>
         <div className="text-[10px] font-pixel text-muted-foreground mb-3 uppercase tracking-wider">Reputation Tier</div>
 
-        <div className="flex justify-between items-end mb-3">
+        <div className="flex justify-between items-end gap-1 mb-3">
           {REPUTATION_TIERS.map((tier) => {
             const isCurrent = tier.name === currentTier.name;
             const isLocked = reputation < tier.min;
             return (
-              <div key={tier.name} className="flex flex-col items-center gap-1 flex-1">
+              <div key={tier.name} className="flex flex-col items-center gap-1 flex-1 min-w-0">
                 <div
                   className="relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
                   style={isCurrent ? {
@@ -160,12 +171,14 @@ function CafeStatsPanel({ state, onClose }) {
 
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-2">
-        {stats.map(({ icon, label, value }) => (
+        {stats.map(({ icon, label, value, color }) => (
           <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
             <div className="mb-0.5 flex justify-center items-center">
               {typeof icon === 'string'
                 ? <span className="text-base">{icon}</span>
-                : React.createElement(icon, { size: 14, strokeWidth: 2, className: 'text-muted-foreground' })}
+                : color
+                  ? React.createElement(icon, { size: 14, strokeWidth: 2, style: { color } })
+                  : React.createElement(icon, { size: 14, strokeWidth: 2, className: 'text-muted-foreground' })}
             </div>
             <div className="font-pixel text-xs text-foreground">{value}</div>
             <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
@@ -390,13 +403,14 @@ export default function CafeView() {
         const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
         const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
         const cat = freeSeat ? FURNITURE_CATALOG[freeSeat.type] : null;
+        const standingSpot = freeSeat ? null : getRandomStandingSpot(state.cafe.furniture);
 
         dispatch({
           type: 'ADD_CUSTOMER',
           payload: {
             id: `cust-${Date.now()}`,
-            x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : 80 + Math.random() * 580,
-            y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : 150 + Math.random() * 300,
+            x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : standingSpot.x,
+            y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : standingSpot.y,
             seatedAt: freeSeat?.id ?? null,
             color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
             emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
@@ -647,7 +661,7 @@ export default function CafeView() {
               </button>
             </div>
           </div>
-        ), { duration: 10_000 });
+        ), { id: 'minimize-hint', duration: 10_000 });
       } else {
         toast.custom((id) => (
           <div className="rounded-xl border border-border/50 bg-card text-foreground shadow-lg px-4 py-3 w-[356px] space-y-2">
@@ -667,7 +681,7 @@ export default function CafeView() {
               </button>
             </div>
           </div>
-        ), { duration: 10_000 });
+        ), { id: 'minimize-hint', duration: 10_000 });
       }
     };
 

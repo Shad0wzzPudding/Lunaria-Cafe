@@ -33,7 +33,7 @@ export function pushPopup(state, payload, legacyCoins = 0) {
 
   return {
     ...state.ui,
-    popups: [...state.ui.popups.slice(-6), popup],
+    popups: [...state.ui.popups.slice(-4), popup],
     coinFloat:
       popup.coins > 0
         ? makeCoinFloat(popup.coins)

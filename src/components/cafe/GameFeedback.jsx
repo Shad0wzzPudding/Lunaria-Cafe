@@ -8,6 +8,7 @@ export default function GameFeedback() {
   const { state, dispatch } = useGame();
   const { popups } = state.ui;
   const playedRef = useRef(new Set());
+  const timersRef = useRef(new Map());
 
   useEffect(() => {
     popups.forEach((popup) => {
@@ -19,14 +20,27 @@ export default function GameFeedback() {
   }, [popups, state.audio.sfxVolume, state.audio.masterVolume]);
 
   useEffect(() => {
-    if (!popups.length) return undefined;
-    const timers = popups.map((popup) =>
-      setTimeout(() => {
-        dispatch({ type: 'DISMISS_UI_POPUP', payload: popup.id });
-      }, 3200),
-    );
-    return () => timers.forEach(clearTimeout);
+    const timers = timersRef.current;
+
+    popups.forEach((popup) => {
+      if (!timers.has(popup.id)) {
+        timers.set(popup.id, setTimeout(() => {
+          dispatch({ type: 'DISMISS_UI_POPUP', payload: popup.id });
+          timers.delete(popup.id);
+        }, 3200));
+      }
+    });
+
+    const activeIds = new Set(popups.map((popup) => popup.id));
+    timers.forEach((timer, id) => {
+      if (!activeIds.has(id)) {
+        clearTimeout(timer);
+        timers.delete(id);
+      }
+    });
   }, [popups, dispatch]);
+
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
   return (
     <>

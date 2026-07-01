@@ -15,13 +15,13 @@ const WALKABLE_ZONES = [
   { x: 103, y: 385, w: 534, h:  48 }, // lower floor strip (rug area)
 ];
 
-function isInsideWalkableZone(x, y) {
+export function isInsideWalkableZone(x, y) {
   return WALKABLE_ZONES.some(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
 }
 
 // Search outward from (x, y) in expanding rings until a valid spot is found.
 // Returns { x, y } of the nearest open position, or null if none found within range.
-function findNearestValidSpot(x, y, radius, furniture) {
+export function findNearestValidSpot(x, y, radius, furniture) {
   for (let dist = 10; dist <= 200; dist += 10) {
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * Math.PI * 2;
@@ -68,7 +68,7 @@ function isFurnitureSolid(furniture) {
   return FURNITURE_CATALOG[furniture.type]?.solid ?? true;
 }
 
-function collidesWithFurniture(x, y, radius, furniture) {
+export function collidesWithFurniture(x, y, radius, furniture) {
   for (const f of furniture) {
 
     // Skip non-solid furniture
@@ -102,7 +102,7 @@ function collidesWithFurniture(x, y, radius, furniture) {
 
 const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3', cat: '#c9b89a', catStripe: '#a89070', catInner: '#e8c4b0' };
 
-function randomWalkablePoint() {
+export function randomWalkablePoint() {
   const zone = WALKABLE_ZONES[Math.floor(Math.random() * WALKABLE_ZONES.length)];
   return { x: zone.x + Math.random() * zone.w, y: zone.y + Math.random() * zone.h };
 }
