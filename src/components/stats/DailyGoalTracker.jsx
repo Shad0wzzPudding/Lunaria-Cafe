@@ -64,7 +64,10 @@ export default function DailyGoalTracker({ current = 0, goal = 3600 }) {
   const totalMins = (Number(hours) || 0) * 60 + (Number(mins) || 0);
 
   return (
-    <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
+    <div
+      className="backdrop-blur-sm rounded-xl border border-border/30 p-4"
+      style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--card))' }}
+    >
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2.5">
           <CircleProgress pct={goalProgress} />

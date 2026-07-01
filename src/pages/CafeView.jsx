@@ -6,7 +6,6 @@ import {
   stopAttentionFeed,
   onAttentionEvent,
   generateChaosEvent,
-  getAIConfig,
 } from '@/lib/ai/aiIntegration';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
@@ -30,6 +29,7 @@ import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
+import { getThemeMode, getThemeHex, getGlassShadeHex } from '@/lib/theme/themeDeriver';
 
 const IS_MAC          = navigator.userAgent.includes('Mac');
 const IS_WINDOWS      = navigator.userAgent.includes('Win');
@@ -242,6 +242,13 @@ function CafeUpgradePanel({ state, onClose }) {
 }
 
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function BgModePanel({ state, dispatch, onClose }) {
   
   const panelRef = useRef(null);
@@ -327,11 +334,17 @@ export default function CafeView() {
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupClosing, setPopupClosing] = useState(false);
   const notifCooldownRef = useRef(false);
+  const notifCooldownTimerRef = useRef(null);
+  const blurNotifTimerRef = useRef(null);
   const focusActiveRef = useRef(false);
   const popupRef = useRef(null);
   const popupCheckRef = useRef(null);
+  const isZenModeRef = useRef(false);
+  const wasZenRef = useRef(false);
   const focusViewMode = state.settings?.focusViewMode ?? null;
   const isZenMode = isFocusing && focusViewMode === 'zen';
+  isZenModeRef.current = isZenMode;
+  const currentAiMode = state.settings?.aiMode ?? 'browser';
   const popupPicture = useRef(ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]).current;
 
   useEffect(() => {
@@ -467,6 +480,10 @@ export default function CafeView() {
     }
   }, [state.cafe.bgMode, isFocusing, dispatch]);
 
+  useEffect(() => {
+    wasZenRef.current = isZenMode;
+  }, [isZenMode]);
+
   const openStatusPopup = () => {
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.focus();
@@ -506,6 +523,12 @@ export default function CafeView() {
     phones: state.attention.phones,
     elapsed: state.focus.elapsed,
     status: state.focus.status,
+    themeMode: getThemeMode(),
+    dayHex: getThemeHex('day'),
+    nightHex: getThemeHex('night'),
+    dayShadeHex: getGlassShadeHex('day'),
+    nightShadeHex: getGlassShadeHex('night'),
+    timeOfDay: state.cafe?.timeOfDay ?? 'day',
   };
 
   // Broadcast live state to the popup window via BroadcastChannel.
@@ -530,11 +553,28 @@ export default function CafeView() {
   }, [isFocusing]);
 
   // Keep ref in sync so the visibility handler always sees the current status.
+  // Reset the notification cooldown on each new session so it doesn't carry over.
   useEffect(() => {
     focusActiveRef.current = state.focus.status === 'active';
+    if (state.focus.status === 'active') {
+      notifCooldownRef.current = false;
+      if (notifCooldownTimerRef.current) {
+        clearTimeout(notifCooldownTimerRef.current);
+        notifCooldownTimerRef.current = null;
+      }
+    }
   }, [state.focus.status]);
 
+  // Close popup and dismiss toasts when CafeView unmounts (e.g. back to menu via any path).
+  useEffect(() => {
+    return () => {
+      if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+      toast.dismiss();
+    };
+  }, []);
+
   // Native "Leave site?" dialog when closing/refreshing during an active session.
+  // pagehide fires after the user confirms leaving — use it to clean up the popup and toasts.
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (!focusActiveRef.current) return;
@@ -542,23 +582,34 @@ export default function CafeView() {
       e.returnValue = '';
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []); // stable — reads runtime state via focusActiveRef
+    const handlePageHide = () => {
+      if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+      toast.dismiss();
+    };
 
-  // Notification when user switches tabs during an active session.
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []); // stable — reads runtime state via refs
+
+  // Notification when user leaves during an active session.
+  // Fires on tab-hide (visibilitychange) AND on app-switch (window blur — covers extended/mirrored displays).
   // OS notifications are tried if permission is granted (macOS can silently block them).
   // On desktop an in-app toast is also shown as a reliable fallback.
   // Both are skipped entirely on mobile/tablet where popup windows don't work.
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'hidden') return;
+    const fireNotif = () => {
       if (!focusActiveRef.current) return;
       if (notifCooldownRef.current) return;
       if (IS_MOBILE_OR_TABLET) return;
+      if (isZenModeRef.current) return;
 
       notifCooldownRef.current = true;
-      setTimeout(() => { notifCooldownRef.current = false; }, 60_000);
+      if (notifCooldownTimerRef.current) clearTimeout(notifCooldownTimerRef.current);
+      notifCooldownTimerRef.current = setTimeout(() => { notifCooldownRef.current = false; notifCooldownTimerRef.current = null; }, 60_000);
 
       // Try OS notification
       if (NOTIF_SUPPORTED && Notification.permission === 'granted') {
@@ -598,33 +649,96 @@ export default function CafeView() {
           </div>
         ), { duration: 10_000 });
       } else {
-        toast('Cafe window can be minimized too!', {
-          action: {
-            label: 'Open popup',
-            onClick: openStatusPopup,
-          },
-          cancel: {
-            label: 'Dismiss',
-          },
-          duration: 10_000,
-        });
+        toast.custom((id) => (
+          <div className="rounded-xl border border-border/50 bg-card text-foreground shadow-lg px-4 py-3 w-[356px] space-y-2">
+            <p className="font-body text-sm font-semibold">Cafe window can be minimized too!</p>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <button
+                onClick={() => toast.dismiss(id)}
+                className="w-full rounded-md border border-border/40 px-3 py-1.5 text-xs font-body text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => { openStatusPopup(); toast.dismiss(id); }}
+                className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-body text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Open popup
+              </button>
+            </div>
+          </div>
+        ), { duration: 10_000 });
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      // Cancel any pending blur timer — visibilitychange is more authoritative
+      if (blurNotifTimerRef.current) { clearTimeout(blurNotifTimerRef.current); blurNotifTimerRef.current = null; }
+      fireNotif();
+    };
+
+    // Fires when the user switches to another application (extended/mirrored display, screen share).
+    // visibilityState stays 'visible' in those cases, so we need window blur as a second trigger.
+    // A 1.5s grace period filters out momentary focus losses (dock clicks, OS dialogs, etc.).
+    const handleWindowBlur = () => {
+      if (blurNotifTimerRef.current) return; // already pending
+      blurNotifTimerRef.current = setTimeout(() => {
+        blurNotifTimerRef.current = null;
+        // Only fire if the tab is still visible (if hidden, visibilitychange already handled it)
+        if (document.visibilityState === 'hidden') return;
+        fireNotif();
+      }, 1500);
+    };
+
+    const handleWindowFocus = () => {
+      if (blurNotifTimerRef.current) { clearTimeout(blurNotifTimerRef.current); blurNotifTimerRef.current = null; }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+      if (blurNotifTimerRef.current) { clearTimeout(blurNotifTimerRef.current); blurNotifTimerRef.current = null; }
+    };
   }, []); // stable — reads runtime state via refs
 
+  const timeOfDay   = state.cafe?.timeOfDay ?? 'day';
+  const isImmersive = getThemeMode() === 'custom';
+  const primaryHex  = getThemeHex(timeOfDay) ?? (timeOfDay === 'day' ? '#e2ae60' : '#7d5fde');
+  const shadeHex    = getGlassShadeHex(timeOfDay);
+
+  const glassHeaderBg = isImmersive
+    ? `linear-gradient(to bottom, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
+    : 'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, transparent)';
+  const glassFooterBg = isImmersive
+    ? `linear-gradient(to top, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
+    : 'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, transparent)';
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: isImmersive ? shadeHex : 'var(--background)' }}>
       {isFocusing && <PhoneWarning />}
       {isFocusing && <LowScoreWarning />}
-      <header className="shrink-0 z-20 flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card/40 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
+      <header
+        className="relative shrink-0 z-20 flex items-center justify-between px-4 py-1.5 border-b-[3px] border-border/30"
+        style={{
+          backdropFilter: 'blur(32px) saturate(200%) brightness(1.25)',
+          WebkitBackdropFilter: 'blur(32px) saturate(200%) brightness(1.25)',
+          background: glassHeaderBg,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.22)',
+        }}
+      >
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => {
+              if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+              popupRef.current = null;
+              toast.dismiss();
               dispatch({ type: 'SET_PHASE', payload: 'menu' });
               dispatch({ type: 'RESET_FOCUS' });
             }}
@@ -632,29 +746,34 @@ export default function CafeView() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="font-display text-lg text-foreground">{state.cafe.name}</h1>
-          <span className="font-pixel text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+          <h1 className="font-display text-sm text-foreground">{state.cafe.name}</h1>
+          <span className="font-pixel text-xs px-2 py-0.5 rounded-full bg-black/20 text-white/90 border border-white/30">
             {isManagement ? 'Management' : 'Focus'}
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {isFocusing && <FocusTimer compact />}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowJournal(true)}
-            className="relative h-11 w-11 overflow-visible rounded-lg bg-transparent p-0 hover:bg-transparent"
-            title="Open journal"
-          >
-            <img
-              src={JOURNAL_BUTTON_ART}
-              alt=""
-              aria-hidden="true"
-              className="h-11 w-11 object-contain drop-shadow-md transition-transform group-hover/button:scale-105"
-            />
-          </Button>
-          <NPCPanel />
+        <div className="flex items-center gap-2">
+          {isFocusing && <span style={{ display: 'inline-block', transform: 'translateX(5vw)', whiteSpace: 'nowrap' }}><FocusTimer compact /></span>}
+          {/* Inner wrapper: relative so the journal button can overflow downward only */}
+          <div className="relative flex items-center gap-2">
+            {/* Invisible spacer reserves the journal button's width in the flex flow */}
+            <div style={{ width: 63, height: 0, flexShrink: 0 }} aria-hidden="true" />
+            <NPCPanel />
+            <button
+              type="button"
+              onClick={() => setShowJournal(true)}
+              title="Open journal"
+              style={{ position: 'absolute', left: '70%', top: '135%', width: 63, height: 63, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              <img
+                src={JOURNAL_BUTTON_ART}
+                alt=""
+                aria-hidden="true"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                className="drop-shadow-md transition-transform hover:scale-105"
+              />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -670,14 +789,35 @@ export default function CafeView() {
         <PetShopPanel onClose={() => { Sounds.petShopClose(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxPetShopClose); setShowPetShop(false); }} />
       )}
 
-      <main className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto">
-        {isZenMode && !popupOpen && (
+      <main
+        className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto"
+        style={(isImmersive && !isZenMode && !popupOpen)
+          ? {
+              backgroundImage: `url(${timeOfDay === 'day' ? '/C_BG_Daylight.png' : '/C_BG_Nightfall.png'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center center',
+            }
+          : {}
+        }
+      >
+        {isZenMode && !popupOpen && !isImmersive && (
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
             <div className="relative">
               <CafeCanvas frozen={true} />
               <div className="absolute inset-0 rounded-xl bg-background" />
             </div>
           </div>
+        )}
+        {popupOpen && isImmersive && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${timeOfDay === 'day' ? '/C_BG_Daylight.png' : '/C_BG_Nightfall.png'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center center',
+              filter: 'blur(6px)',
+            }}
+          />
         )}
         <AnimatePresence mode="wait">
           {popupClosing ? (
@@ -695,6 +835,7 @@ export default function CafeView() {
             <motion.div
               key="popup-placeholder"
               className="flex flex-col items-center justify-center gap-6 text-center"
+              style={{ position: 'relative', zIndex: 1 }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -735,10 +876,18 @@ export default function CafeView() {
             </motion.div>
           )}
         </AnimatePresence>
-        {isFocusing && !popupOpen && (getAIConfig().aiMode === 'browser' || getAIConfig().useLiveAI) && <AttentionCamera />}
+        {isFocusing && !popupOpen && currentAiMode === 'browser' && <AttentionCamera />}
       </main>
 
-      <footer className="shrink-0 z-30 px-4 py-3 border-t border-border/30 bg-card/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+      <footer
+        className="shrink-0 z-30 px-4 py-3 border-t-[3px] border-border/30"
+        style={{
+          backdropFilter: 'blur(32px) saturate(200%) brightness(1.25)',
+          WebkitBackdropFilter: 'blur(32px) saturate(200%) brightness(1.25)',
+          background: glassFooterBg,
+          boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 -6px 28px rgba(0,0,0,0.22)',
+        }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CafeHUD />
           <div className="flex flex-wrap gap-2 ml-auto">

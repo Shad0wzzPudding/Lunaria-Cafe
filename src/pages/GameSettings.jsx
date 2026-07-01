@@ -3,9 +3,9 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette } from 'lucide-react';
+import ThemePicker from '@/components/settings/ThemePicker';
 import {
-  getAIConfig,
   setAIConfig,
   onConnectionStatus,
   isBrowserAISupported,
@@ -50,14 +50,16 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
   const { state, dispatch, saveNow, saveError } = useGame();
   const { signOut, user, isGuest } = useAuth();
   const { audio } = state;
-  const [aiConfig, setAiConfigState] = useState(getAIConfig);
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
 
   useEffect(() => onConnectionStatus(setAiStatus), []);
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const [sfxOpen, setSfxOpen] = useState(false);
-  const saveAi = (updates) => setAiConfigState(setAIConfig(updates));
+  const saveAi = (updates) => {
+    setAIConfig(updates);
+    dispatch({ type: 'SET_SETTINGS', payload: updates });
+  };
 
   const handleLogout = async () => {
     try {
@@ -82,6 +84,15 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
       </header>
 
       <main className="max-w-lg mx-auto p-6 space-y-8">
+        <section className="space-y-4">
+          <h2 className="font-display text-base text-foreground flex items-center gap-2">
+            <Palette className="w-4 h-4 text-primary" /> Theme
+          </h2>
+          <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5">
+            <ThemePicker />
+          </div>
+        </section>
+
         <section className="space-y-4">
           <h2 className="font-display text-base text-foreground flex items-center gap-2">
             <Volume2 className="w-4 h-4 text-primary" /> Audio
@@ -147,7 +158,7 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
                   type="button"
                   onClick={() => saveAi({ aiMode: 'simulation' })}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    aiConfig.aiMode === 'simulation'
+                    state.settings.aiMode === 'simulation'
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border/40 bg-background text-muted-foreground hover:border-border'
                   }`}
@@ -164,7 +175,7 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
                   onClick={() => saveAi({ aiMode: 'browser' })}
                   disabled={!isBrowserAISupported()}
                   className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                    aiConfig.aiMode === 'browser'
+                    state.settings.aiMode === 'browser'
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border/40 bg-background text-muted-foreground hover:border-border'
                   } ${!isBrowserAISupported() ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -184,7 +195,7 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
 
             <pre className="bg-secondary/40 rounded-lg p-3 font-mono text-xs text-muted-foreground whitespace-pre-wrap">
               {`Status: ${aiStatus.status}${aiStatus.detail ? `\n${aiStatus.detail}` : ''}${
-                aiConfig.aiMode === 'browser'
+                state.settings.aiMode === 'browser'
                   ? '\n\nBrowser AI uses your webcam directly.\nCamera permission will be requested when you start a focus session.'
                   : '\n\nSimulation mode — no camera or server needed.'
               }`}

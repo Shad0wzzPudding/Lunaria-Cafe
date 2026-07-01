@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { guestStorage } from '@/lib/guestStorage';
 
 const AuthContext = createContext(null);
 
@@ -11,10 +12,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+      })
+      .catch((err) => console.error('[auth] getSession failed:', err))
+      .finally(() => setLoading(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
@@ -32,7 +35,11 @@ export function AuthProvider({ children }) {
 
   const signOut = () => {
     setIsGuest(false);
-    return supabase?.auth.signOut();
+    if (!supabase) {
+      guestStorage.clear();
+      return Promise.resolve();
+    }
+    return supabase.auth.signOut().then(() => guestStorage.clear());
   };
 
   const signInAsGuest = () => setIsGuest(true);

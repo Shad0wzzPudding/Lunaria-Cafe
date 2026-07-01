@@ -15,6 +15,7 @@ import {
   isBrowserAISupported,
   getBrowserAIStatus,
 } from '@/lib/ai/browserAI';
+import { guestStorage } from '@/lib/guestStorage';
 
 const CONFIG_KEY = 'lunaria-ai-config';
 
@@ -30,7 +31,7 @@ let connectionStatus = 'offline'; // offline | connecting | live | error
 // aiMode: 'simulation' | 'browser'
 function loadConfig() {
   try {
-    const raw = localStorage.getItem(CONFIG_KEY);
+    const raw = guestStorage.getItem(CONFIG_KEY);
     if (!raw) return { aiMode: 'browser' };
     return { aiMode: 'browser', ...JSON.parse(raw) };
   } catch {
@@ -40,7 +41,7 @@ function loadConfig() {
 
 function saveConfig(updates) {
   const next = { ...loadConfig(), ...updates };
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
+  guestStorage.setItem(CONFIG_KEY, JSON.stringify(next));
   return next;
 }
 

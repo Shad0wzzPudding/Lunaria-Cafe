@@ -419,6 +419,45 @@ function drawParticles(ctx, time) {
   }
 }
 
+// Flood-fill from all 4 corners at the target draw size to erase the black void
+// surrounding the cafe art, making those areas transparent so the exterior
+// background in CafeView shows through.
+function buildMaskedBg(img) {
+  const off = document.createElement('canvas');
+  off.width = CAFE_W;
+  off.height = CAFE_H;
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(img, 0, 0, CAFE_W, CAFE_H);
+  const imageData = offCtx.getImageData(0, 0, CAFE_W, CAFE_H);
+  const d = imageData.data;
+  const seen = new Uint8Array(CAFE_W * CAFE_H);
+  const stack = [
+    // top-left 2×2
+    0, 1, CAFE_W, CAFE_W + 1,
+    // top-right 2×2
+    CAFE_W - 2, CAFE_W - 1, 2 * CAFE_W - 2, 2 * CAFE_W - 1,
+    // bottom-left 2×2
+    (CAFE_H - 2) * CAFE_W, (CAFE_H - 2) * CAFE_W + 1, (CAFE_H - 1) * CAFE_W, (CAFE_H - 1) * CAFE_W + 1,
+    // bottom-right 2×2
+    CAFE_H * CAFE_W - CAFE_W - 2, CAFE_H * CAFE_W - CAFE_W - 1, CAFE_H * CAFE_W - 2, CAFE_H * CAFE_W - 1,
+  ];
+  stack.forEach(s => { seen[s] = 1; });
+  while (stack.length > 0) {
+    const i = stack.pop();
+    const b = i * 4;
+    if (d[b] > 8 || d[b + 1] > 8 || d[b + 2] > 8) continue;
+    d[b + 3] = 0;
+    const x = i % CAFE_W;
+    const y = (i / CAFE_W) | 0;
+    if (x > 0          && !seen[i - 1])      { seen[i - 1]      = 1; stack.push(i - 1); }
+    if (x < CAFE_W - 1 && !seen[i + 1])      { seen[i + 1]      = 1; stack.push(i + 1); }
+    if (y > 0          && !seen[i - CAFE_W])  { seen[i - CAFE_W]  = 1; stack.push(i - CAFE_W); }
+    if (y < CAFE_H - 1 && !seen[i + CAFE_W]) { seen[i + CAFE_W] = 1; stack.push(i + CAFE_W); }
+  }
+  offCtx.putImageData(imageData, 0, 0);
+  return off;
+}
+
 export default function CafeCanvas({ frozen = false }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
@@ -430,7 +469,7 @@ export default function CafeCanvas({ frozen = false }) {
   const sortedFurnitureRef = useRef([]);
   const { state, dispatch } = useGame();
   const stateRef = useRef(state);
-  useEffect(() => { stateRef.current = state; });
+  stateRef.current = state;
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
   useEffect(() => {
     sortedFurnitureRef.current = [...state.cafe.furniture].sort(
@@ -440,9 +479,9 @@ export default function CafeCanvas({ frozen = false }) {
 
   useEffect(() => {
     const day = new Image(); day.src = '/C_Daylight.png';
-    day.onload = () => { bgImages.current.day = day; };
+    day.onload = () => { bgImages.current.day = buildMaskedBg(day); };
     const night = new Image(); night.src = '/C_Nightfall.png';
-    night.onload = () => { bgImages.current.night = night; };
+    night.onload = () => { bgImages.current.night = buildMaskedBg(night); };
   }, []);
 
   useEffect(() => {

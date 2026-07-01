@@ -6,7 +6,10 @@ import DailyGoalTracker from './DailyGoalTracker.jsx';
 
 function StatCard({ icon: Icon, label, value, color, subtext }) {
   return (
-    <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
+    <div
+      className="backdrop-blur-sm rounded-xl border border-border/30 p-4"
+      style={{ background: `color-mix(in srgb, ${color} 12%, var(--card))` }}
+    >
       <div className="flex items-center gap-2 mb-2">
         <Icon className="w-4 h-4" style={{ color }} />
         <span className="text-xs text-muted-foreground font-body">{label}</span>
@@ -111,7 +114,10 @@ export default function StatsCharts() {
       <DailyGoalTracker current={stats.todaySeconds} goal={stats.dailyGoal * 60} />
 
       {/* Weekly chart */}
-      <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4">
+      <div
+        className="backdrop-blur-sm rounded-xl border border-border/30 p-4"
+        style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--card))' }}
+      >
         <div className="flex items-baseline justify-between mb-4">
           <h3 className="font-display text-sm text-foreground/80">Weekly Focus</h3>
           <span className="font-pixel text-[10px] text-muted-foreground">
@@ -127,7 +133,7 @@ export default function StatsCharts() {
               labelStyle={{ color: 'hsl(45 20% 90%)' }}
               formatter={(v) => [formatTotal(v), 'Focus']}
             />
-            <Bar dataKey="seconds" fill="hsl(265 45% 55%)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="seconds" fill="var(--primary)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

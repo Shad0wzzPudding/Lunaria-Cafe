@@ -15,6 +15,7 @@ import CafeStatusPopup from '@/pages/CafeStatusPopup'
 import DebugPanel from '@/components/debug/DebugPanel'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
+import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
 
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter']
 
@@ -84,6 +85,12 @@ function GameRouter() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [openDebug])
 
+  // Switch theme when the cafe transitions between day and night.
+  const timeOfDay = state.cafe?.timeOfDay ?? 'day';
+  React.useEffect(() => {
+    applyThemeForTimeOfDay(timeOfDay);
+  }, [timeOfDay]);
+
   const phase = state.phase
   const isCafePhase = phase === 'loading' || phase === 'management' || phase === 'focus'
 
@@ -134,6 +141,7 @@ function GameRouter() {
 function AppShell() {
   const { user, loading, isGuest } = useAuth()
 
+
   if (loading) {
     return (
       <p className="min-h-screen flex items-center justify-center bg-background dark text-muted-foreground font-body">
@@ -153,7 +161,7 @@ function AppShell() {
           <GameRouter />
         </main>
       </GameProvider>
-      <Toaster />
+      <div className="dark"><Toaster theme="dark" /></div>
     </QueryClientProvider>
   )
 }

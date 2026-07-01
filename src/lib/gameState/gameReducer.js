@@ -691,6 +691,7 @@ export function gameReducer(state, action) {
       return { ...state, audio: { ...state.audio, ...action.payload } };
 
     case 'SET_TIME_OF_DAY':
+      if (state.cafe?.timeOfDay === action.payload) return state;
       return { ...state, cafe: { ...state.cafe, timeOfDay: action.payload } };
 
     case 'SET_BG_MODE':

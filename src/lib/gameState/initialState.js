@@ -136,5 +136,13 @@ export const initialState = {
   settings: {
     focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
     performanceMode: false,
+    aiMode: 'browser',
+    theme: {
+      mode: 'classic',
+      dayHex: '#e2ae60',
+      nightHex: '#7d5fde',
+      dayShadeHex: '#cabb9b',
+      nightShadeHex: '#0a0a0a',
+    },
   },
 };

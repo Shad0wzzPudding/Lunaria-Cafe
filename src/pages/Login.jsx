@@ -21,7 +21,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+    <div data-theme="light" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border border-border/30 bg-card/60 p-6">
         <h1 className="font-display text-2xl text-center">Lunaria Cafe</h1>
         <input

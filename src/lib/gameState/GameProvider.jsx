@@ -3,6 +3,8 @@ import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from './saveService';
 import { gameReducer } from './gameReducer';
 import { initialState } from './initialState';
 import { AUTO_SAVE_INTERVAL } from './constants';
+import { applyThemeSettings } from '@/lib/theme/themeDeriver';
+import { setAIConfig } from '@/lib/ai/aiIntegration';
 
 const GameContext = createContext(null);
 
@@ -43,11 +45,21 @@ export function GameProvider({ children, userId }) {
         const hydrated = mergeLoadedSave(data, initialState);
         if (hydrated) {
           dispatch({ type: 'HYDRATE', payload: hydrated });
+          if (hydrated.settings?.theme) {
+            applyThemeSettings(hydrated.settings.theme, hydrated.cafe?.timeOfDay ?? 'day');
+          }
+          if (hydrated.settings?.aiMode) {
+            setAIConfig({ aiMode: hydrated.settings.aiMode });
+          }
         }
       })
       .catch((err) => {
         console.error('Load save failed:', err);
-        if (!cancelled) setSaveError(err.message ?? 'Load failed');
+        if (!cancelled) {
+          setSaveError(err.message ?? 'Load failed');
+          setAIConfig({ aiMode: initialState.settings.aiMode });
+          applyThemeSettings(initialState.settings.theme, 'day');
+        }
       })
       .finally(() => {
         if (!cancelled) setReady(true);

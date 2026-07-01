@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, Heart, Users, Sparkles } from 'lucide-react';
 import { getChaosStage, getAIConfig } from '@/lib/ai/aiIntegration';
+import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -59,6 +60,21 @@ export default function CafeStatusPopup() {
       window.close();
     }
   }, [data?.status]);
+
+  // Sync theme from main window so popup matches the current palette.
+  useEffect(() => {
+    if (!data?.themeMode) return;
+    applyThemeSettings(
+      {
+        mode: data.themeMode,
+        dayHex: data.dayHex,
+        nightHex: data.nightHex,
+        dayShadeHex: data.dayShadeHex,
+        nightShadeHex: data.nightShadeHex,
+      },
+      data.timeOfDay ?? 'day'
+    );
+  }, [data?.themeMode, data?.dayHex, data?.nightHex, data?.timeOfDay]);
 
   useEffect(() => {
     if (!showCamera) return;

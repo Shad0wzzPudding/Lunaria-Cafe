@@ -64,8 +64,8 @@ export default function MainMenu() {
 
             <Button
               onClick={() => dispatch({ type: 'SET_PHASE', payload: 'settings' })}
-              variant="ghost"
-              className="h-11 font-pixel text-xs tracking-wide gap-2 text-white/60 hover:text-white hover:bg-white/10"
+              variant="secondary"
+              className="h-11 font-pixel text-xs tracking-wide gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm shadow-md shadow-black/30"
             >
               <Settings className="w-4 h-4" />
               Settings
