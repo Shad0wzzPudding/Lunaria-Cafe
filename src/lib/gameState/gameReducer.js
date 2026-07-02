@@ -631,6 +631,9 @@ export function gameReducer(state, action) {
         cafe: { ...state.cafe, currentCustomers: state.npcs.customers.length + 1 },
       };
 
+    case 'CUSTOMER_TURNED_AWAY':
+      return { ...state, ui: pushPopup(state, '😕 The cafe was too cluttered, so a customer left.', 0) };
+
     case 'SERVE_CUSTOMER':
     case 'REMOVE_CUSTOMER': {
       const customer  = state.npcs.customers.find((c) => c.id === action.payload);

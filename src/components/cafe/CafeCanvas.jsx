@@ -2,38 +2,18 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/cafe/furnitureCatalog.js';
+import {
+  CAFE_W,
+  CAFE_H,
+  WALKABLE_ZONES,
+  isInsideWalkableZone,
+  collidesWithFurniture,
+  randomWalkablePoint,
+  findNearestValidSpot,
+} from '@/lib/cafe/spatial.js';
 
-const CAFE_W = 740;
-const CAFE_H = 500;
 const DEBUG_COLLISION = false;
 const DEBUG_WALKABLE = false;
-
-// Each zone is a rectangle { x, y, w, h }.
-// A point is walkable if it falls inside ANY zone (union).
-const WALKABLE_ZONES = [
-  { x: 37,  y: 152, w: 668, h: 233 }, // main floor
-  { x: 103, y: 385, w: 534, h:  48 }, // lower floor strip (rug area)
-];
-
-export function isInsideWalkableZone(x, y) {
-  return WALKABLE_ZONES.some(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
-}
-
-// Search outward from (x, y) in expanding rings until a valid spot is found.
-// Returns { x, y } of the nearest open position, or null if none found within range.
-export function findNearestValidSpot(x, y, radius, furniture) {
-  for (let dist = 10; dist <= 200; dist += 10) {
-    for (let i = 0; i < 16; i++) {
-      const angle = (i / 16) * Math.PI * 2;
-      const cx = x + Math.cos(angle) * dist;
-      const cy = y + Math.sin(angle) * dist;
-      if (isInsideWalkableZone(cx, cy) && !collidesWithFurniture(cx, cy, radius, furniture)) {
-        return { x: cx, y: cy };
-      }
-    }
-  }
-  return null;
-}
 
 function findFurnitureAt(furniture, x, y) {
   for (let i = furniture.length - 1; i >= 0; i--) {
@@ -64,48 +44,7 @@ function findFurnitureAt(furniture, x, y) {
 }
 
 
-function isFurnitureSolid(furniture) {
-  return FURNITURE_CATALOG[furniture.type]?.solid ?? true;
-}
-
-export function collidesWithFurniture(x, y, radius, furniture) {
-  for (const f of furniture) {
-
-    // Skip non-solid furniture
-    if (!isFurnitureSolid(f)) {
-      continue;
-    }
-
-    const rotated = (f.rotation ?? 0) % 180 !== 0;
-
-    const fw = rotated ? f.h : f.w;
-    const fh = rotated ? f.w : f.h;
-
-    const cx = f.x + f.w / 2;
-    const cy = f.y + f.h / 2;
-
-    const left = cx - fw / 2;
-    const top = cy - fh / 2;
-
-    if (
-      x + radius > left &&
-      x - radius < left + fw &&
-      y + radius > top &&
-      y - radius < top + fh
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 const COLORS = { rabbit: '#e8ddd0', rabbitEar: '#d4c4b0', customer: '#6b7db3', cat: '#c9b89a', catStripe: '#a89070', catInner: '#e8c4b0' };
-
-export function randomWalkablePoint() {
-  const zone = WALKABLE_ZONES[Math.floor(Math.random() * WALKABLE_ZONES.length)];
-  return { x: zone.x + Math.random() * zone.w, y: zone.y + Math.random() * zone.h };
-}
 
 function drawGhost(ctx, e, time) {
   if (e.alpha <= 0) return;

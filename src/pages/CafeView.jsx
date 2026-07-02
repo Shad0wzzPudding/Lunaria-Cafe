@@ -8,7 +8,7 @@ import {
   generateChaosEvent,
 } from '@/lib/ai/aiIntegration';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
-import CafeCanvas, { randomWalkablePoint, collidesWithFurniture, findNearestValidSpot } from '@/components/cafe/CafeCanvas';
+import CafeCanvas from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
 import ChaosEventLog from '@/components/cafe/ChaosEventLog';
 import ChaosGauge from '@/components/cafe/ChaosGauge';
@@ -30,6 +30,7 @@ import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
 import { getThemeMode, getThemeHex, getGlassShadeHex } from '@/lib/theme/themeDeriver';
+import { CAFE_W, CAFE_H, findRandomOpenSpot } from '@/lib/cafe/spatial.js';
 
 const IS_MAC          = navigator.userAgent.includes('Mac');
 const IS_WINDOWS      = navigator.userAgent.includes('Win');
@@ -43,16 +44,6 @@ const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
 const CUSTOMER_RADIUS = 12;
-
-// Standing (non-seated) customers: pick a spot inside the walkable zone that
-// doesn't overlap furniture, retrying before falling back to a nearby-search.
-function getRandomStandingSpot(furniture) {
-  for (let i = 0; i < 30; i++) {
-    const { x, y } = randomWalkablePoint();
-    if (!collidesWithFurniture(x, y, CUSTOMER_RADIUS, furniture)) return { x, y };
-  }
-  return findNearestValidSpot(370, 260, CUSTOMER_RADIUS, furniture) ?? { x: 370, y: 260 };
-}
 
 const REPUTATION_TIERS = [
   { min: 0,   max: 19,  name: 'Newcomer',  icon: Sprout,   color: '#9ca3af' },
@@ -403,20 +394,24 @@ export default function CafeView() {
         const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
         const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
         const cat = freeSeat ? FURNITURE_CATALOG[freeSeat.type] : null;
-        const standingSpot = freeSeat ? null : getRandomStandingSpot(state.cafe.furniture);
+        const standingSpot = freeSeat ? null : findRandomOpenSpot(CAFE_W / 2, CAFE_H / 2, CUSTOMER_RADIUS, state.cafe.furniture);
 
-        dispatch({
-          type: 'ADD_CUSTOMER',
-          payload: {
-            id: `cust-${Date.now()}`,
-            x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : standingSpot.x,
-            y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : standingSpot.y,
-            seatedAt: freeSeat?.id ?? null,
-            color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
-            emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
-            arrivedAt: Date.now(),
-          },
-        });
+        if (freeSeat || standingSpot) {
+          dispatch({
+            type: 'ADD_CUSTOMER',
+            payload: {
+              id: `cust-${Date.now()}`,
+              x: freeSeat ? freeSeat.x + freeSeat.w / 2 + (cat?.seatDx ?? 0) : standingSpot.x,
+              y: freeSeat ? freeSeat.y + freeSeat.h / 2 + (cat?.seatDy ?? 0) : standingSpot.y,
+              seatedAt: freeSeat?.id ?? null,
+              color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
+              emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
+              arrivedAt: Date.now(),
+            },
+          });
+        } else {
+          dispatch({ type: 'CUSTOMER_TURNED_AWAY' });
+        }
       }
 
       if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
