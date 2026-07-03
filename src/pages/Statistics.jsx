@@ -4,13 +4,17 @@ import StatsCharts from '@/components/stats/StatsCharts';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
 export default function Statistics() {
   const { dispatch } = useGame();
   
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-card/40 backdrop-blur-sm">
+      <header
+        className="flex items-center gap-3 px-4 py-3 border-b border-border/30"
+        style={{ background: PANEL_BRIGHT_BG }}
+      >
         <Button
           variant="ghost"
           size="icon"

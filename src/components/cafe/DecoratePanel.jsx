@@ -2,6 +2,7 @@ import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { Button } from '@/components/ui/button';
 import { X, Trash2, GripHorizontal,Coins } from 'lucide-react';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
+import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 import { useRef, useState } from 'react';
 
 const PLACEABLE = [
@@ -98,7 +99,7 @@ export default function DecoratePanel() {
   return (
     <div
       ref={panelRef}
-      style={posStyle}
+      style={{ ...posStyle, ...getFocusPanelStyle() }}
       className="z-40 w-[min(calc(100vw-2rem),34rem)] rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md"
     >
       {/* Drag handle */}

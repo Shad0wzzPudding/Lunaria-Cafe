@@ -29,7 +29,7 @@ import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
-import { getThemeMode, getThemeHex, getGlassShadeHex } from '@/lib/theme/themeDeriver';
+import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 import { CAFE_W, CAFE_H, findRandomOpenSpot } from '@/lib/cafe/spatial.js';
 
 const IS_MAC          = navigator.userAgent.includes('Mac');
@@ -101,6 +101,7 @@ function CafeStatsPanel({ state, onClose }) {
     <div
       ref={panelRef}
       className="absolute bottom-14 right-10 z-50 w-[26rem] rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+      style={getFocusPanelStyle()}
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display text-sm text-foreground">Cafe Stats</h3>
@@ -195,6 +196,7 @@ function CafeUpgradePanel({ state, onClose }) {
     <div
       ref={panelRef}
       className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+      style={getFocusPanelStyle()}
     >
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-display text-sm text-foreground">Upgrades</h3>
@@ -291,6 +293,7 @@ function BgModePanel({ state, dispatch, onClose }) {
     <div
       ref={panelRef}
       className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+      style={getFocusPanelStyle()}
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display text-sm text-foreground">Background Mode</h3>
@@ -343,11 +346,9 @@ export default function CafeView() {
   const focusActiveRef = useRef(false);
   const popupRef = useRef(null);
   const popupCheckRef = useRef(null);
-  const isZenModeRef = useRef(false);
   const wasZenRef = useRef(false);
   const focusViewMode = state.settings?.focusViewMode ?? null;
   const isZenMode = isFocusing && focusViewMode === 'zen';
-  isZenModeRef.current = isZenMode;
   const currentAiMode = state.settings?.aiMode ?? 'browser';
   const popupPicture = useRef(ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]).current;
 
@@ -614,7 +615,6 @@ export default function CafeView() {
       if (!focusActiveRef.current) return;
       if (notifCooldownRef.current) return;
       if (IS_MOBILE_OR_TABLET) return;
-      if (isZenModeRef.current) return;
 
       notifCooldownRef.current = true;
       if (notifCooldownTimerRef.current) clearTimeout(notifCooldownTimerRef.current);
@@ -727,6 +727,9 @@ export default function CafeView() {
     ? `linear-gradient(to top, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
     : 'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, transparent)';
 
+  // Focus theme: lift footer buttons off the dark glass (immersive tint has its own contrast).
+  const footerBtnClass = `gap-2 font-pixel text-xs ${isImmersive ? '' : 'bg-white/15 hover:bg-white/25 border-white/20'}`;
+
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: isImmersive ? shadeHex : 'var(--background)' }}>
       {isFocusing && <PhoneWarning />}
@@ -817,7 +820,7 @@ export default function CafeView() {
             </div>
           </div>
         )}
-        {popupOpen && isImmersive && (
+        {(popupOpen || isZenMode) && isImmersive && (
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -959,7 +962,7 @@ export default function CafeView() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="gap-2 font-pixel text-xs"
+                  className={footerBtnClass}
                   onClick={() => dispatch({
                     type: 'SET_TIME_OF_DAY',
                     payload: state.cafe.timeOfDay === 'day' ? 'night' : 'day',
@@ -971,7 +974,7 @@ export default function CafeView() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="gap-2 font-pixel text-xs"
+                  className={footerBtnClass}
                   onClick={() => { Sounds.petShopOpen(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxPetShopOpen); setShowPetShop(true); }}
                 >
                   <PawPrint className="w-3.5 h-3.5" />
@@ -980,7 +983,7 @@ export default function CafeView() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="gap-2 font-pixel text-xs"
+                  className={footerBtnClass}
                   onClick={() => dispatch({ type: 'SET_DECORATE_MODE', payload: true })}
                 >
                   <Sofa className="w-3.5 h-3.5" />

@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Heart, Sparkles, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 
 const IS_PHONE = /iPhone|Android.*Mobile/i.test(navigator.userAgent);
 
@@ -153,6 +154,7 @@ export default function SessionSummary() {
             {/* Card — everything inside here */}
             <motion.div
               className="w-full max-w-xs rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl"
+              style={getFocusPanelStyle()}
               animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : {}}
               transition={{ duration: 0.4 }}
               onClick={e => e.stopPropagation()}

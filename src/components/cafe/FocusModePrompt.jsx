@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2, Sparkles } from 'lucide-react';
+import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 
 const MODES = [
   {
@@ -37,6 +38,7 @@ export default function FocusModePrompt({ onSelect }) {
       {/* Modal */}
       <motion.div
         className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-8"
+        style={getFocusPanelStyle()}
         initial={{ opacity: 0, scale: 0.93, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 16 }}

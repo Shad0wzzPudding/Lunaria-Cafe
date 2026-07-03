@@ -145,6 +145,19 @@ export function getThemeMode() {
   return storageGet(KEY_MODE) ?? 'classic';
 }
 
+// Brighter-than-card background used to lift panels/headers off the backdrop.
+export const PANEL_BRIGHT_BG = 'color-mix(in srgb, var(--foreground) 12%, var(--card))';
+
+// Focus (classic) theme paints cards nearly as dark as the backdrop, so floating
+// panels blend into the background. Returns a brighter background override for
+// them; undefined in immersive mode, where the tinted theme provides contrast.
+export function getFocusPanelStyle() {
+  if (getThemeMode() === 'custom') return undefined;
+  // The opaque background hides the panels' backdrop blur, so also disable the
+  // filter — otherwise the GPU keeps blurring the animated canvas underneath.
+  return { background: PANEL_BRIGHT_BG, backdropFilter: 'none', WebkitBackdropFilter: 'none' };
+}
+
 export function setThemeMode(mode) {
   storageSet(KEY_MODE, mode);
   if (mode === 'classic') {

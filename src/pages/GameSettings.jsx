@@ -11,6 +11,7 @@ import {
   isBrowserAISupported,
 } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/AuthProvider';
+import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
@@ -71,7 +72,10 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-card/40 backdrop-blur-sm">
+      <header
+        className="flex items-center gap-3 px-4 py-3 border-b border-border/30"
+        style={{ background: PANEL_BRIGHT_BG }}
+      >
         <Button
           variant="ghost"
           size="icon"
