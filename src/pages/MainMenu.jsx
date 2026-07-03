@@ -1,13 +1,14 @@
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Play, BarChart3, Settings, BookOpen } from 'lucide-react';
+import { Play, BarChart3, Settings, BookOpen, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
   const { dispatch } = useGame();
   const { profile, isGuest, chooseRole } = useAuth();
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
+  const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -64,6 +65,17 @@ export default function MainMenu() {
               <BarChart3 className="w-4 h-4" />
               Statistics
             </Button>
+
+            {canUseClassrooms && (
+              <Button
+                onClick={() => dispatch({ type: 'SET_PHASE', payload: 'classrooms' })}
+                variant="secondary"
+                className="h-11 font-pixel text-xs tracking-wide gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm shadow-md shadow-black/30"
+              >
+                <Users className="w-4 h-4" />
+                My Classrooms
+              </Button>
+            )}
 
             <Button
               onClick={() => dispatch({ type: 'SET_PHASE', payload: 'settings' })}

@@ -11,6 +11,7 @@ import InstructorDashboard from '@/pages/instructor/InstructorDashboard'
 import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
+import MyClassrooms from '@/pages/MyClassrooms'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
@@ -131,8 +132,9 @@ function GameRouter() {
         </div>
       )}
 
-      {phase === 'menu'     && <MainMenu />}
-      {phase === 'stats'    && <Statistics />}
+      {phase === 'menu'       && <MainMenu />}
+      {phase === 'stats'      && <Statistics />}
+      {phase === 'classrooms' && <MyClassrooms />}
       {phase === 'settings' && <GameSettings easyDebug={easyDebug} setEasyDebug={setEasyDebug} />}
 
       {debugOpen && <DebugPanel onClose={() => setDebugOpen(false)} />}
@@ -160,7 +162,13 @@ function AppShell() {
   // accounts go straight to the dashboard and never see the game.
   if (!isGuest && profile?.is_instructor) {
     if (profile.is_student && !activeRole) return <RoleSelect />
-    if (activeRole === 'instructor' || !profile.is_student) return <InstructorDashboard />
+    if (activeRole === 'instructor' || !profile.is_student) {
+      return (
+        <QueryClientProvider client={queryClientInstance}>
+          <InstructorDashboard />
+        </QueryClientProvider>
+      )
+    }
   }
 
   return (
