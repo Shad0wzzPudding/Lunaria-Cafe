@@ -1,10 +1,13 @@
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Play, BarChart3, Settings } from 'lucide-react';
+import { Play, BarChart3, Settings, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
   const { dispatch } = useGame();
+  const { profile, isGuest, chooseRole } = useAuth();
+  const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -70,6 +73,17 @@ export default function MainMenu() {
               <Settings className="w-4 h-4" />
               Settings
             </Button>
+
+            {canSwitchToInstructor && (
+              <Button
+                onClick={() => chooseRole('instructor')}
+                variant="secondary"
+                className="h-11 font-pixel text-xs tracking-wide gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm shadow-md shadow-black/30"
+              >
+                <BookOpen className="w-4 h-4" />
+                Switch to Instructor
+              </Button>
+            )}
           </div>
 
           <p className="font-body text-[11px] text-white/30">

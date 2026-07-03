@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from '@/auth/AuthProvider'
 import { GameProvider, useGame } from '@/lib/gameState/GameProvider.jsx'
 import { useCafeAudio } from '@/lib/audio/useCafeAudio'
 import Login from '@/pages/Login'
+import RoleSelect from '@/pages/RoleSelect'
+import InstructorDashboard from '@/pages/instructor/InstructorDashboard'
 import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
@@ -139,10 +141,9 @@ function GameRouter() {
 }
 
 function AppShell() {
-  const { user, loading, isGuest } = useAuth()
+  const { user, loading, profileLoading, isGuest, profile, activeRole } = useAuth()
 
-
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
       <p className="min-h-screen flex items-center justify-center bg-background dark text-muted-foreground font-body">
         Loading…
@@ -152,6 +153,14 @@ function AppShell() {
 
   if (!user && !isGuest) {
     return <Login />
+  }
+
+  // Instructor routing (guests are always students).
+  // Dual-role accounts pick a side each session; instructor-only
+  // accounts go straight to the dashboard and never see the game.
+  if (!isGuest && profile?.is_instructor) {
+    if (profile.is_student && !activeRole) return <RoleSelect />
+    if (activeRole === 'instructor' || !profile.is_student) return <InstructorDashboard />
   }
 
   return (

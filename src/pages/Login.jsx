@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { UserX, AlertTriangle } from 'lucide-react';
+import { UserX, AlertTriangle, GraduationCap, BookOpen } from 'lucide-react';
+import { INSTRUCTOR_SECRET_CODE } from '@/lib/classroom/constants';
 
 export default function Login() {
   const [showGuestWarning, setShowGuestWarning] = useState(false);
@@ -10,15 +11,45 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [roleStudent, setRoleStudent] = useState(true);
+  const [roleInstructor, setRoleInstructor] = useState(false);
+  const [instructorCode, setInstructorCode] = useState('');
 
   const submit = async (e) => {
     e.preventDefault();
     setMsg('');
-    const fn = isSignUp ? signUp : signIn;
-    const { error } = await fn(email, password);
+
+    if (!isSignUp) {
+      const { error } = await signIn(email, password);
+      if (error) setMsg(error.message);
+      return;
+    }
+
+    if (!roleStudent && !roleInstructor) {
+      setMsg('Pick at least one role.');
+      return;
+    }
+    const normalizedCode = instructorCode.trim().toUpperCase();
+    if (roleInstructor && normalizedCode !== INSTRUCTOR_SECRET_CODE) {
+      setMsg('Wrong instructor code.');
+      return;
+    }
+
+    const { error } = await signUp(email, password, {
+      is_student: roleStudent,
+      is_instructor: roleInstructor,
+      ...(roleInstructor ? { instructor_code: normalizedCode } : {}),
+    });
     if (error) setMsg(error.message);
-    else if (isSignUp) setMsg('Check email to confirm (or disable confirm in Supabase).');
+    else setMsg('Check email to confirm (or disable confirm in Supabase).');
   };
+
+  const roleBtnClass = (active) =>
+    `flex-1 flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs transition-colors ${
+      active
+        ? 'border-primary/60 bg-primary/10 text-foreground'
+        : 'border-border/40 bg-background text-muted-foreground hover:text-foreground'
+    }`;
 
   return (
     <div data-theme="light" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
@@ -40,6 +71,52 @@ export default function Login() {
           className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
           required
         />
+
+        {isSignUp && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Sign up as</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setRoleStudent(!roleStudent)}
+                className={roleBtnClass(roleStudent)}
+              >
+                <GraduationCap className="h-3.5 w-3.5" />
+                Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleInstructor(!roleInstructor)}
+                className={roleBtnClass(roleInstructor)}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Instructor
+              </button>
+            </div>
+
+            {roleInstructor && (
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="Instructor secret code"
+                  value={instructorCode}
+                  onChange={(e) => setInstructorCode(e.target.value)}
+                  className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
+                  style={{ fontFamily: "'Inter Variable', sans-serif" }}
+                  required
+                />
+                <p className="text-[10px] text-muted-foreground/70">
+                  Prototype: the code is <span className="font-semibold text-foreground/80">{INSTRUCTOR_SECRET_CODE}</span> (not case-sensitive)
+                </p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-amber-500/90">
+              Only for prototype: one email can be "Instructor" and "Student" at the same time!
+            </p>
+          </div>
+        )}
+
         {msg && <p className="text-sm text-amber-400">{msg}</p>}
         <Button type="submit" className="w-full">
           {isSignUp ? 'Create account' : 'Log in'}
@@ -47,7 +124,7 @@ export default function Login() {
         <button
           type="button"
           className="text-xs text-muted-foreground w-full"
-          onClick={() => setIsSignUp(!isSignUp)}
+          onClick={() => { setIsSignUp(!isSignUp); setMsg(''); }}
         >
           {isSignUp ? 'Already have an account? Log in' : 'New here? Sign up'}
         </button>
