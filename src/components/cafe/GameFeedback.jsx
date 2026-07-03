@@ -67,7 +67,7 @@ export default function GameFeedback() {
                 {popup.message}
               </p>
             </div>
-              {popup.amount !== undefined || popup.coins !== undefined ? (
+              {(popup.amount ?? popup.coins) ? (
               <p className="font-pixel text-xs text-amber-300 mt-0.5">
                 {((popup.amount ?? popup.coins) > 0) ? '+' : ''}
                 {popup.amount ?? popup.coins} coins
