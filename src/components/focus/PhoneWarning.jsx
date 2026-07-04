@@ -1,58 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sounds } from '@/lib/sounds';
-
-const WARNING_DURATION_MS = 30000; // 30 seconds
+import { useDangerCountdown, DANGER_SECONDS } from './useDangerCountdown';
 
 export default function PhoneWarning() {
-  const { state, dispatch } = useGame();
+  const { state } = useGame();
   const { phoneWarningStart, phoneDetected } = state.attention;
   const { sfxVolume, masterVolume } = state.audio;
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const remainingSeconds = useDangerCountdown(phoneWarningStart);
   const soundPlayedRef = useRef(false);
-
-  // Reset the countdown at the start of each warning (adjust-during-render).
-  const [prevStart, setPrevStart] = useState(phoneWarningStart);
-  if (prevStart !== phoneWarningStart) {
-    setPrevStart(phoneWarningStart);
-    setRemainingSeconds(phoneWarningStart ? WARNING_DURATION_MS / 1000 : 0);
-  }
 
   useEffect(() => {
     if (!phoneWarningStart || !phoneDetected) {
       soundPlayedRef.current = false;
       return;
     }
-
-    // Play warning sound when warning starts
+    // Play warning sound once per warning
     if (!soundPlayedRef.current) {
       Sounds.phoneWarning(sfxVolume, masterVolume, state.audio.sfxPhoneWarning);
       soundPlayedRef.current = true;
     }
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - phoneWarningStart;
-      const remaining = Math.max(0, WARNING_DURATION_MS - elapsed);
-      setRemainingSeconds(Math.ceil(remaining / 1000));
-    }, 100);
-
-    return () => clearInterval(interval);
   }, [phoneWarningStart, phoneDetected, sfxVolume, masterVolume, state.audio.sfxPhoneWarning]);
-
-  const handleDismiss = () => {
-    dispatch({ 
-      type: 'PROCESS_AI_EVENT', 
-      payload: { 
-        phone_detected: false, 
-        attention_score: state.attention.score,
-        user_present: state.attention.userPresent,
-        timestamp: Date.now(),
-        source: state.attention.source
-      } 
-    });
-  };
 
   if (!phoneWarningStart || !phoneDetected || remainingSeconds === 0) {
     return null;
@@ -82,7 +52,7 @@ export default function PhoneWarning() {
                 <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: '100%' }}
-                    animate={{ width: `${(remainingSeconds / 30) * 100}%` }}
+                    animate={{ width: `${(remainingSeconds / DANGER_SECONDS) * 100}%` }}
                     transition={{ duration: 1 }}
                     className="h-full bg-gradient-to-r from-amber-400 to-orange-400"
                   />
@@ -92,12 +62,6 @@ export default function PhoneWarning() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={handleDismiss}
-              className="flex-shrink-0 p-1 hover:bg-white/10 rounded-md transition-colors"
-            >
-              <X className="w-4 h-4 text-amber-200/60" />
-            </button>
           </div>
         </div>
       </motion.div>

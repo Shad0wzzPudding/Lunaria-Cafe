@@ -811,7 +811,6 @@ export default function CafeCanvas({ frozen = false }) {
   // Runs on mount and whenever a pet is added or removed.
   // Deps intentionally use .length: this repositions NPCs only when one is
   // added/removed — depending on the arrays would re-run every movement tick.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const entranceX = () => 290 + Math.random() * 160;
     const entranceY = () => 390 + Math.random() * 40; // stays within lower zone (y 385–433)
@@ -827,6 +826,7 @@ export default function CafeCanvas({ frozen = false }) {
         dispatch({ type: 'UPDATE_CAT', payload: { id: c.id, x: entranceX(), y: entranceY() } });
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.npcs.rabbits.length, state.npcs.cats.length, dispatch]);
 
   const handleCanvasClick = (event) => {

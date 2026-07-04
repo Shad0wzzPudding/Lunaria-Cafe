@@ -33,6 +33,8 @@ export const initialState = {
     phoneDetected: false,
     userPresent: true,
     chaosEvents: [],
+    sessionDistractions: 0,
+    absenceCounted: false,
     warningMessage: '',
     phones: [],
     source: 'offline',
@@ -40,6 +42,7 @@ export const initialState = {
     phoneFreeSince: null,
     gazeFocusedSince: null,
     userAbsentSince: null,
+    userPresentSince: null,
     debugAttentionLock: false,
   },
   journal: {

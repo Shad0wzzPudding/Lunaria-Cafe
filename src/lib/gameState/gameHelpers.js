@@ -11,11 +11,6 @@ export function getWeekStart(dateStr) {
   return d.toISOString().split('T')[0];
 }
 
-/** Returns the Monday-based index (0 = Mon … 6 = Sun) for today. */
-export function getTodayIndex() {
-  return (new Date().getDay() + 6) % 7;
-}
-
 /**
  * Calculates the new streak value based on the last session date.
  * - Same day  → streak unchanged
@@ -39,26 +34,17 @@ export function calcNewStreak(currentStreak, lastSessionDate) {
 }
 
 /**
- * Shared calculation for END_FOCUS and COMPLETE_FOCUS.
+ * Whole-minute credit for a finished session — used for session counting
+ * and streaks. Focus-time stats themselves accumulate live in TICK_FOCUS.
  *
- * @param {object} state       - Current game state
+ * @param {number} elapsed     - Session length in seconds
  * @param {boolean} requireMin1 - If true, session always counts as at least 1 min (COMPLETE_FOCUS).
  *                                If false, only counts if elapsed >= 30s (END_FOCUS).
- * @returns {{ sessionMins: number, extraMins: number, weeklyData: number[] }}
  */
-export function calcSessionTotals(state, requireMin1 = false, dateStr = null) {
-  const tickedMins  = Math.floor(state.focus.elapsed / 60);
-  const sessionMins = requireMin1
-    ? Math.max(1, Math.ceil(state.focus.elapsed / 60))
-    : state.focus.elapsed >= 30
-      ? Math.ceil(state.focus.elapsed / 60)
+export function calcSessionMins(elapsed, requireMin1 = false) {
+  return requireMin1
+    ? Math.max(1, Math.ceil(elapsed / 60))
+    : elapsed >= 30
+      ? Math.ceil(elapsed / 60)
       : 0;
-  const extraMins   = Math.max(0, sessionMins - tickedMins);
-  const untickedSeconds = Math.max(0, state.focus.elapsed - tickedMins * 60);
-
-  const dayIndex = dateStr ? (new Date(dateStr).getDay() + 6) % 7 : getTodayIndex();
-  const weeklyData = [...state.stats.weeklyData];
-  if (untickedSeconds > 0) weeklyData[dayIndex] += untickedSeconds;
-
-  return { sessionMins, extraMins, weeklyData };
 }

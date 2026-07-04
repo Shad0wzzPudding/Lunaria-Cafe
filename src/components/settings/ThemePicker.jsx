@@ -280,7 +280,7 @@ export default function ThemePicker() {
 
       {mode === 'classic' ? (
         <p className="text-xs font-pixel text-muted-foreground/70 py-1">
-          Pure black theme, no background wallpaper. Switch to Immersive to set your own palette.
+          Midnight purple theme, no background wallpaper. Switch to Immersive to set your own palette and have a background wallpaper.
         </p>
       ) : (
         <>

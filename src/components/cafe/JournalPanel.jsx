@@ -18,9 +18,9 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
   // Play journal open sound on mount using real audio settings.
   // Deps intentionally empty: the sound fires once per open — adding the
   // volume/toggle deps would replay it whenever the user tweaks audio.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     Sounds.journalOpen(sfxVolume, masterVolume, state.audio.sfxJournalOpen);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle journal close with sound effect

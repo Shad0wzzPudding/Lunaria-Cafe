@@ -4,10 +4,16 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
-import { calcSessionTotals, calcNewStreak, getDateString, getWeekStart } from './gameHelpers';
+import { calcSessionMins, calcNewStreak, getDateString, getWeekStart } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;
+// No-face absences shorter than this don't count as a distraction —
+// face detection flickers too easily for a raw edge trigger.
+const ABSENCE_DISTRACTION_GRACE_MS = 5000;
+// After an absence, the face must stay in frame this long to count as
+// "back" — a one-frame detection blip doesn't end the absence.
+const PRESENCE_RETURN_GRACE_MS = 3000;
 const EMPTY_PHONES = [];
 
 export function gameReducer(state, action) {
@@ -146,11 +152,25 @@ export function gameReducer(state, action) {
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
         },
-        attention: { ...state.attention, chaosEvents: [], userAbsentSince: null, debugAttentionLock: false },
+        attention: { ...state.attention, chaosEvents: [], sessionDistractions: 0, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
       };
 
     case 'PAUSE_FOCUS':
-      return { ...state, focus: { ...state.focus, status: 'paused' } };
+      // Clear the danger clock and detection timers — otherwise a running
+      // 30s countdown would instantly expire on resume (wall-clock based),
+      // and stale absence/phone-free windows would misfire.
+      return {
+        ...state,
+        focus: { ...state.focus, status: 'paused' },
+        attention: {
+          ...state.attention,
+          phoneWarningStart: null,
+          phoneFreeSince: null,
+          gazeFocusedSince: null,
+          userAbsentSince: null,
+          userPresentSince: null,
+        },
+      };
 
     case 'RESUME_FOCUS':
       return { ...state, focus: { ...state.focus, status: 'active' } };
@@ -161,7 +181,10 @@ export function gameReducer(state, action) {
     case 'END_FOCUS': {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
 
-      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, false, state.ui.debugDate);
+      // Focus time, distractions, customers, and coins all accumulate live
+      // (TICK_FOCUS / PROCESS_AI_EVENT / SERVE_CUSTOMER) — session end only
+      // records the session itself and the streak.
+      const sessionMins = calcSessionMins(state.focus.elapsed, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
       const newStreak   = sessionMins > 0
         ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate)
@@ -176,23 +199,16 @@ export function gameReducer(state, action) {
           coinsEarned,
           reputationGain: state.reputation - (state.focus.reputationAtStart ?? state.reputation),
           attentionScore:  Math.round(state.attention.score),
-          distractions:    state.attention.chaosEvents.length,
+          distractions:    state.attention.sessionDistractions,
           endReason: state.focus.status === 'distracted' ? 'distracted' : 'manual',
         },
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
         stats: {
           ...state.stats,
-          totalSessions:     state.stats.totalSessions + (sessionMins > 0 ? 1 : 0),
-          totalFocusSeconds: state.stats.totalFocusSeconds + state.focus.elapsed,
-          totalMinutes:      state.stats.totalMinutes      + extraMins,
-          totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
-          todayMinutes:      state.stats.todayMinutes      + extraMins,
-          todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
-          todayDate:         state.focus.elapsed > 0 ? getDateString() : state.stats.todayDate,
-          weeklyData,
-          periodSessions:     state.stats.periodSessions     + (sessionMins > 0 ? 1 : 0),
-          periodFocusSeconds: state.stats.periodFocusSeconds + state.focus.elapsed,
+          totalSessions:   state.stats.totalSessions  + (sessionMins > 0 ? 1 : 0),
+          periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
           currentStreak:   newStreak,
+          bestStreak:      Math.max(state.stats.bestStreak, newStreak),
           lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
         },
         npcs: { ...state.npcs, customers: [] },
@@ -203,38 +219,45 @@ export function gameReducer(state, action) {
     case 'TICK_FOCUS': {
       if (state.focus.status !== 'active') return state;
 
+      // All focus-time stats accumulate per tick so autosaves mid-session
+      // capture real progress; session end adds nothing on top.
       const nextElapsed = state.focus.elapsed + 1;
-      const base = {
+      const today = getDateString();
+      const dateStr = state.ui.debugDate ?? today;
+      const weeklyData = [...state.stats.weeklyData];
+      weeklyData[(new Date(dateStr).getDay() + 6) % 7] += 1;
+      const minuteCrossed = nextElapsed % 60 === 0;
+
+      return {
         ...state,
         focus: { ...state.focus, elapsed: nextElapsed },
         cafe:  { ...state.cafe,  currentCustomers: state.npcs.customers.length },
+        stats: {
+          ...state.stats,
+          totalFocusSeconds:  state.stats.totalFocusSeconds  + 1,
+          todaySeconds:       state.stats.todaySeconds       + 1,
+          periodFocusSeconds: state.stats.periodFocusSeconds + 1,
+          todayDate:          today,
+          weeklyData,
+          ...(minuteCrossed
+            ? {
+                totalMinutes:      state.stats.totalMinutes      + 1,
+                totalFocusMinutes: state.stats.totalFocusMinutes + 1,
+                todayMinutes:      state.stats.todayMinutes      + 1,
+              }
+            : {}),
+        },
       };
-
-      if (nextElapsed > 0 && nextElapsed % 60 === 0) {
-        const weeklyData = [...state.stats.weeklyData];
-        const dateStr = state.ui.debugDate ?? getDateString();
-        weeklyData[(new Date(dateStr).getDay() + 6) % 7] += 60;
-        return {
-          ...base,
-          stats: {
-            ...state.stats,
-            totalMinutes:      state.stats.totalMinutes      + 1,
-            totalFocusMinutes: state.stats.totalFocusMinutes + 1,
-            todayMinutes:      state.stats.todayMinutes      + 1,
-            todayDate:         getDateString(),
-            weeklyData,
-          },
-        };
-      }
-      return base;
     }
 
     case 'COMPLETE_FOCUS': {
-      const { sessionMins, extraMins, weeklyData } = calcSessionTotals(state, true, state.ui.debugDate);
-      const coinsEarned  = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
-      const servedCount  = state.npcs.customers.length;
-      const sessionChaos = state.attention.chaosEvents.length;
-      const newStreak    = calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate);
+      // Focus time, distractions, customers, and coins all accumulate live
+      // (TICK_FOCUS / PROCESS_AI_EVENT / SERVE_CUSTOMER) — completion only
+      // records the session itself and the streak. Customers still in the
+      // cafe are NOT counted: only served customers ever reach the stats.
+      const sessionMins = calcSessionMins(state.focus.elapsed, true);
+      const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
+      const newStreak   = calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate);
 
       return {
         ...state,
@@ -245,27 +268,15 @@ export function gameReducer(state, action) {
           coinsEarned,
           reputationGain:  state.reputation - (state.focus.reputationAtStart ?? state.reputation),
           attentionScore:  Math.round(state.attention.score),
-          distractions:    sessionChaos,
+          distractions:    state.attention.sessionDistractions,
         },
         focus: { ...state.focus, status: 'completed' },
         stats: {
           ...state.stats,
-          totalSessions:     state.stats.totalSessions + 1,
-          totalFocusSeconds: state.stats.totalFocusSeconds + state.focus.elapsed,
-          totalMinutes:      state.stats.totalMinutes      + extraMins,
-          totalFocusMinutes: state.stats.totalFocusMinutes + extraMins,
-          todayMinutes:      state.stats.todayMinutes      + extraMins,
-          todaySeconds:      state.stats.todaySeconds      + state.focus.elapsed,
-          todayDate:         state.focus.elapsed > 0 ? getDateString() : state.stats.todayDate,
-          weeklyData,
-          customersTotal: state.stats.customersTotal + servedCount,
-          chaosEvents:    state.stats.chaosEvents    + sessionChaos,
-          periodSessions:        state.stats.periodSessions        + 1,
-          periodFocusSeconds:    state.stats.periodFocusSeconds    + state.focus.elapsed,
-          periodCustomersTotal:  state.stats.periodCustomersTotal  + servedCount,
-          periodChaosEvents:     state.stats.periodChaosEvents     + sessionChaos,
-          currentStreak:  newStreak,
-          bestStreak:     Math.max(state.stats.bestStreak, newStreak),
+          totalSessions:   state.stats.totalSessions  + 1,
+          periodSessions:  state.stats.periodSessions + 1,
+          currentStreak:   newStreak,
+          bestStreak:      Math.max(state.stats.bestStreak, newStreak),
           lastSessionDate: getDateString(),
         },
         npcs: { ...state.npcs, customers: [] },
@@ -276,6 +287,11 @@ export function gameReducer(state, action) {
     // ── AI / Attention ───────────────────────────────────────────────────────
 
     case 'PROCESS_AI_EVENT': {
+      // Paused sessions are frozen: the camera keeps running (so resume has
+      // no model-restart cost) but its events are ignored entirely — no
+      // score changes, no danger clock, no distraction counting.
+      if (state.focus.status === 'paused') return state;
+
       const locked    = state.attention.debugAttentionLock;
       const score     = locked ? state.attention.score : (action.payload.attention_score ?? state.attention.score);
       const chaos     = getChaosStage(score);
@@ -290,18 +306,44 @@ export function gameReducer(state, action) {
         });
       }
 
-      let { phoneWarningStart, phoneFreeSince, gazeFocusedSince, userAbsentSince } = state.attention;
+      let { phoneWarningStart, phoneFreeSince, gazeFocusedSince, userAbsentSince, userPresentSince } = state.attention;
       let newFocusStatus = state.focus.status;
 
       const isGazeFocused = !action.payload.warning_message?.includes('GAZE DISTRACTED');
+
+      // Edge-triggered distraction counting: +1 the moment a distraction
+      // STARTS (phone appears, gaze drifts off, or the face stays out of
+      // the camera past the grace period) — not per AI event, which stream
+      // several times a second. The general "USER NOT FOCUSED" warning state
+      // deliberately does NOT count on its own; only these concrete
+      // transitions do. Counted live into the chaos stats so mid-session
+      // autosaves carry them.
+      let newDistractions = 0;
+      let absenceCounted = state.attention.absenceCounted; // cleared below once the absence officially ends
+      if (state.focus.status === 'active') {
+        if (action.payload.phone_detected && !state.attention.phoneDetected) newDistractions += 1;
+        if (!isGazeFocused && !state.attention.warningMessage?.includes('GAZE DISTRACTED')) newDistractions += 1;
+        const absentFor =
+          action.payload.user_present === false && state.attention.userAbsentSince !== null
+            ? now - state.attention.userAbsentSince
+            : 0;
+        if (absentFor >= ABSENCE_DISTRACTION_GRACE_MS && !absenceCounted) {
+          newDistractions += 1;
+          absenceCounted = true; // once per continuous absence
+        }
+      }
+
+      // phoneWarningStart is the shared 30s danger clock: it starts when a
+      // phone is detected OR the focus score bottoms out at 0, keeps running
+      // (without resetting) while either condition holds — so the countdown
+      // carries over between the phone banner and the score-0 danger banner —
+      // and fails the session when it expires with a condition still active.
+      const scoreZero = score <= 0;
 
       if (action.payload.phone_detected) {
         if (!phoneWarningStart) phoneWarningStart = now;
         phoneFreeSince   = null;
         gazeFocusedSince = null;
-        if (now - phoneWarningStart >= WARNING_DURATION_MS) {
-          newFocusStatus = 'distracted';
-        }
       } else {
         if (!phoneFreeSince) phoneFreeSince = now;
         if (isGazeFocused) {
@@ -313,7 +355,7 @@ export function gameReducer(state, action) {
         const phoneFreeDuration = now - phoneFreeSince;
         const gazeFocusDuration = gazeFocusedSince ? now - gazeFocusedSince : 0;
 
-        if (phoneFreeDuration >= CLEAR_CONDITION_MS && gazeFocusDuration >= CLEAR_CONDITION_MS) {
+        if (phoneFreeDuration >= CLEAR_CONDITION_MS && gazeFocusDuration >= CLEAR_CONDITION_MS && !scoreZero) {
           phoneWarningStart = null;
           phoneFreeSince    = null;
           gazeFocusedSince  = null;
@@ -321,11 +363,30 @@ export function gameReducer(state, action) {
         }
       }
 
-      if (action.payload.user_present) {
-        userAbsentSince = null;
-      } else if (!userAbsentSince) {
-        userAbsentSince = now;
+      // Score 0 starts (or keeps) the danger clock even with no phone in sight.
+      if (scoreZero && !phoneWarningStart) phoneWarningStart = now;
+
+      if (
+        phoneWarningStart &&
+        (action.payload.phone_detected || scoreZero) &&
+        now - phoneWarningStart >= WARNING_DURATION_MS
+      ) {
+        newFocusStatus = 'distracted';
       }
+
+      // Presence tracking with a return grace: after an absence, the face
+      // must stay in frame PRESENCE_RETURN_GRACE_MS before the user counts
+      // as "back" — a one-frame detection blip doesn't end the absence.
+      if (action.payload.user_present) {
+        if (!userPresentSince) userPresentSince = now;
+        if (userAbsentSince !== null && now - userPresentSince >= PRESENCE_RETURN_GRACE_MS) {
+          userAbsentSince = null;
+        }
+      } else {
+        userPresentSince = null;
+        if (!userAbsentSince) userAbsentSince = now;
+      }
+      if (userAbsentSince === null) absenceCounted = false;
 
       const userAbsentLongEnough = !action.payload.user_present
         && userAbsentSince !== null
@@ -342,6 +403,13 @@ export function gameReducer(state, action) {
       return {
         ...state,
         reputation,
+        stats: newDistractions > 0
+          ? {
+              ...state.stats,
+              chaosEvents:       state.stats.chaosEvents       + newDistractions,
+              periodChaosEvents: state.stats.periodChaosEvents + newDistractions,
+            }
+          : state.stats,
         focus: {
           ...state.focus,
           status: newFocusStatus,
@@ -350,6 +418,8 @@ export function gameReducer(state, action) {
         attention: {
           ...state.attention,
           score,
+          sessionDistractions: state.attention.sessionDistractions + newDistractions,
+          absenceCounted,
           chaosLevel:     chaos.level,
           phoneDetected:  action.payload.phone_detected  ?? state.attention.phoneDetected,
           userPresent:    action.payload.user_present    ?? state.attention.userPresent,
@@ -361,6 +431,7 @@ export function gameReducer(state, action) {
           phoneFreeSince,
           gazeFocusedSince,
           userAbsentSince,
+          userPresentSince,
         },
       };
     }

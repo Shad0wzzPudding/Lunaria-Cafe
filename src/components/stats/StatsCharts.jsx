@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Clock, Flame, Coins, Users, Sparkles, Rabbit } from 'lucide-react';
@@ -39,22 +40,66 @@ function SegmentedToggle({ value, options, onChange }) {
   );
 }
 
-export default function StatsCharts() {
-  const { state, dispatch } = useGame();
-  const { stats } = state;
+function formatTotal(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(' ');
+}
+
+// The recharts tree is the expensive part — memoized on the weeklyData
+// array's identity so it only redraws when that array is replaced. The
+// in-session popup passes a frozen snapshot (refresh button swaps it);
+// the Statistics page passes the live array.
+const WeeklyChart = memo(function WeeklyChart({ weeklyData, debugDate }) {
+  const activeDate = debugDate ?? new Date().toISOString().split('T')[0];
+  const displayDate = new Date(activeDate + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weeklyChartData = weeklyData.map((seconds, i) => ({
+    day: weekDays[i],
+    seconds,
+  }));
+
+  return (
+    <div
+      className="backdrop-blur-sm rounded-xl border border-border/30 p-4"
+      style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--card))' }}
+    >
+      <div className="flex items-baseline justify-between mb-4">
+        <h3 className="font-display text-sm text-foreground/80">Weekly Focus</h3>
+        <span className="font-pixel text-[10px] text-muted-foreground">
+          {displayDate}{debugDate && <span className="text-amber-400 ml-1">(simulated)</span>}
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={weeklyChartData}>
+          <XAxis dataKey="day" tick={{ fill: 'hsl(232 15% 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis hide />
+          <Tooltip
+            contentStyle={{ background: 'hsl(232 30% 12%)', border: '1px solid hsl(232 25% 20%)', borderRadius: 8, fontSize: 12 }}
+            labelStyle={{ color: 'hsl(45 20% 90%)' }}
+            formatter={(v) => [formatTotal(v), 'Focus']}
+          />
+          <Bar dataKey="seconds" fill="var(--primary)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+});
+
+// Body is memoized on the stats slice: game state changes several times a
+// second during a session (AI attention events), but the stats object's
+// reference only changes when a stat actually updates (~once per second).
+const StatsChartsBody = memo(function StatsChartsBody({ stats, debugDate, dispatch, hideGoalReset, weeklySnapshot }) {
   const resetPeriod = stats.resetPeriod ?? 'daily';
   const statsMode   = stats.statsMode   ?? 'period';
-
-  function formatTotal(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    const parts = [];
-    if (h > 0) parts.push(`${h}h`);
-    if (m > 0) parts.push(`${m}m`);
-    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
-    return parts.join(' ');
-  }
 
   const isPeriod = statsMode === 'period';
   const displaySessions  = isPeriod ? (stats.periodSessions       ?? 0) : (stats.totalSessions  ?? 0);
@@ -65,30 +110,20 @@ export default function StatsCharts() {
 
   const periodLabel = resetPeriod === 'weekly' ? 'This Week' : 'Today';
 
-  const debugDate  = state.ui?.debugDate ?? null;
-  const activeDate = debugDate ?? new Date().toISOString().split('T')[0];
-  const displayDate = new Date(activeDate + 'T12:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  });
-
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weeklyChartData = stats.weeklyData.map((seconds, i) => ({
-    day: weekDays[i],
-    seconds,
-  }));
-
   return (
     <div className="space-y-6">
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <div className="flex items-center gap-3">
-          <span className="font-pixel text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">Goal resets</span>
-          <SegmentedToggle
-            value={resetPeriod}
-            options={[{ key: 'daily', label: 'Every Day' }, { key: 'weekly', label: 'Every Week' }]}
-            onChange={v => dispatch({ type: 'SET_RESET_PERIOD', payload: v })}
-          />
-        </div>
+        {!hideGoalReset && (
+          <div className="flex items-center gap-3">
+            <span className="font-pixel text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">Goal resets</span>
+            <SegmentedToggle
+              value={resetPeriod}
+              options={[{ key: 'daily', label: 'Every Day' }, { key: 'weekly', label: 'Every Week' }]}
+              onChange={v => dispatch({ type: 'SET_RESET_PERIOD', payload: v })}
+            />
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <span className="font-pixel text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">Stats show</span>
           <SegmentedToggle
@@ -113,29 +148,23 @@ export default function StatsCharts() {
       <DailyGoalTracker current={stats.todaySeconds} goal={stats.dailyGoal * 60} />
 
       {/* Weekly chart */}
-      <div
-        className="backdrop-blur-sm rounded-xl border border-border/30 p-4"
-        style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--card))' }}
-      >
-        <div className="flex items-baseline justify-between mb-4">
-          <h3 className="font-display text-sm text-foreground/80">Weekly Focus</h3>
-          <span className="font-pixel text-[10px] text-muted-foreground">
-            {displayDate}{debugDate && <span className="text-amber-400 ml-1">(simulated)</span>}
-          </span>
-        </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={weeklyChartData}>
-            <XAxis dataKey="day" tick={{ fill: 'hsl(232 15% 55%)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis hide />
-            <Tooltip
-              contentStyle={{ background: 'hsl(232 30% 12%)', border: '1px solid hsl(232 25% 20%)', borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: 'hsl(45 20% 90%)' }}
-              formatter={(v) => [formatTotal(v), 'Focus']}
-            />
-            <Bar dataKey="seconds" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <WeeklyChart weeklyData={weeklySnapshot ?? stats.weeklyData} debugDate={debugDate} />
     </div>
+  );
+});
+
+// weeklySnapshot: freeze the weekly chart on a snapshot array (the
+// in-session popup passes one and refreshes it on demand); everything
+// else renders live.
+export default function StatsCharts({ hideGoalReset = false, weeklySnapshot = null }) {
+  const { state, dispatch } = useGame();
+  return (
+    <StatsChartsBody
+      stats={state.stats}
+      debugDate={state.ui?.debugDate ?? null}
+      dispatch={dispatch}
+      hideGoalReset={hideGoalReset}
+      weeklySnapshot={weeklySnapshot}
+    />
   );
 }

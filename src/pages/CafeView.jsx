@@ -20,7 +20,8 @@ import LowScoreWarning from '@/components/focus/LowScoreWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
+import StatsCharts from '@/components/stats/StatsCharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
@@ -249,6 +250,51 @@ function CafeUpgradePanel({ state, onClose }) {
 }
 
 
+// Lite Statistics popup — the full charts, viewable mid-session without
+// leaving the cafe. Anchored above its footer button like CafeStatsPanel.
+// Stat cards and the daily goal render live; only the weekly chart (the
+// expensive recharts tree) is a static snapshot — the refresh button
+// redraws it on demand.
+function StatsPopup({ onClose, anchorRef }) {
+  const { state } = useGame();
+  const [weeklySnapshot, setWeeklySnapshot] = useState(state.stats.weeklyData);
+
+  // Close on clicks outside the anchor wrapper (which contains both the
+  // trigger button and this panel) — checking only the panel would race
+  // the button's own toggle: mousedown closes, click reopens.
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (anchorRef.current && !anchorRef.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose, anchorRef]);
+
+  return (
+    <div
+      className="absolute bottom-12 right-0 z-50 w-[26rem] max-h-[70vh] overflow-y-auto rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
+      style={getFocusPanelStyle()}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display text-sm text-foreground">Statistics</h3>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setWeeklySnapshot(state.stats.weeklyData)}
+            title="Redraw chart"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <StatsCharts hideGoalReset weeklySnapshot={weeklySnapshot} />
+    </div>
+  );
+}
+
 function BgModePanel({ state, dispatch, onClose }) {
   
   const panelRef = useRef(null);
@@ -328,6 +374,8 @@ export default function CafeView() {
   const isManagement = state.phase === 'management';
   const [showBgModePanel, setShowBgModePanel] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [showStatsPopup, setShowStatsPopup] = useState(false);
+  const statsPopupAnchorRef = useRef(null);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
@@ -356,7 +404,6 @@ export default function CafeView() {
   // Deps intentionally limited to the status transition: adding the audio
   // values would replay the one-shot finish sound when volume changes while
   // the status is still 'completed'.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (state.focus.status === 'distracted') {
       Sounds.sessionFinishFail(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishFail);
@@ -365,6 +412,7 @@ export default function CafeView() {
     if (state.focus.status === 'completed') {
       Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.focus.status, dispatch]);
 
   // ก้อนที่ 1: จัดการ AI (เปิด-ปิด กล้องและโมเดล)
@@ -1008,6 +1056,22 @@ export default function CafeView() {
             )}
             {isFocusing && (
               <>
+                {/* Statistics popup */}
+                <div className="relative" ref={statsPopupAnchorRef}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 font-pixel text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowStatsPopup(v => !v)}
+                    title="Statistics"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" /> Stats
+                  </Button>
+                  {showStatsPopup && (
+                    <StatsPopup onClose={() => setShowStatsPopup(false)} anchorRef={statsPopupAnchorRef} />
+                  )}
+                </div>
+
                 {/* Mode toggle */}
                 <Button
                   variant="ghost"
