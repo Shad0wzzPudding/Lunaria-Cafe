@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -52,8 +52,19 @@ export default function GameSettings() {
   const { user, isGuest } = useAuth();
   const { audio } = state;
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimerRef = useRef(null);
 
   useEffect(() => onConnectionStatus(setAiStatus), []);
+  useEffect(() => () => clearTimeout(savedTimerRef.current), []);
+
+  const handleSaveNow = async () => {
+    const ok = await saveNow();
+    if (!ok) return;
+    setJustSaved(true);
+    clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setJustSaved(false), 2000);
+  };
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const [sfxOpen, setSfxOpen] = useState(false);
@@ -249,9 +260,24 @@ export default function GameSettings() {
               <p className="text-sm text-amber-400">Save issue: {saveError}</p>
             )}
             <p className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
-                Save now
-              </Button>
+              {!isGuest && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSaveNow}
+                  disabled={justSaved}
+                  className={justSaved ? 'gap-1 text-emerald-400' : undefined}
+                >
+                  {justSaved ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" /> Saved
+                    </>
+                  ) : (
+                    'Save now'
+                  )}
+                </Button>
+              )}
               <Button type="button" variant="secondary" size="sm" onClick={logout}>
                 Log out
               </Button>

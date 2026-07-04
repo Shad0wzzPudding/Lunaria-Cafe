@@ -18,6 +18,9 @@ export function makePopup(payload, legacyCoins = 0) {
     message: payload.message ?? '',
     amount: payload.amount,
     coins: payload.amount > 0 ? payload.amount : 0,
+    // Coins still needed for a purchase the player couldn't afford; drives the
+    // "Required N more coins" variant. Undefined for every other popup.
+    shortfall: payload.shortfall,
   };
 }
 

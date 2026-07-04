@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
-import { UserX, AlertTriangle, GraduationCap, BookOpen } from 'lucide-react';
+import { UserX, AlertTriangle, GraduationCap, BookOpen, Eye, EyeOff } from 'lucide-react';
 import { INSTRUCTOR_SECRET_CODE } from '@/lib/classroom/constants';
+
+// The form's default font (Silkscreen) is uppercase-only, so credential fields
+// override to a font with real lowercase glyphs — otherwise typed text renders
+// as all caps even though the stored value is correct.
+const FORM_FONT = { fontFamily: "'Inter Variable', sans-serif" };
 
 export default function Login() {
   const [showGuestWarning, setShowGuestWarning] = useState(false);
@@ -11,6 +16,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [roleStudent, setRoleStudent] = useState(true);
   const [roleInstructor, setRoleInstructor] = useState(false);
   const [instructorCode, setInstructorCode] = useState('');
@@ -61,16 +67,28 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
+          style={FORM_FONT}
           required
         />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
-          required
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-border/40 bg-background px-3 py-2 pr-10 text-sm"
+            style={FORM_FONT}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground/60 hover:text-foreground transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
 
         {isSignUp && (
           <div className="space-y-2">
@@ -102,7 +120,7 @@ export default function Login() {
                   value={instructorCode}
                   onChange={(e) => setInstructorCode(e.target.value)}
                   className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
-                  style={{ fontFamily: "'Inter Variable', sans-serif" }}
+                  style={FORM_FONT}
                   required
                 />
                 <p className="text-[10px] text-muted-foreground/70">

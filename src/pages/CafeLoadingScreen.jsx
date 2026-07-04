@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getThemeMode, getPrimaryHex, getGlassGradient, brightenHex } from '@/lib/theme/themeDeriver';
+import { getThemeMode, getPrimaryHex, getGlassGradient, brightenHex, hexToRgba, themeAccentHex, FOCUS_HEX } from '@/lib/theme/themeDeriver';
 
 const LOADING_MESSAGES = [
   'Brewing the perfect cup...',
@@ -39,23 +39,31 @@ export default function CafeLoadingScreen() {
 
   // Theme snapshot at mount (useState initializers are the sanctioned home
   // for impure reads; the theme can't meaningfully change during a 2.5s load).
-  // Immersive: page wears the cafe glass gradient, stars and progress take
-  // a brightened main-theme color (the pale/white sparkle tints stay);
-  // Focus keeps the violet set.
-  const [{ sparkleColors, progressBg, pageStyle }] = useState(() => {
-    if (getThemeMode() !== 'custom') {
-      return {
-        sparkleColors: ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'],
-        progressBg: 'linear-gradient(90deg, #7c3aed, #a78bfa)',
-        pageStyle: undefined,
-      };
-    }
+  // The main theme color carries the progress bar; a darker shade of that same
+  // hue (themeAccentHex) carries the decorative flourishes that used to be
+  // hardcoded purple: the exit bloom, the second glow blob, and half the
+  // sparkles. Immersive also wears the cafe glass gradient as the page
+  // background; Focus derives from its own base hue.
+  const [{ sparkleColors, progressBg, bloomGradient, glowAccent, pageStyle }] = useState(() => {
+    const isCustom = getThemeMode() === 'custom';
     const timeOfDay = state.cafe?.timeOfDay ?? 'day';
-    const primaryHex = getPrimaryHex(timeOfDay);
+    const primaryHex = isCustom ? getPrimaryHex(timeOfDay) : FOCUS_HEX;
+    const accentHex = themeAccentHex(primaryHex);
+    const bloomOuter = brightenHex(accentHex, 0.08);
     return {
-      sparkleColors: [brightenHex(primaryHex, 0.28), brightenHex(primaryHex, 0.18), '#ddd6fe', '#ede9fe'],
+      // Sparkles twinkle in both the theme hue and its pastel accent.
+      sparkleColors: [
+        brightenHex(primaryHex, 0.28),
+        accentHex,
+        brightenHex(primaryHex, 0.42),
+        bloomOuter,
+      ],
+      // Progress bar stays the main theme color.
       progressBg: `linear-gradient(90deg, ${brightenHex(primaryHex, 0.12)}, ${brightenHex(primaryHex, 0.28)})`,
-      pageStyle: { background: getGlassGradient(timeOfDay) },
+      // Exit bloom + second glow blob wear the pastel accent.
+      bloomGradient: `radial-gradient(ellipse at center, ${hexToRgba(accentHex, 0.16)} 0%, ${hexToRgba(bloomOuter, 0.08)} 50%, transparent 80%)`,
+      glowAccent: hexToRgba(accentHex, 0.06),
+      pageStyle: isCustom ? { background: getGlassGradient(timeOfDay) } : undefined,
     };
   });
 
@@ -97,15 +105,15 @@ export default function CafeLoadingScreen() {
       {/* Ambient background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 rounded-full bg-purple-500/5 blur-3xl" />
+        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 rounded-full blur-3xl" style={{ backgroundColor: glowAccent }} />
       </div>
 
-      {/* Violet shimmer bloom on exit */}
+      {/* Pastel-accent shimmer bloom on exit */}
       <AnimatePresence>
         {isExiting && (
           <motion.div
             className="absolute inset-0 pointer-events-none z-20"
-            style={{ background: 'radial-gradient(ellipse at center, #7c3aed22 0%, #a78bfa11 50%, transparent 80%)' }}
+            style={{ background: bloomGradient }}
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: [0, 1, 0.6], scale: [0.6, 1.4, 2] }}
             transition={{ duration: 0.9, ease: 'easeOut' }}

@@ -176,6 +176,17 @@ export function brightenHex(hex, amount = 0.2) {
   return formatHex({ ...col, l: Math.min((col.l ?? 0) + amount, 0.92) });
 }
 
+// An accent for decorative flourishes (loading sparkles, glow blooms): a
+// darker shade of the theme color itself (same hue), floored so it never sinks
+// to near-black on the dark loading page. Returns hex so framer-motion can
+// interpolate it.
+export function themeAccentHex(hex) {
+  const parsed = parse(hex);
+  if (!parsed) return hex;
+  const col = oklch(parsed);
+  return formatHex({ ...col, l: Math.max((col.l ?? 0.5) - 0.22, 0.32) });
+}
+
 export function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

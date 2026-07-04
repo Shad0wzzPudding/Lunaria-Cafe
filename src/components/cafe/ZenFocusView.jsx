@@ -86,10 +86,10 @@ export default function ZenFocusView({ state }) {
       </motion.div>
 
       <motion.p
-        className="font-body text-xs text-muted-foreground/60 text-center"
+        className="font-body text-xs text-muted-foreground/90 text-center rounded-full border border-border/20 bg-card/50 px-4 py-1.5 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ duration: 0.6, delay: 0.8 }}
       >
         Your cafe is running quietly in the background.
       </motion.p>

@@ -20,13 +20,15 @@ export function GameProvider({ children, userId }) {
   }, []);
 
   const saveNow = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) return false;
     try {
       await savePlayerSave(userId, stateRef.current);
       setSaveError(null);
+      return true;
     } catch (err) {
       console.error('Save failed:', err);
       setSaveError(err.message ?? 'Save failed');
+      return false;
     }
   }, [userId]);
 

@@ -540,7 +540,18 @@ export function gameReducer(state, action) {
       };
 
     case 'SET_DECORATE_TOOL':
-      return { ...state, cafe: { ...state.cafe, decorateTool: action.payload } };
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          decorateTool: action.payload,
+          // Switching to Remove aborts any in-progress placement (the pending
+          // furniture being positioned/rotated).
+          ...(action.payload === 'remove'
+            ? { pendingFurniture: null, placeFurnitureRotation: 0 }
+            : {}),
+        },
+      };
 
     case 'SET_PLACE_FURNITURE':
       return { ...state, cafe: { ...state.cafe, placeFurnitureType: action.payload, decorateTool: 'place' } };
@@ -590,7 +601,7 @@ export function gameReducer(state, action) {
     case 'BUY_AND_PLACE_FURNITURE': {
       const { item, price } = action.payload;
       if (state.coins < price) {
-        return { ...state, ui: pushPopup(state, `❌ Not enough coins! Need ${price} coins.`, 0) };
+        return { ...state, ui: pushPopup(state, { icon: 'coins', message: '❌ Not enough coins!', shortfall: price - state.coins }) };
       }
       return {
         ...state,
@@ -657,7 +668,7 @@ export function gameReducer(state, action) {
       const pet = PET_CATALOG[petType];
       if (!pet) return state;
       if (state.coins < pet.price) {
-        return { ...state, ui: pushPopup(state, `❌ Not enough coins! Need ${pet.price} coins.`, 0) };
+        return { ...state, ui: pushPopup(state, { icon: 'coins', message: '❌ Not enough coins!', shortfall: pet.price - state.coins }) };
       }
       const npcId = `${pet.npcType}-${Date.now()}`;
       const newNpc = {
@@ -732,7 +743,9 @@ export function gameReducer(state, action) {
       };
       const isZen = state.settings.focusViewMode === 'zen';
       if (customer && !isZen) {
-        next = { ...next, ui: pushPopup(next, `${emoji} Customer served!`, coinsGain) };
+        // Always carry an explicit amount (even 0 at high chaos) so the coin
+        // line shows "+0 coins" rather than being hidden.
+        next = { ...next, ui: pushPopup(next, { message: `${emoji} Customer served!`, amount: coinsGain }) };
       }
       return next;
     }
