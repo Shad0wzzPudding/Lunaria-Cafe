@@ -6,6 +6,7 @@ import {
   stopAttentionFeed,
   onAttentionEvent,
   generateChaosEvent,
+  setAIScoreFrozen,
 } from '@/lib/ai/aiIntegration';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
@@ -371,6 +372,13 @@ function BgModePanel({ state, dispatch, onClose }) {
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
+  const isPaused = state.focus.status === 'paused';
+
+  // Pausing freezes the AI's internal score accumulation at the source —
+  // otherwise it drifts in the background and snaps the game score on resume.
+  useEffect(() => {
+    setAIScoreFrozen(isPaused);
+  }, [isPaused]);
   const isManagement = state.phase === 'management';
   const [showBgModePanel, setShowBgModePanel] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);

@@ -14,6 +14,7 @@ import {
   stopBrowserAI,
   isBrowserAISupported,
   getBrowserAIStatus,
+  setBrowserAIScoreFrozen,
 } from '@/lib/ai/browserAI';
 import { guestStorage } from '@/lib/guestStorage';
 
@@ -93,8 +94,10 @@ export function startSimulation() {
   setConnectionStatus('live', 'simulation');
 
   simulationInterval = setInterval(() => {
-    const drift = (Math.random() - 0.45) * 4;
-    simulatedScore = Math.max(0, Math.min(100, simulatedScore + drift));
+    if (!scoreFrozen) {
+      const drift = (Math.random() - 0.45) * 4;
+      simulatedScore = Math.max(0, Math.min(100, simulatedScore + drift));
+    }
     const phoneChance = Math.random() < 0.02;
 
     processAIEvent({
@@ -152,10 +155,20 @@ export function getBrowserVideoElement() {
 /**
  * Start AI feed for focus sessions based on the configured mode.
  */
+// Freeze the AI's internal score accumulation (game paused). Detection
+// itself keeps running so resume has no model-restart cost; the emitted
+// score simply holds its value until unfrozen.
+let scoreFrozen = false;
+export function setAIScoreFrozen(frozen) {
+  scoreFrozen = frozen;
+  setBrowserAIScoreFrozen(frozen);
+}
+
 export function startAttentionFeed() {
   const { aiMode } = loadConfig();
   stopSimulation();
   stopBrowserTracking();
+  setAIScoreFrozen(false);
 
   if (aiMode === 'browser') {
     startBrowserTracking();

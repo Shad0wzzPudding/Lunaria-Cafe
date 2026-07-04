@@ -184,13 +184,20 @@ export default function CafeStatusPopup() {
                 );
               })}
 
-              {/* Warning — center */}
-              {data.warningMessage && (
+              {/* Warning — center. While paused, always show the pause
+                  notice instead of (stale) distraction warnings. */}
+              {(data.status === 'paused' || data.warningMessage) && (
                 <div className="absolute inset-x-0 z-20 flex items-center justify-center pointer-events-none"
                   style={{ top: '50%', transform: 'translateY(-50%)' }}>
                   <div className="w-full py-2 text-center text-[13px] font-bold pointer-events-none"
-                    style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(255,60,60)', fontFamily: '"Segoe UI", sans-serif' }}>
-                    {data.warningMessage}
+                    style={{
+                      background: 'rgba(0,0,0,0.7)',
+                      color: data.status === 'paused' ? 'rgb(130,200,255)' : 'rgb(255,60,60)',
+                      fontFamily: '"Segoe UI", sans-serif',
+                    }}>
+                    {data.status === 'paused'
+                      ? 'AI paused — no score is being reduced!'
+                      : data.warningMessage}
                   </div>
                 </div>
               )}

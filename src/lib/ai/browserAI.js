@@ -28,10 +28,20 @@ const LANDMARK_MATCH_THRESHOLD = 0.6;
 let lastFaceSeenAt = Date.now();
 let focusScore = 0;
 let currentAttentionScore = 85;
+// While frozen (game paused) detection keeps running — camera and models
+// stay warm for an instant resume — but the score accumulators hold still.
+let scoreFrozen = false;
 const SCORE_GAIN = 0.5;
 const SCORE_PENALTY = 1.0;
 const SCORE_TICK_MS = 200;
 let lastScoreTick = Date.now();
+
+export function setBrowserAIScoreFrozen(frozen) {
+  scoreFrozen = frozen;
+  // Skip the elapsed-pause window on unfreeze so the next score tick
+  // doesn't apply a burst of accumulated time.
+  if (!frozen) lastScoreTick = Date.now();
+}
 
 let cachedUserLandmarks = null;
 let landmarkCacheTimestamp = 0;
@@ -203,30 +213,32 @@ function processDetections(faceResult, phones) {
   latestWarning = warningMessage;
   isUserFocusedGlobal = isUserFocused;
 
-  if (now - lastScoreTick >= SCORE_TICK_MS) {
-    lastScoreTick = now;
-    if (isUserFocused) {
-      focusScore = Math.min(focusScore + SCORE_GAIN, 9999);
-    } else if (isPhoneDetected || !isGazeFocused) {
-      focusScore = Math.max(focusScore - SCORE_PENALTY, 0);
+  if (!scoreFrozen) {
+    if (now - lastScoreTick >= SCORE_TICK_MS) {
+      lastScoreTick = now;
+      if (isUserFocused) {
+        focusScore = Math.min(focusScore + SCORE_GAIN, 9999);
+      } else if (isPhoneDetected || !isGazeFocused) {
+        focusScore = Math.max(focusScore - SCORE_PENALTY, 0);
+      }
     }
-  }
 
-  if (isPhoneDetected) {
-    currentAttentionScore -= 1.5;
-  } else if (!hasFace && noFaceWarning) {
-    currentAttentionScore -= 1.0;
-  } else if (!isGazeFocused) {
-    currentAttentionScore -= 0.5;
-  } else if (isUserFocused) {
-    const gain = 0.3 + Math.min(0.5, Math.log1p(focusScore) * 0.03);
-    // Diminishing returns above 85: the closer to 100 the slower the gain
-    const dimFactor = currentAttentionScore >= 85
-      ? Math.max(0.05, (100 - currentAttentionScore) / 15)
-      : 1;
-    currentAttentionScore += gain * dimFactor;
+    if (isPhoneDetected) {
+      currentAttentionScore -= 1.5;
+    } else if (!hasFace && noFaceWarning) {
+      currentAttentionScore -= 1.0;
+    } else if (!isGazeFocused) {
+      currentAttentionScore -= 0.5;
+    } else if (isUserFocused) {
+      const gain = 0.3 + Math.min(0.5, Math.log1p(focusScore) * 0.03);
+      // Diminishing returns above 85: the closer to 100 the slower the gain
+      const dimFactor = currentAttentionScore >= 85
+        ? Math.max(0.05, (100 - currentAttentionScore) / 15)
+        : 1;
+      currentAttentionScore += gain * dimFactor;
+    }
+    currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
   }
-  currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
 
   return {
     phone_detected: isPhoneDetected,
@@ -329,7 +341,10 @@ function renderLoop() {
 
   // --- วาด Badge สถานะ ---
   let badgeText, badgeColor;
-  if (isUserFocusedGlobal) {
+  if (scoreFrozen) {
+    badgeText = " PAUSED ";
+    badgeColor = 'rgba(120, 120, 140, 0.9)';
+  } else if (isUserFocusedGlobal) {
     badgeText = " FOCUSED ";
     badgeColor = 'rgba(34, 139, 34, 0.9)';
   } else if (latestPhones.length > 0) {
@@ -366,15 +381,20 @@ function renderLoop() {
 });
 
   // --- วาด Warning ใหญ่กลางจอ ---
-  if (latestWarning) {
+  // While the game is paused, the warning slot always shows the pause
+  // notice instead of live distraction warnings (no score is changing).
+  const warningToShow = scoreFrozen
+    ? 'AI paused — no score is being reduced!'
+    : latestWarning;
+  if (warningToShow) {
     ctx.font = `bold 16px "Segoe UI", sans-serif`;
-    const warnWidth = ctx.measureText(latestWarning).width;
+    const warnWidth = ctx.measureText(warningToShow).width;
     const cx = (width - warnWidth) / 2;
     const cy = height / 2;
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(0, cy - 25, width, 40);
-    ctx.fillStyle = 'rgb(255, 60, 60)';
-    ctx.fillText(latestWarning, cx, cy);
+    ctx.fillStyle = scoreFrozen ? 'rgb(130, 200, 255)' : 'rgb(255, 60, 60)';
+    ctx.fillText(warningToShow, cx, cy);
   }
 
   // เรียกตัวเองเพื่อวาดเฟรมถัดไป (ห้ามลืมบรรทัดนี้!)
@@ -484,6 +504,7 @@ export function stopBrowserAI() {
   _onEvent = null;
   focusScore = 0;
   currentAttentionScore = 85;
+  scoreFrozen = false;
   cachedUserLandmarks = null;
   landmarkCacheTimestamp = 0;
   latestPhones = [];
