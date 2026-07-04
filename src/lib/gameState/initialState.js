@@ -142,7 +142,7 @@ export const initialState = {
       dayHex: '#e2ae60',
       nightHex: '#7d5fde',
       dayShadeHex: '#cabb9b',
-      nightShadeHex: '#0a0a0a',
+      nightShadeHex: '#362C58',
     },
   },
 };

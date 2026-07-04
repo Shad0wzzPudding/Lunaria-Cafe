@@ -720,12 +720,16 @@ export default function CafeView() {
   const primaryHex  = getThemeHex(timeOfDay) ?? (timeOfDay === 'day' ? '#e2ae60' : '#7d5fde');
   const shadeHex    = getGlassShadeHex(timeOfDay);
 
+  // Focus glass: opaque mix over the pre-blackening backdrop tone so the
+  // bars keep their brightness however dark --background goes behind them.
+  const focusGlassBg =
+    'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, #37245c)';
   const glassHeaderBg = isImmersive
     ? `linear-gradient(to bottom, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
-    : 'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, transparent)';
+    : focusGlassBg;
   const glassFooterBg = isImmersive
     ? `linear-gradient(to top, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
-    : 'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, transparent)';
+    : focusGlassBg;
 
   // Focus theme: lift footer buttons off the dark glass (immersive tint has its own contrast).
   const footerBtnClass = `gap-2 font-pixel text-xs ${isImmersive ? '' : 'bg-white/15 hover:bg-white/25 border-white/20'}`;

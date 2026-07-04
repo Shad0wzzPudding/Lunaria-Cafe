@@ -170,8 +170,11 @@ export default function InstructorDashboard() {
   const [openRoomId, setOpenRoomId] = useState(null);
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/30 bg-card/40">
+    <div className="dark min-h-screen text-foreground" style={{ background: '#c3c0cc' }}>
+      <header
+        className="border-b border-border/30"
+        style={{ background: 'color-mix(in srgb, var(--primary) 35%, var(--card))' }}
+      >
         <div className="mx-auto max-w-4xl flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <BookOpen className="h-5 w-5 text-primary" />

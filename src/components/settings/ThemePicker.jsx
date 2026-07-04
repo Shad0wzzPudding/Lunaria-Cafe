@@ -33,7 +33,7 @@ function isValidHex(str) {
   return /^#[0-9a-fA-F]{6}$/.test(str);
 }
 
-const SHADE_DEFAULTS = { day: '#cabb9b', night: '#2B213F' };
+const SHADE_DEFAULTS = { day: '#cabb9b', night: '#362C58' };
 
 function SinglePicker({ timeOfDay, saveTheme }) {
   const saved    = getThemeHex(timeOfDay) ?? DEFAULTS[timeOfDay];
@@ -82,8 +82,8 @@ function SinglePicker({ timeOfDay, saveTheme }) {
   const handleReset = () => {
     const defaultHex = DEFAULTS[timeOfDay];
     const defaultShade = SHADE_DEFAULTS[timeOfDay];
-    resetTheme(timeOfDay);
     setGlassShadeHex(defaultShade, timeOfDay);
+    resetTheme(timeOfDay); // after the shade reset so the re-injected background mixes the default shade
     setHex(defaultHex);
     setInputVal(defaultHex.replace('#', '').toUpperCase());
     setInputError(false);
@@ -98,6 +98,7 @@ function SinglePicker({ timeOfDay, saveTheme }) {
 
   const applyShade = useCallback((value) => {
     setGlassShadeHex(value, timeOfDay);
+    applyThemeForTimeOfDay(timeOfDay); // background mixes in the shade — re-inject live
     setShadeHex(value);
     setShadeInput(value.replace('#', '').toUpperCase());
     setShadeError(false);

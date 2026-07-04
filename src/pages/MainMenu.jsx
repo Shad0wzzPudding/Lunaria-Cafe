@@ -5,10 +5,18 @@ import { Play, BarChart3, Settings, BookOpen, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
-  const { dispatch } = useGame();
-  const { profile, isGuest, chooseRole } = useAuth();
+  const { dispatch, saveNow } = useGame();
+  const { user, profile, isGuest, chooseRole, signOut } = useAuth();
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
   const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
+
+  const handleLogout = async () => {
+    try {
+      await saveNow();
+    } finally {
+      await signOut();
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -23,6 +31,25 @@ export default function MainMenu() {
       {/* Gradient overlays — darken bottom and left edge for readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent" />
+
+      {/* Signed-in indicator — top-left */}
+      <motion.div
+        className="absolute top-4 left-4 z-20 flex items-baseline gap-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2, delay: 0.2 }}
+      >
+        <p className="font-pixel text-xs text-white/70 drop-shadow-md">
+          The cafe welcomes you, {isGuest ? 'Guest' : user?.email}!
+        </p>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="font-pixel text-xs text-white/45 underline underline-offset-2 hover:text-white transition-colors drop-shadow-md"
+        >
+          Log out
+        </button>
+      </motion.div>
 
       {/* Menu content — anchored to bottom-left */}
       <motion.div

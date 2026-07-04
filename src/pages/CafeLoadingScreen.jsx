@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getThemeMode, getThemeHex, getGlassGradient, brightenHex } from '@/lib/theme/themeDeriver';
 
 const LOADING_MESSAGES = [
   'Brewing the perfect cup...',
@@ -12,7 +13,7 @@ const LOADING_MESSAGES = [
 
 const SPARKLE_COUNT = 28;
 
-function SparkleParticle({ x, y, delay, size, rotation }) {
+function SparkleParticle({ x, y, delay, size, rotation, colors }) {
   return (
     <motion.div
       className="absolute pointer-events-none select-none font-bold"
@@ -22,7 +23,7 @@ function SparkleParticle({ x, y, delay, size, rotation }) {
         opacity: [0, 1, 1, 0],
         scale:   [0, 1.4, 1, 0],
         rotate:  [0, rotation],
-        color: ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'],
+        color: colors,
       }}
       transition={{ duration: 0.75, delay, ease: 'easeOut' }}
     >
@@ -35,6 +36,18 @@ export default function CafeLoadingScreen() {
   const { state, dispatch } = useGame();
   const [msgIndex, setMsgIndex]   = useState(0);
   const [isExiting, setIsExiting] = useState(false);
+
+  const isImmersive = getThemeMode() === 'custom';
+  const timeOfDay   = state.cafe?.timeOfDay ?? 'day';
+  const primaryHex  = getThemeHex(timeOfDay) ?? (timeOfDay === 'day' ? '#e2ae60' : '#7d5fde');
+  // Immersive: stars and progress take a brightened main-theme color
+  // (the pale/white sparkle tints stay); Focus keeps the violet set.
+  const sparkleColors = isImmersive
+    ? [brightenHex(primaryHex, 0.28), brightenHex(primaryHex, 0.18), '#ddd6fe', '#ede9fe']
+    : ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'];
+  const progressBg = isImmersive
+    ? `linear-gradient(90deg, ${brightenHex(primaryHex, 0.12)}, ${brightenHex(primaryHex, 0.28)})`
+    : 'linear-gradient(90deg, #7c3aed, #a78bfa)';
 
   const sparkles = useMemo(() =>
     Array.from({ length: SPARKLE_COUNT }, (_, i) => ({
@@ -66,6 +79,11 @@ export default function CafeLoadingScreen() {
   return (
     <motion.div
       className="min-h-screen flex flex-col items-center justify-center bg-background dark relative overflow-hidden"
+      style={
+        getThemeMode() === 'custom'
+          ? { background: getGlassGradient(state.cafe?.timeOfDay ?? 'day') }
+          : undefined
+      }
       animate={isExiting ? { opacity: 0 } : { opacity: 1 }}
       transition={isExiting ? { duration: 0.6, delay: 0.3, ease: 'easeIn' } : {}}
     >
@@ -91,7 +109,7 @@ export default function CafeLoadingScreen() {
       {/* Sparkle particles on exit */}
       <AnimatePresence>
         {isExiting && sparkles.map((s) => (
-          <SparkleParticle key={s.id} {...s} />
+          <SparkleParticle key={s.id} {...s} colors={sparkleColors} />
         ))}
       </AnimatePresence>
 
@@ -139,7 +157,7 @@ export default function CafeLoadingScreen() {
         <div className="w-48 h-1.5 rounded-full bg-border/40 overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }}
+            style={{ background: progressBg }}
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
             transition={{ duration: 2.3, ease: 'easeInOut' }}

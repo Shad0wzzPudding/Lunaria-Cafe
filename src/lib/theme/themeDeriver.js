@@ -1,4 +1,4 @@
-import { oklch, parse } from 'culori';
+import { oklch, parse, formatHex } from 'culori';
 import { guestStorage } from '@/lib/guestStorage';
 
 const KEY_DAY        = 'lunaria-theme-hex-day';
@@ -8,7 +8,7 @@ const KEY_SHADE_DAY  = 'lunaria-glass-shade-day';
 const KEY_SHADE_NIGHT= 'lunaria-glass-shade-night';
 
 const DEFAULT_HEX    = { day: '#e2ae60', night: '#5A41AF' };
-const DEFAULT_SHADE  = { day: '#cabb9b', night: '#2B213F' };
+const DEFAULT_SHADE  = { day: '#cabb9b', night: '#362C58' };
 
 const storageGet    = (key)      => guestStorage.getItem(key);
 const storageSet    = (key, val) => guestStorage.setItem(key, val);
@@ -81,22 +81,18 @@ export function deriveTheme(hex) {
   };
 }
 
+// Base color of the Focus (classic) theme — the default for new users.
+export const FOCUS_HEX = '#6b46b2';
+
 const CLASSIC_VARS = (() => {
-  const base = deriveTheme('#ffffff');
+  const base = deriveTheme(FOCUS_HEX);
   return {
     ...base,
-    '--background':        'oklch(0.08 0 0)',
-    '--foreground':        'oklch(1 0 0)',
-    '--card':              'oklch(0.12 0 0)',
-    '--card-foreground':   'oklch(1 0 0)',
-    '--popover':           'oklch(0.12 0 0)',
-    '--popover-foreground': 'oklch(1 0 0)',
-    '--secondary':         'oklch(0.16 0 0)',
-    '--muted':             'oklch(0.14 0 0)',
-    '--accent':            'oklch(0.16 0 0)',
-    '--sidebar':           'oklch(0.10 0 0)',
-    '--scrollbar-thumb':   'oklch(1 0 0)',
-    '--scrollbar-hover':   'oklch(0.75 0 0)',
+    // Darkened focus-purple page background; cards/panels keep the
+    // derived darker purple so content floats above the page.
+    '--background':       '#171126',
+    '--scrollbar-thumb':  'oklch(1 0 0)',
+    '--scrollbar-hover':  'oklch(0.75 0 0)',
   };
 })();
 
@@ -115,12 +111,22 @@ function injectVars(vars) {
   getOrCreateStyleTag().textContent = `.dark {\n${rules}\n}\n:root {\n${rules}\n}`;
 }
 
+// Immersive mode: fade the glass shade color into the derived page
+// background so full-page views carry the same tint as the cafe glass.
+function withGlassBackground(vars, timeOfDay) {
+  const shade = getGlassShadeHex(timeOfDay);
+  return {
+    ...vars,
+    '--background': `color-mix(in srgb, ${shade} 35%, ${vars['--background']})`,
+  };
+}
+
 // Save a hex for a given timeOfDay; only injects vars in custom mode.
 export function applyTheme(hex, timeOfDay = 'day') {
   const vars = deriveTheme(hex);
   if (!vars) return false;
   storageSet(storageKey(timeOfDay), hex);
-  if (getThemeMode() !== 'classic') injectVars(vars);
+  if (getThemeMode() !== 'classic') injectVars(withGlassBackground(vars, timeOfDay));
   return true;
 }
 
@@ -133,7 +139,7 @@ export function applyThemeForTimeOfDay(timeOfDay = 'day') {
   const hex = getThemeHex(timeOfDay) ?? DEFAULT_HEX[timeOfDay];
   const vars = deriveTheme(hex);
   if (!vars) return false;
-  injectVars(vars);
+  injectVars(withGlassBackground(vars, timeOfDay));
   return true;
 }
 
@@ -143,6 +149,29 @@ export function getThemeHex(timeOfDay = 'day') {
 
 export function getThemeMode() {
   return storageGet(KEY_MODE) ?? 'classic';
+}
+
+// Lighten a hex color in OKLCH space; returns hex so it stays
+// animatable (framer-motion can't interpolate oklch() strings).
+export function brightenHex(hex, amount = 0.2) {
+  const parsed = parse(hex);
+  if (!parsed) return hex;
+  const col = oklch(parsed);
+  return formatHex({ ...col, l: Math.min((col.l ?? 0) + amount, 0.92) });
+}
+
+export function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// The primary→shade fade the cafe header/footer glass uses in Immersive mode.
+export function getGlassGradient(timeOfDay = 'day', direction = 'to bottom') {
+  const primary = getThemeHex(timeOfDay) ?? DEFAULT_HEX[timeOfDay];
+  const shade = getGlassShadeHex(timeOfDay);
+  return `linear-gradient(${direction}, ${hexToRgba(primary, 0.93)}, ${hexToRgba(shade, 0.9)})`;
 }
 
 // Brighter-than-card background used to lift panels/headers off the backdrop.
