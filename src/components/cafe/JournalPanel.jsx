@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sounds } from '@/lib/sounds';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { Check, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -15,26 +15,29 @@ export default function JournalPanel({ journal, dispatch, onClose }) {
   const { state } = useGame();
   const { sfxVolume, masterVolume } = state.audio;
 
-  // Play journal open sound on mount using real audio settings
+  // Play journal open sound on mount using real audio settings.
+  // Deps intentionally empty: the sound fires once per open — adding the
+  // volume/toggle deps would replay it whenever the user tweaks audio.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     Sounds.journalOpen(sfxVolume, masterVolume, state.audio.sfxJournalOpen);
   }, []);
 
   // Handle journal close with sound effect
-  const handleClose = () => {
-  Sounds.journalClose(sfxVolume, masterVolume, state.audio.sfxJournalClose);
-  onClose();
-};
+  const handleClose = useCallback(() => {
+    Sounds.journalClose(sfxVolume, masterVolume, state.audio.sfxJournalClose);
+    onClose();
+  }, [sfxVolume, masterVolume, state.audio.sfxJournalClose, onClose]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') 
+      if (event.key === 'Escape')
         handleClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [handleClose]);
 
   const addTodo = (event) => {
     event.preventDefault();

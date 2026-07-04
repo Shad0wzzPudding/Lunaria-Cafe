@@ -4,7 +4,7 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
-import { calcSessionTotals, calcNewStreak, getDateString, getTodayIndex, getWeekStart } from './gameHelpers';
+import { calcSessionTotals, calcNewStreak, getDateString, getWeekStart } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;

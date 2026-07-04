@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { BookOpen, GraduationCap, LogOut, Users, KeyRound, RefreshCw, Trash2, Plus, ChevronRight } from 'lucide-react';

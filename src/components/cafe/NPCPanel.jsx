@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useState } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 
 export default function NPCPanel() {

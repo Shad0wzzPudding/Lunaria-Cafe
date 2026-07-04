@@ -1,4 +1,4 @@
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Heart, Sparkles, AlertTriangle } from 'lucide-react';
@@ -73,11 +73,18 @@ export default function SessionSummary() {
   const s = state.lastSession;
   const isFail = s?.endReason === 'distracted';
 
+  // Message varies per session but is derived purely (render must stay
+  // side-effect free): the session's own numbers seed the pick.
   const message = useMemo(() => {
     if (!s) return '';
     const pool = isFail ? FAIL_MESSAGES : DONE_MESSAGES;
-    return pool[Math.floor(Math.random() * pool.length)];
-  }, [s]);
+    const seed =
+      (s.durationSeconds ?? 0) * 7 +
+      (s.coinsEarned ?? 0) * 13 +
+      (s.attentionScore ?? 0) * 3 +
+      (s.distractions ?? 0);
+    return pool[seed % pool.length];
+  }, [s, isFail]);
   const characterImg = isFail
     ? '/assets/Character/lulys_finish(fail).png'
     : '/assets/Character/Lulys_finish(done).png';

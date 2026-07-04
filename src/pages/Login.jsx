@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { UserX, AlertTriangle, GraduationCap, BookOpen } from 'lucide-react';
 import { INSTRUCTOR_SECRET_CODE } from '@/lib/classroom/constants';

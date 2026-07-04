@@ -1,5 +1,4 @@
-import React from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Clock, Flame, Coins, Users, Sparkles, Rabbit } from 'lucide-react';
 import DailyGoalTracker from './DailyGoalTracker.jsx';

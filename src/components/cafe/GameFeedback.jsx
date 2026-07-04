@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Coins, Armchair } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
 
 export default function GameFeedback() {
@@ -17,7 +17,7 @@ export default function GameFeedback() {
         if (state.audio.sfxCoinChime) playCoinChime(state.audio.sfxVolume, state.audio.masterVolume);
       }
     });
-  }, [popups, state.audio.sfxVolume, state.audio.masterVolume]);
+  }, [popups, state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxCoinChime]);
 
   useEffect(() => {
     const timers = timersRef.current;

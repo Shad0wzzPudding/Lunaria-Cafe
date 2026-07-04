@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import {
   startAttentionFeed,
@@ -26,7 +26,8 @@ import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
 import FocusModePrompt from '@/components/cafe/FocusModePrompt';
-import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
+import ZenFocusView from '@/components/cafe/ZenFocusView';
+import { ZEN_PICTURES } from '@/components/cafe/zenPictures';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
 import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle, getGlassGradient, FOCUS_GLASS_BASE } from '@/lib/theme/themeDeriver';
@@ -343,7 +344,7 @@ export default function CafeView() {
   const focusViewMode = state.settings?.focusViewMode ?? null;
   const isZenMode = isFocusing && focusViewMode === 'zen';
   const currentAiMode = state.settings?.aiMode ?? 'browser';
-  const popupPicture = useRef(ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]).current;
+  const [popupPicture] = useState(() => ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]);
 
   useEffect(() => {
     const unsub = onAttentionEvent((event) => {
@@ -352,6 +353,10 @@ export default function CafeView() {
     return unsub;
   }, [processAIEvent]);
 
+  // Deps intentionally limited to the status transition: adding the audio
+  // values would replay the one-shot finish sound when volume changes while
+  // the status is still 'completed'.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (state.focus.status === 'distracted') {
       Sounds.sessionFinishFail(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishFail);
@@ -513,6 +518,7 @@ export default function CafeView() {
 
   // Keep a ref to the latest state so the broadcast interval never needs to restart.
   const broadcastDataRef = useRef({});
+  useEffect(() => {
   broadcastDataRef.current = {
     coins: state.coins,
     reputation: state.reputation,
@@ -533,6 +539,7 @@ export default function CafeView() {
     nightShadeHex: getGlassShadeHex('night'),
     timeOfDay: state.cafe?.timeOfDay ?? 'day',
   };
+  });
 
   // Broadcast live state to the popup window via BroadcastChannel.
   // Channel is created once per focus session; data is read from the ref each tick.
@@ -544,14 +551,22 @@ export default function CafeView() {
     return () => { clearInterval(interval); channel.close(); };
   }, [isFocusing]);
 
-  // Clean up popup when the focus session ends.
+  // Popup state resets when the focus session ends (adjust-during-render).
+  const [prevIsFocusing, setPrevIsFocusing] = useState(isFocusing);
+  if (prevIsFocusing !== isFocusing) {
+    setPrevIsFocusing(isFocusing);
+    if (!isFocusing) {
+      setPopupOpen(false);
+      setPopupClosing(false);
+    }
+  }
+
+  // Clean up the popup window when the focus session ends.
   useEffect(() => {
     if (!isFocusing) {
       clearInterval(popupCheckRef.current);
       if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
       popupRef.current = null;
-      setPopupOpen(false);
-      setPopupClosing(false);
     }
   }, [isFocusing]);
 

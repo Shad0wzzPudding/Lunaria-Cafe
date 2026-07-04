@@ -1,5 +1,5 @@
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { useAuth } from '@/auth/AuthProvider';
+import { useGame } from '@/lib/gameState/useGame';
+import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Play, BarChart3, Settings, BookOpen, Users } from 'lucide-react';
 import { motion } from 'framer-motion';

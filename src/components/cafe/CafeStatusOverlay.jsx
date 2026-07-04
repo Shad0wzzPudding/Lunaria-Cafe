@@ -40,7 +40,7 @@
 // =============================================================================
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Coins, Heart, Users, Sparkles } from 'lucide-react';
 import { getAIConfig, getChaosStage } from '@/lib/ai/aiIntegration';
 

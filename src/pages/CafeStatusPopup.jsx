@@ -74,7 +74,7 @@ export default function CafeStatusPopup() {
       },
       data.timeOfDay ?? 'day'
     );
-  }, [data?.themeMode, data?.dayHex, data?.nightHex, data?.timeOfDay]);
+  }, [data?.themeMode, data?.dayHex, data?.nightHex, data?.dayShadeHex, data?.nightShadeHex, data?.timeOfDay]);
 
   useEffect(() => {
     if (!showCamera) return;

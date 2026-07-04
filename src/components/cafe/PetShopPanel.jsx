@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { PET_LIST, RARITY_CONFIG } from '@/lib/cafe/petCatalog.js';
 import { Coins, PawPrint, Cat, Rabbit, Heart, X } from 'lucide-react';
 

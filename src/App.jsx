@@ -2,8 +2,10 @@ import React from 'react'
 import { Toaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { AuthProvider, useAuth } from '@/auth/AuthProvider'
-import { GameProvider, useGame } from '@/lib/gameState/GameProvider.jsx'
+import { AuthProvider } from '@/auth/AuthProvider'
+import { useAuth } from '@/auth/useAuth'
+import { GameProvider } from '@/lib/gameState/GameProvider.jsx'
+import { useGame } from '@/lib/gameState/useGame'
 import { useCafeAudio } from '@/lib/audio/useCafeAudio'
 import Login from '@/pages/Login'
 import RoleSelect from '@/pages/RoleSelect'
@@ -32,10 +34,14 @@ function GameRouter() {
   const easyEnterRef   = React.useRef(0)
   const phaseRef       = React.useRef(state.phase)
   const easyDebugRef   = React.useRef(easyDebug)
-  React.useEffect(() => {
-    phaseRef.current = state.phase
+  // Adjust-during-render (react.dev "storing information from previous
+  // renders"): leaving the settings page turns the debug switch back off.
+  const [prevPhase, setPrevPhase] = React.useState(state.phase)
+  if (prevPhase !== state.phase) {
+    setPrevPhase(state.phase)
     if (state.phase !== 'settings') setEasyDebug(false)
-  }, [state.phase])
+  }
+  React.useEffect(() => { phaseRef.current = state.phase }, [state.phase])
   React.useEffect(() => { easyDebugRef.current = easyDebug }, [easyDebug])
 
   const openDebug = React.useCallback(() => {
@@ -135,7 +141,7 @@ function GameRouter() {
       {phase === 'menu'       && <MainMenu />}
       {phase === 'stats'      && <Statistics />}
       {phase === 'classrooms' && <MyClassrooms />}
-      {phase === 'settings' && <GameSettings easyDebug={easyDebug} setEasyDebug={setEasyDebug} />}
+      {phase === 'settings' && <GameSettings />}
 
       {debugOpen && <DebugPanel onClose={() => setDebugOpen(false)} />}
     </>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Gamepad2, Sparkles } from 'lucide-react';
 import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';

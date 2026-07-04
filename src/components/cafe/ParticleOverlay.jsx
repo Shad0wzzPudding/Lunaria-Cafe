@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useState } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 
 export default function ParticleOverlay() {
   const { state } = useGame();
   
-  const particles = useMemo(() => {
+  // Random layout picked once per mount (useState initializer may be impure).
+  const [particles] = useState(() => {
     return Array.from({ length: 20 }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
@@ -13,7 +14,7 @@ export default function ParticleOverlay() {
       duration: `${4 + Math.random() * 6}s`,
       size: 2 + Math.random() * 3,
     }));
-  }, []);
+  });
   
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">

@@ -1,5 +1,4 @@
-import React from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import StatsCharts from '@/components/stats/StatsCharts';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

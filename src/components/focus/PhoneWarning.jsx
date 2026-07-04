@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sounds } from '@/lib/sounds';
@@ -11,32 +11,35 @@ export default function PhoneWarning() {
   const { phoneWarningStart, phoneDetected } = state.attention;
   const { sfxVolume, masterVolume } = state.audio;
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [soundPlayed, setSoundPlayed] = useState(false);
+  const soundPlayedRef = useRef(false);
+
+  // Reset the countdown at the start of each warning (adjust-during-render).
+  const [prevStart, setPrevStart] = useState(phoneWarningStart);
+  if (prevStart !== phoneWarningStart) {
+    setPrevStart(phoneWarningStart);
+    setRemainingSeconds(phoneWarningStart ? WARNING_DURATION_MS / 1000 : 0);
+  }
 
   useEffect(() => {
     if (!phoneWarningStart || !phoneDetected) {
-      setRemainingSeconds(0);
-      setSoundPlayed(false);
+      soundPlayedRef.current = false;
       return;
     }
 
     // Play warning sound when warning starts
-    if (!soundPlayed) {
-  Sounds.phoneWarning(sfxVolume, masterVolume, state.audio.sfxPhoneWarning);
-  setSoundPlayed(true);
-}
+    if (!soundPlayedRef.current) {
+      Sounds.phoneWarning(sfxVolume, masterVolume, state.audio.sfxPhoneWarning);
+      soundPlayedRef.current = true;
+    }
 
-    const updateCountdown = () => {
+    const interval = setInterval(() => {
       const elapsed = Date.now() - phoneWarningStart;
       const remaining = Math.max(0, WARNING_DURATION_MS - elapsed);
       setRemainingSeconds(Math.ceil(remaining / 1000));
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 100);
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [phoneWarningStart, phoneDetected, soundPlayed]);
+  }, [phoneWarningStart, phoneDetected, sfxVolume, masterVolume, state.audio.sfxPhoneWarning]);
 
   const handleDismiss = () => {
     dispatch({ 

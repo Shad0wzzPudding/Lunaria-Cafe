@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function ChaosEventLog() {
   const { state } = useGame();
   const events = state.attention.chaosEvents;
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);

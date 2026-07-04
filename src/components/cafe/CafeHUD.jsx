@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { getChaosStage, getConnectionStatus } from '@/lib/ai/aiIntegration';
 import { Coins, Heart, Users, Sparkles, Wifi, WifiOff } from 'lucide-react';
 

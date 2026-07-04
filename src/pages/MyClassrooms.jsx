@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
-import { useAuth } from '@/auth/AuthProvider';
+import { useGame } from '@/lib/gameState/useGame';
+import { useAuth } from '@/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap } from 'lucide-react';

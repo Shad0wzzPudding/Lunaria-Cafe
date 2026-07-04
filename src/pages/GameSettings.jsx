@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useEffect, useState } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -10,7 +10,7 @@ import {
   onConnectionStatus,
   isBrowserAISupported,
 } from '@/lib/ai/aiIntegration';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/useAuth';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
 function AudioSlider({ icon: Icon, label, value, onChange }) {
@@ -47,7 +47,7 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
   );
 }
 
-export default function GameSettings({ easyDebug, setEasyDebug }) {
+export default function GameSettings() {
   const { state, dispatch, saveNow, saveError, logout } = useGame();
   const { user, isGuest } = useAuth();
   const { audio } = state;

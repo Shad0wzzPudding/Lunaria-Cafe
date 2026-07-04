@@ -1,22 +1,25 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { guestStorage } from '@/lib/guestStorage';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './authContext';
 
 // Session-scoped so a dual-role user re-picks on each new tab/visit.
 const roleStorageKey = (userId) => `lunaria-active-role:${userId}`;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  // Last fetched profile — may belong to a previous user; see freshProfile.
   const [profile, setProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(supabase));
   const [isGuest, setIsGuest] = useState(false);
   const [activeRole, setActiveRole] = useState(null); // 'student' | 'instructor' | null
 
+  // Derived: the profile only counts once it belongs to the current user.
+  const freshProfile = user && profile?.id === user.id ? profile : null;
+  const profileLoading = Boolean(supabase) && Boolean(user) && !freshProfile;
+
   useEffect(() => {
-    if (!supabase) { setLoading(false); return; }
+    if (!supabase) return;
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -35,14 +38,9 @@ export function AuthProvider({ children }) {
 
   // Load the profile (role flags) whenever the signed-in user changes.
   useEffect(() => {
-    if (!supabase || !user) {
-      setProfile(null);
-      setActiveRole(null);
-      return;
-    }
+    if (!supabase || !user) return;
 
     let cancelled = false;
-    setProfileLoading(true);
 
     supabase
       .from('profiles')
@@ -69,8 +67,7 @@ export function AuthProvider({ children }) {
         } else {
           setActiveRole(p.is_instructor ? 'instructor' : 'student');
         }
-      })
-      .finally(() => { if (!cancelled) setProfileLoading(false); });
+      });
 
     return () => { cancelled = true; };
   }, [user]);
@@ -101,7 +98,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
-        user, profile, loading, profileLoading, isGuest,
+        user, profile: freshProfile, loading, profileLoading, isGuest,
         activeRole, chooseRole,
         signUp, signIn, signOut, signInAsGuest,
       }}
@@ -109,10 +106,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
-  return ctx;
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
 import ProgressBar from '@/components/ui/ProgressBar.jsx';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 
 function CircleProgress({ pct, size = 48, stroke = 4 }) {
   const r = (size - stroke) / 2;

@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useEffect, useState } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getThemeMode, getPrimaryHex, getGlassGradient, brightenHex } from '@/lib/theme/themeDeriver';
 
@@ -37,21 +37,30 @@ export default function CafeLoadingScreen() {
   const [msgIndex, setMsgIndex]   = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
-  const timeOfDay   = state.cafe?.timeOfDay ?? 'day';
-  const isImmersive = getThemeMode() === 'custom';
-  const primaryHex  = isImmersive ? getPrimaryHex(timeOfDay) : null;
+  // Theme snapshot at mount (useState initializers are the sanctioned home
+  // for impure reads; the theme can't meaningfully change during a 2.5s load).
   // Immersive: page wears the cafe glass gradient, stars and progress take
   // a brightened main-theme color (the pale/white sparkle tints stay);
   // Focus keeps the violet set.
-  const sparkleColors = isImmersive
-    ? [brightenHex(primaryHex, 0.28), brightenHex(primaryHex, 0.18), '#ddd6fe', '#ede9fe']
-    : ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'];
-  const progressBg = isImmersive
-    ? `linear-gradient(90deg, ${brightenHex(primaryHex, 0.12)}, ${brightenHex(primaryHex, 0.28)})`
-    : 'linear-gradient(90deg, #7c3aed, #a78bfa)';
-  const pageStyle = isImmersive ? { background: getGlassGradient(timeOfDay) } : undefined;
+  const [{ sparkleColors, progressBg, pageStyle }] = useState(() => {
+    if (getThemeMode() !== 'custom') {
+      return {
+        sparkleColors: ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'],
+        progressBg: 'linear-gradient(90deg, #7c3aed, #a78bfa)',
+        pageStyle: undefined,
+      };
+    }
+    const timeOfDay = state.cafe?.timeOfDay ?? 'day';
+    const primaryHex = getPrimaryHex(timeOfDay);
+    return {
+      sparkleColors: [brightenHex(primaryHex, 0.28), brightenHex(primaryHex, 0.18), '#ddd6fe', '#ede9fe'],
+      progressBg: `linear-gradient(90deg, ${brightenHex(primaryHex, 0.12)}, ${brightenHex(primaryHex, 0.28)})`,
+      pageStyle: { background: getGlassGradient(timeOfDay) },
+    };
+  });
 
-  const sparkles = useMemo(() =>
+  // Random layout picked once per mount (useState initializer may be impure).
+  const [sparkles] = useState(() =>
     Array.from({ length: SPARKLE_COUNT }, (_, i) => ({
       id: i,
       x:        Math.random() * 100,
@@ -59,7 +68,7 @@ export default function CafeLoadingScreen() {
       delay:    Math.random() * 0.4,
       size:     `${10 + Math.random() * 18}px`,
       rotation: (Math.random() - 0.5) * 180,
-    })), []);
+    })));
 
   // Cycle loading messages
   useEffect(() => {

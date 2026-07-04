@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getAIConfig, getBrowserVideoElement, getBrowserAIStatus } from '@/lib/ai/aiIntegration';
+import { getAIConfig } from '@/lib/ai/aiIntegration';
 import Draggable from 'react-draggable';
 
 export default function AttentionCamera() {
@@ -40,7 +40,7 @@ export default function AttentionCamera() {
           setIsReady(true);
           setError(null);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) setError('Camera permission denied');
       }
     };

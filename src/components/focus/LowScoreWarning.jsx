@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sounds } from '@/lib/sounds';
@@ -10,24 +10,31 @@ export default function LowScoreWarning() {
   const { state } = useGame();
   const { score, phoneDetected, phoneWarningStart } = state.attention;
   const { sfxVolume, masterVolume, sfxPhoneWarning } = state.audio;
-  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const soundPlayedRef = useRef(false);
 
   const isLow = score <= SCORE_THRESHOLD;
+  // Don't show if PhoneWarning is already up; X hides until the warning clears.
+  const shouldShow = isLow && !phoneWarningStart;
+  const visible = shouldShow && !dismissed;
+
+  // Re-arm the dismiss when the warning condition goes away.
+  const [prevShow, setPrevShow] = useState(shouldShow);
+  if (prevShow !== shouldShow) {
+    setPrevShow(shouldShow);
+    if (!shouldShow) setDismissed(false);
+  }
 
   useEffect(() => {
-    // Don't show if PhoneWarning is already up
-    if (isLow && !phoneWarningStart) {
-      setVisible(true);
+    if (shouldShow) {
       if (!soundPlayedRef.current) {
         Sounds.phoneWarning(sfxVolume, masterVolume, sfxPhoneWarning);
         soundPlayedRef.current = true;
       }
     } else {
-      setVisible(false);
       soundPlayedRef.current = false;
     }
-  }, [isLow, phoneWarningStart, sfxVolume, masterVolume, sfxPhoneWarning]);
+  }, [shouldShow, sfxVolume, masterVolume, sfxPhoneWarning]);
 
   const message = phoneDetected
     ? 'The cafe is going to be full of mess, put your phone down!'
@@ -57,7 +64,7 @@ export default function LowScoreWarning() {
                 </p>
               </div>
               <button
-                onClick={() => setVisible(false)}
+                onClick={() => setDismissed(true)}
                 className="flex-shrink-0 p-1 hover:bg-white/10 rounded-md transition-colors"
               >
                 <X className="w-4 h-4 text-amber-200/60" />

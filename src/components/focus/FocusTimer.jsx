@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 
 function formatTime(seconds) {

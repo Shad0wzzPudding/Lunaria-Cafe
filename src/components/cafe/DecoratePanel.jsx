@@ -1,4 +1,4 @@
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { X, Trash2, GripHorizontal,Coins } from 'lucide-react';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';

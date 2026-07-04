@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
 
@@ -20,7 +20,12 @@ function SectionLabel({ children }) {
 
 function NumInput({ label, statKey, value, dispatch }) {
   const [local, setLocal] = useState(String(value ?? 0));
-  useEffect(() => setLocal(String(value ?? 0)), [value]);
+  // Adjust-during-render: track the game value while the user isn't typing.
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    setLocal(String(value ?? 0));
+  }
   const apply = () => {
     const v = parseInt(local, 10);
     if (Number.isFinite(v) && v >= 0)
@@ -62,22 +67,32 @@ export default function DebugPanel({ onClose }) {
   const [totalM, setTotalM] = useState(Math.floor((focusSecsSource % 3600) / 60));
   const [totalS, setTotalS] = useState(focusSecsSource % 60);
 
-  useEffect(() => { setCoins(String(state.coins)); }, [state.coins]);
-  useEffect(() => { setRep(String(state.reputation)); }, [state.reputation]);
-  useEffect(() => {
-    const s = state.stats?.todaySeconds ?? 0;
-    setFocusH(Math.floor(s / 3600));
-    setFocusM(Math.floor((s % 3600) / 60));
-    setFocusS(s % 60);
-  }, [state.stats?.todaySeconds]);
-  useEffect(() => {
-    const s = statsMode === 'period'
-      ? (state.stats?.periodFocusSeconds ?? 0)
-      : (state.stats?.totalFocusSeconds  ?? 0);
-    setTotalH(Math.floor(s / 3600));
-    setTotalM(Math.floor((s % 3600) / 60));
-    setTotalS(s % 60);
-  }, [state.stats?.totalFocusSeconds, state.stats?.periodFocusSeconds, statsMode]);
+  // Adjust-during-render: keep inputs tracking live game values.
+  const [prevCoins, setPrevCoins] = useState(state.coins);
+  if (prevCoins !== state.coins) {
+    setPrevCoins(state.coins);
+    setCoins(String(state.coins));
+  }
+  const [prevRep, setPrevRep] = useState(state.reputation);
+  if (prevRep !== state.reputation) {
+    setPrevRep(state.reputation);
+    setRep(String(state.reputation));
+  }
+  const todaySecs = state.stats?.todaySeconds ?? 0;
+  const [prevTodaySecs, setPrevTodaySecs] = useState(todaySecs);
+  if (prevTodaySecs !== todaySecs) {
+    setPrevTodaySecs(todaySecs);
+    setFocusH(Math.floor(todaySecs / 3600));
+    setFocusM(Math.floor((todaySecs % 3600) / 60));
+    setFocusS(todaySecs % 60);
+  }
+  const [prevFocusSecs, setPrevFocusSecs] = useState(focusSecsSource);
+  if (prevFocusSecs !== focusSecsSource) {
+    setPrevFocusSecs(focusSecsSource);
+    setTotalH(Math.floor(focusSecsSource / 3600));
+    setTotalM(Math.floor((focusSecsSource % 3600) / 60));
+    setTotalS(focusSecsSource % 60);
+  }
 
   useEffect(() => {
     const handleKey = (e) => {

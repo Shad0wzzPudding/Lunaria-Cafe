@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { useGame } from '@/lib/gameState/GameProvider.jsx';
+import { useRef, useEffect, useCallback } from 'react';
+import { useGame } from '@/lib/gameState/useGame';
 import { RotateCcw, RotateCw, Check, X } from 'lucide-react';
 import { FURNITURE_CATALOG, FURNITURE_SIZES } from '@/lib/cafe/furnitureCatalog.js';
 import {
@@ -408,7 +408,7 @@ export default function CafeCanvas({ frozen = false }) {
   const sortedFurnitureRef = useRef([]);
   const { state, dispatch } = useGame();
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; });
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
   useEffect(() => {
     sortedFurnitureRef.current = [...state.cafe.furniture].sort(
@@ -436,7 +436,7 @@ export default function CafeCanvas({ frozen = false }) {
     });
   }, []);
 
-  const draw = useCallback((time) => {
+  const draw = useCallback(function drawFrame(time) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const s = stateRef.current;
@@ -444,7 +444,7 @@ export default function CafeCanvas({ frozen = false }) {
 
     // 30fps cap in performance mode
     if (perfMode && time - lastDrawTimeRef.current < 33.3) {
-      animRef.current = requestAnimationFrame(draw);
+      animRef.current = requestAnimationFrame(drawFrame);
       return;
     }
     lastDrawTimeRef.current = time;
@@ -717,7 +717,7 @@ export default function CafeCanvas({ frozen = false }) {
 
     if (!perfMode) drawParticles(ctx, time);
 
-    if (!frozenRef.current) animRef.current = requestAnimationFrame(draw);
+    if (!frozenRef.current) animRef.current = requestAnimationFrame(drawFrame);
   }, []);
 
   useEffect(() => {
@@ -809,6 +809,9 @@ export default function CafeCanvas({ frozen = false }) {
 
   // Respawn any pet that is outside the walkable zone to the entrance.
   // Runs on mount and whenever a pet is added or removed.
+  // Deps intentionally use .length: this repositions NPCs only when one is
+  // added/removed — depending on the arrays would re-run every movement tick.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const entranceX = () => 290 + Math.random() * 160;
     const entranceY = () => 390 + Math.random() * 40; // stays within lower zone (y 385–433)

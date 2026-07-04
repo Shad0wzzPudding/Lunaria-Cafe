@@ -1,4 +1,4 @@
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/useAuth';
 import { GraduationCap, BookOpen } from 'lucide-react';
 
 // Shown after login when an account holds both roles (prototype allows it).

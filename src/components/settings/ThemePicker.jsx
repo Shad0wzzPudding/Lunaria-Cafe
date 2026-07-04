@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { applyTheme, resetTheme, applyThemeForTimeOfDay, getThemeHex, getThemeMode, setThemeMode, getGlassShadeHex, setGlassShadeHex, DEFAULT_HEX, DEFAULT_SHADE } from '@/lib/theme/themeDeriver';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useGame } from '@/lib/gameState/GameProvider';
+import { useGame } from '@/lib/gameState/useGame';
 
 const PRESETS = {
   day: [
@@ -46,18 +46,6 @@ function SinglePicker({ timeOfDay, saveTheme }) {
   const [shadeInput, setShadeInput]     = useState(savedShade.replace('#', '').toUpperCase());
   const [shadeError, setShadeError]     = useState(false);
   const shadeRef = useRef(null);
-
-  // Sync local state when switching tabs — do NOT apply to the live UI here;
-  // live injection only happens when the user actively changes a color via apply().
-  useEffect(() => {
-    const h = getThemeHex(timeOfDay) ?? DEFAULTS[timeOfDay];
-    setHex(h);
-    setInputVal(h.replace('#', '').toUpperCase());
-    const s = getGlassShadeHex(timeOfDay);
-    setShadeHex(s);
-    setShadeInput(s.replace('#', '').toUpperCase());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeOfDay]);
 
   const apply = useCallback((value) => {
     applyTheme(value, timeOfDay);
@@ -241,7 +229,7 @@ export default function ThemePicker() {
 
   const cafeTimeOfDay = state.cafe?.timeOfDay ?? 'day';
   const cafeTimeOfDayRef = useRef(cafeTimeOfDay);
-  cafeTimeOfDayRef.current = cafeTimeOfDay;
+  useEffect(() => { cafeTimeOfDayRef.current = cafeTimeOfDay; });
 
   // Preview the selected tab's theme live; revert to cafe's actual time-of-day on leave.
   useEffect(() => {
@@ -317,7 +305,9 @@ export default function ThemePicker() {
             ))}
           </div>
 
-          <SinglePicker timeOfDay={tab} saveTheme={saveTheme} />
+          {/* key remounts the picker per tab so its state initializes from
+              that tab's saved colors (replaces a sync-state effect) */}
+          <SinglePicker key={tab} timeOfDay={tab} saveTheme={saveTheme} />
 
           <p className="text-[10px] font-pixel text-muted-foreground/60">
             Each theme applies automatically when the cafe switches between day and night.

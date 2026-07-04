@@ -1,20 +1,19 @@
-import { createContext, useContext, useReducer, useCallback, useEffect, useState, useRef } from 'react';
+import { useReducer, useCallback, useEffect, useState, useRef } from 'react';
+import { GameContext } from './gameContext';
 import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from './saveService';
 import { gameReducer } from './gameReducer';
 import { initialState } from './initialState';
 import { AUTO_SAVE_INTERVAL } from './constants';
 import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
-import { useAuth } from '@/auth/AuthProvider';
-
-const GameContext = createContext(null);
+import { useAuth } from '@/auth/useAuth';
 
 export function GameProvider({ children, userId }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [ready, setReady] = useState(!userId);
   const [saveError, setSaveError] = useState(null);
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => { stateRef.current = state; });
 
   const processAIEvent = useCallback((event) => {
     dispatch({ type: 'PROCESS_AI_EVENT', payload: event });
@@ -42,14 +41,17 @@ export function GameProvider({ children, userId }) {
     }
   }, [saveNow, signOut]);
 
+  // Adjust-during-render: a userId change (guest → account) restarts loading.
+  const [prevUserId, setPrevUserId] = useState(userId);
+  if (prevUserId !== userId) {
+    setPrevUserId(userId);
+    setReady(!userId);
+  }
+
   useEffect(() => {
-    if (!userId) {
-      setReady(true);
-      return;
-    }
+    if (!userId) return;
 
     let cancelled = false;
-    setReady(false);
 
     loadPlayerSave(userId)
       .then((data) => {
@@ -119,12 +121,4 @@ export function GameProvider({ children, userId }) {
       {children}
     </GameContext.Provider>
   );
-}
-
-export function useGame() {
-  const context = useContext(GameContext);
-  if (!context) {
-    throw new Error('useGame must be used within a GameProvider');
-  }
-  return context;
 }
