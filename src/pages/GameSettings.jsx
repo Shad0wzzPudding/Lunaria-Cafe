@@ -48,8 +48,8 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
 }
 
 export default function GameSettings({ easyDebug, setEasyDebug }) {
-  const { state, dispatch, saveNow, saveError } = useGame();
-  const { signOut, user, isGuest } = useAuth();
+  const { state, dispatch, saveNow, saveError, logout } = useGame();
+  const { user, isGuest } = useAuth();
   const { audio } = state;
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
 
@@ -60,14 +60,6 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
   const saveAi = (updates) => {
     setAIConfig(updates);
     dispatch({ type: 'SET_SETTINGS', payload: updates });
-  };
-
-  const handleLogout = async () => {
-    try {
-      await saveNow();
-    } finally {
-      await signOut();
-    }
   };
 
   return (
@@ -260,7 +252,7 @@ export default function GameSettings({ easyDebug, setEasyDebug }) {
               <Button type="button" variant="secondary" size="sm" onClick={() => saveNow()}>
                 Save now
               </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
+              <Button type="button" variant="secondary" size="sm" onClick={logout}>
                 Log out
               </Button>
             </p>

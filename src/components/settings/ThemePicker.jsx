@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { applyTheme, resetTheme, applyThemeForTimeOfDay, getThemeHex, getThemeMode, setThemeMode, getGlassShadeHex, setGlassShadeHex } from '@/lib/theme/themeDeriver';
+import { applyTheme, resetTheme, applyThemeForTimeOfDay, getThemeHex, getThemeMode, setThemeMode, getGlassShadeHex, setGlassShadeHex, DEFAULT_HEX, DEFAULT_SHADE } from '@/lib/theme/themeDeriver';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGame } from '@/lib/gameState/GameProvider';
@@ -27,13 +27,12 @@ const PRESETS = {
   ],
 };
 
-const DEFAULTS = { day: '#e2ae60', night: '#5A41AF' };
+const DEFAULTS = DEFAULT_HEX;
+const SHADE_DEFAULTS = DEFAULT_SHADE;
 
 function isValidHex(str) {
   return /^#[0-9a-fA-F]{6}$/.test(str);
 }
-
-const SHADE_DEFAULTS = { day: '#cabb9b', night: '#362C58' };
 
 function SinglePicker({ timeOfDay, saveTheme }) {
   const saved    = getThemeHex(timeOfDay) ?? DEFAULTS[timeOfDay];
@@ -82,8 +81,8 @@ function SinglePicker({ timeOfDay, saveTheme }) {
   const handleReset = () => {
     const defaultHex = DEFAULTS[timeOfDay];
     const defaultShade = SHADE_DEFAULTS[timeOfDay];
-    setGlassShadeHex(defaultShade, timeOfDay);
-    resetTheme(timeOfDay); // after the shade reset so the re-injected background mixes the default shade
+    resetTheme(timeOfDay);
+    setGlassShadeHex(defaultShade, timeOfDay); // re-applies the theme itself in custom mode
     setHex(defaultHex);
     setInputVal(defaultHex.replace('#', '').toUpperCase());
     setInputError(false);
@@ -97,8 +96,7 @@ function SinglePicker({ timeOfDay, saveTheme }) {
   };
 
   const applyShade = useCallback((value) => {
-    setGlassShadeHex(value, timeOfDay);
-    applyThemeForTimeOfDay(timeOfDay); // background mixes in the shade — re-inject live
+    setGlassShadeHex(value, timeOfDay); // re-injects the theme itself (frame-coalesced)
     setShadeHex(value);
     setShadeInput(value.replace('#', '').toUpperCase());
     setShadeError(false);

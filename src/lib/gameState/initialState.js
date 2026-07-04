@@ -1,4 +1,5 @@
 import { INITIAL_FURNITURE } from './constants';
+import { DEFAULT_HEX, DEFAULT_SHADE } from '@/lib/theme/themeDeriver';
 
 export const initialState = {
   phase: 'menu',
@@ -139,10 +140,10 @@ export const initialState = {
     aiMode: 'browser',
     theme: {
       mode: 'classic',
-      dayHex: '#e2ae60',
-      nightHex: '#7d5fde',
-      dayShadeHex: '#cabb9b',
-      nightShadeHex: '#362C58',
+      dayHex: DEFAULT_HEX.day,
+      nightHex: DEFAULT_HEX.night,
+      dayShadeHex: DEFAULT_SHADE.day,
+      nightShadeHex: DEFAULT_SHADE.night,
     },
   },
 };

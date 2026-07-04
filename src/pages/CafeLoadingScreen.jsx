@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useGame } from '@/lib/gameState/GameProvider.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getThemeMode, getThemeHex, getGlassGradient, brightenHex } from '@/lib/theme/themeDeriver';
+import { getThemeMode, getPrimaryHex, getGlassGradient, brightenHex } from '@/lib/theme/themeDeriver';
 
 const LOADING_MESSAGES = [
   'Brewing the perfect cup...',
@@ -37,17 +37,19 @@ export default function CafeLoadingScreen() {
   const [msgIndex, setMsgIndex]   = useState(0);
   const [isExiting, setIsExiting] = useState(false);
 
-  const isImmersive = getThemeMode() === 'custom';
   const timeOfDay   = state.cafe?.timeOfDay ?? 'day';
-  const primaryHex  = getThemeHex(timeOfDay) ?? (timeOfDay === 'day' ? '#e2ae60' : '#7d5fde');
-  // Immersive: stars and progress take a brightened main-theme color
-  // (the pale/white sparkle tints stay); Focus keeps the violet set.
+  const isImmersive = getThemeMode() === 'custom';
+  const primaryHex  = isImmersive ? getPrimaryHex(timeOfDay) : null;
+  // Immersive: page wears the cafe glass gradient, stars and progress take
+  // a brightened main-theme color (the pale/white sparkle tints stay);
+  // Focus keeps the violet set.
   const sparkleColors = isImmersive
     ? [brightenHex(primaryHex, 0.28), brightenHex(primaryHex, 0.18), '#ddd6fe', '#ede9fe']
     : ['#c4b5fd', '#a78bfa', '#ddd6fe', '#ede9fe'];
   const progressBg = isImmersive
     ? `linear-gradient(90deg, ${brightenHex(primaryHex, 0.12)}, ${brightenHex(primaryHex, 0.28)})`
     : 'linear-gradient(90deg, #7c3aed, #a78bfa)';
+  const pageStyle = isImmersive ? { background: getGlassGradient(timeOfDay) } : undefined;
 
   const sparkles = useMemo(() =>
     Array.from({ length: SPARKLE_COUNT }, (_, i) => ({
@@ -79,11 +81,7 @@ export default function CafeLoadingScreen() {
   return (
     <motion.div
       className="min-h-screen flex flex-col items-center justify-center bg-background dark relative overflow-hidden"
-      style={
-        getThemeMode() === 'custom'
-          ? { background: getGlassGradient(state.cafe?.timeOfDay ?? 'day') }
-          : undefined
-      }
+      style={pageStyle}
       animate={isExiting ? { opacity: 0 } : { opacity: 1 }}
       transition={isExiting ? { duration: 0.6, delay: 0.3, ease: 'easeIn' } : {}}
     >

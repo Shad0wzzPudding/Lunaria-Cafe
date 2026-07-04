@@ -29,7 +29,7 @@ import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ZenFocusView, { ZEN_PICTURES } from '@/components/cafe/ZenFocusView';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
-import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle } from '@/lib/theme/themeDeriver';
+import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle, getGlassGradient, FOCUS_GLASS_BASE } from '@/lib/theme/themeDeriver';
 import { CAFE_W, CAFE_H, findRandomOpenSpot } from '@/lib/cafe/spatial.js';
 
 const IS_MAC          = navigator.userAgent.includes('Mac');
@@ -247,13 +247,6 @@ function CafeUpgradePanel({ state, onClose }) {
   );
 }
 
-
-function hexToRgba(hex, alpha) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
 
 function BgModePanel({ state, dispatch, onClose }) {
   
@@ -717,19 +710,14 @@ export default function CafeView() {
 
   const timeOfDay   = state.cafe?.timeOfDay ?? 'day';
   const isImmersive = getThemeMode() === 'custom';
-  const primaryHex  = getThemeHex(timeOfDay) ?? (timeOfDay === 'day' ? '#e2ae60' : '#7d5fde');
   const shadeHex    = getGlassShadeHex(timeOfDay);
 
-  // Focus glass: opaque mix over the pre-blackening backdrop tone so the
-  // bars keep their brightness however dark --background goes behind them.
+  // Focus glass: opaque mix over a fixed backdrop tone so the bars keep
+  // their brightness however dark --background goes behind them.
   const focusGlassBg =
-    'color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, #37245c)';
-  const glassHeaderBg = isImmersive
-    ? `linear-gradient(to bottom, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
-    : focusGlassBg;
-  const glassFooterBg = isImmersive
-    ? `linear-gradient(to top, ${hexToRgba(primaryHex, 0.93)}, ${hexToRgba(shadeHex, 0.9)})`
-    : focusGlassBg;
+    `color-mix(in srgb, color-mix(in srgb, var(--primary) 18%, var(--card)) 55%, ${FOCUS_GLASS_BASE})`;
+  const glassHeaderBg = isImmersive ? getGlassGradient(timeOfDay, 'to bottom') : focusGlassBg;
+  const glassFooterBg = isImmersive ? getGlassGradient(timeOfDay, 'to top')    : focusGlassBg;
 
   // Focus theme: lift footer buttons off the dark glass (immersive tint has its own contrast).
   const footerBtnClass = `gap-2 font-pixel text-xs ${isImmersive ? '' : 'bg-white/15 hover:bg-white/25 border-white/20'}`;

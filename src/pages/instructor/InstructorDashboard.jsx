@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { BookOpen, GraduationCap, LogOut, Users, KeyRound, RefreshCw, Trash2, Plus, ChevronRight } from 'lucide-react';
 import ClassroomDetail from './ClassroomDetail';
+import { INSTRUCTOR_PAGE_BG, INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
 
 async function fetchMyClassrooms() {
   const { data, error } = await supabase
@@ -59,8 +60,8 @@ function RoomList({ onOpen }) {
     onSuccess: refresh,
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground text-center py-10">Loading classrooms…</p>;
-  if (error) return <p className="text-sm text-amber-400 text-center py-10">Could not load classrooms: {error.message}</p>;
+  if (isLoading) return <p className={`text-sm ${PAGE_INK} text-center py-10`}>Loading classrooms…</p>;
+  if (error) return <p className="text-sm text-amber-700 text-center py-10">Could not load classrooms: {error.message}</p>;
 
   return (
     <div className="space-y-6">
@@ -86,10 +87,10 @@ function RoomList({ onOpen }) {
           {createMutation.isPending ? 'Creating…' : 'Create'}
         </Button>
       </form>
-      {formError && <p className="text-xs text-amber-400">{formError}</p>}
+      {formError && <p className="text-xs text-amber-700">{formError}</p>}
 
       {rooms.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+        <div className={`rounded-xl border border-dashed border-border/40 p-10 text-center text-sm ${PAGE_INK}`}>
           No classrooms yet — create your first one above. Students join with the room's PIN, or you invite them by email.
         </div>
       ) : (
@@ -170,7 +171,7 @@ export default function InstructorDashboard() {
   const [openRoomId, setOpenRoomId] = useState(null);
 
   return (
-    <div className="dark min-h-screen text-foreground" style={{ background: '#c3c0cc' }}>
+    <div className="dark min-h-screen text-foreground" style={{ background: INSTRUCTOR_PAGE_BG }}>
       <header
         className="border-b border-border/30"
         style={{ background: 'color-mix(in srgb, var(--primary) 35%, var(--card))' }}

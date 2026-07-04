@@ -7,8 +7,10 @@ const KEY_MODE       = 'lunaria-theme-mode'; // 'custom' | 'classic'
 const KEY_SHADE_DAY  = 'lunaria-glass-shade-day';
 const KEY_SHADE_NIGHT= 'lunaria-glass-shade-night';
 
-const DEFAULT_HEX    = { day: '#e2ae60', night: '#5A41AF' };
-const DEFAULT_SHADE  = { day: '#cabb9b', night: '#362C58' };
+// Single source for shipped theme defaults — ThemePicker and
+// initialState import these rather than keeping their own copies.
+export const DEFAULT_HEX    = { day: '#e2ae60', night: '#7d5fde' };
+export const DEFAULT_SHADE  = { day: '#cabb9b', night: '#362C58' };
 
 const storageGet    = (key)      => guestStorage.getItem(key);
 const storageSet    = (key, val) => guestStorage.setItem(key, val);
@@ -22,8 +24,22 @@ export function getGlassShadeHex(timeOfDay = 'day') {
   return storageGet(shadeStorageKey(timeOfDay)) ?? DEFAULT_SHADE[timeOfDay] ?? '#0a0a0a';
 }
 
+// The injected --background mixes in the shade (custom mode), so writing a
+// shade re-applies the theme. Coalesced to one injection per frame — the
+// native color wheel fires onChange tens of times per second while dragging,
+// and each injection forces a document-wide CSS-variable recalc.
+let pendingShadeApply = null;
 export function setGlassShadeHex(hex, timeOfDay = 'day') {
   storageSet(shadeStorageKey(timeOfDay), hex);
+  if (getThemeMode() !== 'custom') return;
+  const firstThisFrame = pendingShadeApply === null;
+  pendingShadeApply = timeOfDay;
+  if (!firstThisFrame) return;
+  requestAnimationFrame(() => {
+    const t = pendingShadeApply;
+    pendingShadeApply = null;
+    applyThemeForTimeOfDay(t);
+  });
 }
 
 function storageKey(timeOfDay) {
@@ -167,12 +183,29 @@ export function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// Effective primary hex for a time of day: saved value or shipped default.
+export function getPrimaryHex(timeOfDay = 'day') {
+  return getThemeHex(timeOfDay) ?? DEFAULT_HEX[timeOfDay];
+}
+
 // The primary→shade fade the cafe header/footer glass uses in Immersive mode.
 export function getGlassGradient(timeOfDay = 'day', direction = 'to bottom') {
-  const primary = getThemeHex(timeOfDay) ?? DEFAULT_HEX[timeOfDay];
+  const primary = getPrimaryHex(timeOfDay);
   const shade = getGlassShadeHex(timeOfDay);
   return `linear-gradient(${direction}, ${hexToRgba(primary, 0.93)}, ${hexToRgba(shade, 0.9)})`;
 }
+
+// Focus-mode cafe glass mixes against this instead of the live --background:
+// it is the backdrop the bars sat on before --background went near-black
+// (the old page purple × the glass brightness boost). If FOCUS_HEX or the
+// classic --background is retuned, re-pick this alongside them.
+export const FOCUS_GLASS_BASE = '#37245c';
+
+// Instructor dashboard page color — the one light-background page in the
+// app — and the dark ink class for text sitting directly on it (text inside
+// the dashboard's dark cards keeps the normal dark-theme tokens).
+export const INSTRUCTOR_PAGE_BG = '#c3c0cc';
+export const INSTRUCTOR_PAGE_INK = 'text-[#57506a]';
 
 // Brighter-than-card background used to lift panels/headers off the backdrop.
 export const PANEL_BRIGHT_BG = 'color-mix(in srgb, var(--foreground) 12%, var(--card))';

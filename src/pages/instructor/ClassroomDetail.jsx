@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Mail, UserMinus, Clock, Flame, Coins, Star } from 'lucide-react';
+import { INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
 
 async function fetchRoster(roomId) {
   const { data, error } = await supabase.rpc('get_classroom_stats', { _classroom_id: roomId });
@@ -145,7 +146,7 @@ export default function ClassroomDetail({ roomId, onBack }) {
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className={`flex items-center gap-1.5 text-xs ${PAGE_INK} hover:text-[#221c33] transition-colors`}
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         All classrooms
@@ -177,14 +178,14 @@ export default function ClassroomDetail({ roomId, onBack }) {
         </Button>
       </form>
       {inviteMsg && (
-        <p className={`text-xs ${inviteMsg.ok ? 'text-emerald-400' : 'text-amber-400'}`}>{inviteMsg.text}</p>
+        <p className={`text-xs ${inviteMsg.ok ? 'text-emerald-700' : 'text-amber-700'}`}>{inviteMsg.text}</p>
       )}
 
-      {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Loading students…</p>}
-      {error && <p className="text-sm text-amber-400 text-center py-10">Could not load students: {error.message}</p>}
+      {isLoading && <p className={`text-sm ${PAGE_INK} text-center py-10`}>Loading students…</p>}
+      {error && <p className="text-sm text-amber-700 text-center py-10">Could not load students: {error.message}</p>}
 
       {roster && roster.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border/40 p-10 text-center text-sm text-muted-foreground">
+        <div className={`rounded-xl border border-dashed border-border/40 p-10 text-center text-sm ${PAGE_INK}`}>
           No students yet. Share the room PIN, or add them by email above.
         </div>
       )}

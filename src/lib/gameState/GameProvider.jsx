@@ -5,6 +5,7 @@ import { initialState } from './initialState';
 import { AUTO_SAVE_INTERVAL } from './constants';
 import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
+import { useAuth } from '@/auth/AuthProvider';
 
 const GameContext = createContext(null);
 
@@ -29,6 +30,17 @@ export function GameProvider({ children, userId }) {
       setSaveError(err.message ?? 'Save failed');
     }
   }, [userId]);
+
+  // Flush the save before ending the session — the one logout path
+  // shared by every page with a logout button.
+  const { signOut } = useAuth();
+  const logout = useCallback(async () => {
+    try {
+      await saveNow();
+    } finally {
+      await signOut();
+    }
+  }, [saveNow, signOut]);
 
   useEffect(() => {
     if (!userId) {
@@ -103,7 +115,7 @@ export function GameProvider({ children, userId }) {
   }
 
   return (
-    <GameContext.Provider value={{ state, dispatch, processAIEvent, saveNow, saveError }}>
+    <GameContext.Provider value={{ state, dispatch, processAIEvent, saveNow, saveError, logout }}>
       {children}
     </GameContext.Provider>
   );

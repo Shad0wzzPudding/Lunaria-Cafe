@@ -5,18 +5,10 @@ import { Play, BarChart3, Settings, BookOpen, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
-  const { dispatch, saveNow } = useGame();
-  const { user, profile, isGuest, chooseRole, signOut } = useAuth();
+  const { dispatch, logout } = useGame();
+  const { user, profile, isGuest, chooseRole } = useAuth();
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
   const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
-
-  const handleLogout = async () => {
-    try {
-      await saveNow();
-    } finally {
-      await signOut();
-    }
-  };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -44,7 +36,7 @@ export default function MainMenu() {
         </p>
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={logout}
           className="font-pixel text-xs text-white/45 underline underline-offset-2 hover:text-white transition-colors drop-shadow-md"
         >
           Log out
