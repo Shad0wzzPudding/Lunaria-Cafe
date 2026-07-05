@@ -1,14 +1,28 @@
-/** Returns today's date as a YYYY-MM-DD string. */
-export function getDateString() {
-  return new Date().toISOString().split('T')[0];
+/** Returns a date as a YYYY-MM-DD string in the user's LOCAL timezone. */
+export function getDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Parses a YYYY-MM-DD string as a local-midnight Date (avoids UTC parsing). */
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Whole-day difference between two YYYY-MM-DD strings (a − b). */
+export function daysBetween(a, b) {
+  return Math.round((parseLocalDate(a) - parseLocalDate(b)) / 86400000);
 }
 
 /** Returns the Monday of the week containing dateStr as a YYYY-MM-DD string. */
 export function getWeekStart(dateStr) {
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   const diff = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - diff);
-  return d.toISOString().split('T')[0];
+  return getDateString(d);
 }
 
 /**
@@ -17,15 +31,22 @@ export function getWeekStart(dateStr) {
  * - Yesterday → streak + 1
  * - Gap > 1   → reset to 1
  * - No prior  → start at 1
+ *
+ * `today` defaults to the real local date but can be overridden (e.g. the
+ * debug date simulator) so streak progression stays testable.
+ *
+ * Caveats (inherent to any local-date streak, not defects — see also the
+ * login lapse check in saveService.mergeLoadedSave):
+ * 1. Timezone travel / crossing the date line can shift the user's local
+ *    "today" by a day, so a streak may gain or lose a day around the trip.
+ * 2. Manually changing the device clock will fool the check; we trust the
+ *    local system date and have no fixed server clock to verify against.
  */
-export function calcNewStreak(currentStreak, lastSessionDate) {
-  const today = getDateString();
+export function calcNewStreak(currentStreak, lastSessionDate, today = getDateString()) {
   if (lastSessionDate === today) return currentStreak;
 
   if (lastSessionDate) {
-    const diffDays = Math.round(
-      (new Date(today) - new Date(lastSessionDate)) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = daysBetween(today, lastSessionDate);
     if (diffDays === 1) return currentStreak + 1;
     if (diffDays > 1)  return 1;
   }

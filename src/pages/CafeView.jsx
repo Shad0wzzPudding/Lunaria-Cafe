@@ -90,11 +90,20 @@ function CafeStatsPanel({ state, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // A lapsed streak: current is 0 but a previous run was lost (see mergeLoadedSave).
+  const streakBroken = (state.stats?.currentStreak ?? 0) === 0 && (state.stats?.lapsedStreak ?? 0) > 0;
+
   // Stats to display - can be expanded with more interesting metrics later
   const stats = [
     { icon: '👥', label: 'Customers',   value: state.stats?.customersTotal ?? 0 },
     { icon: '☕', label: 'Sessions',    value: state.stats?.totalSessions ?? 0 },
-    { icon: '🔥', label: 'Streak',      value: `${state.stats?.currentStreak ?? 0}d` },
+    { icon: '🔥', label: 'Streak',
+      labelNode: streakBroken ? <>Streak <span className="text-destructive">(Lost!)</span></> : undefined,
+      value: streakBroken
+        ? <span className="opacity-50" aria-label={`Streak broken, was ${state.stats.lapsedStreak} days`}>
+            0d <span className="line-through">{state.stats.lapsedStreak}</span>
+          </span>
+        : `${state.stats?.currentStreak ?? 0}d` },
     { icon: '⏱️', label: 'Focus Time',  value: `${state.stats?.totalFocusMinutes ?? 0}m` },
     { icon: Coins, label: 'Coins Earned',value: state.stats?.coinsEarned ?? 0, color: '#f0c674' },
     { icon: '🌀', label: 'Chaos Events',value: state.stats?.chaosEvents ?? 0 },
@@ -166,7 +175,7 @@ function CafeStatsPanel({ state, onClose }) {
 
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-2">
-        {stats.map(({ icon, label, value, color }) => (
+        {stats.map(({ icon, label, labelNode, value, color }) => (
           <div key={label} className="rounded-lg bg-secondary/30 border border-border/20 p-2 text-center">
             <div className="mb-0.5 flex justify-center items-center">
               {typeof icon === 'string'
@@ -176,7 +185,7 @@ function CafeStatsPanel({ state, onClose }) {
                   : React.createElement(icon, { size: 14, strokeWidth: 2, className: 'text-muted-foreground' })}
             </div>
             <div className="font-pixel text-xs text-foreground">{value}</div>
-            <div className="font-body text-[9px] text-muted-foreground mt-0.5">{label}</div>
+            <div className="font-body text-[9px] text-muted-foreground mt-0.5">{labelNode ?? label}</div>
           </div>
         ))}
       </div>

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { initialState } from './initialState';
-import { getDateString, getWeekStart } from './gameHelpers';
+import { getDateString, getWeekStart, daysBetween } from './gameHelpers';
 
 function normalizePositiveNumber(value, fallback) {
   const number = Number(value);
@@ -106,6 +106,21 @@ export function mergeLoadedSave(loaded, initialState) {
   const periodCustomersTotal = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodCustomersTotal) : 0;
   const periodChaosEvents    = keepTodayProgress ? normalizeNonNegativeNumber(loadedStats.periodChaosEvents)    : 0;
 
+  // ── Streak lapse check ────────────────────────────────────────
+  // A streak stays alive only if the last session was today or yesterday.
+  // A gap of 2+ days means it lapsed while the app was closed → reset to 0.
+  // (With no recorded date we can't tell, so we leave the loaded value as-is.)
+  const lastSessionDate = loadedStats.lastSessionDate ?? null;
+  const loadedStreak = normalizeNonNegativeNumber(loadedStats.currentStreak);
+  const streakLapsed = lastSessionDate ? daysBetween(today, lastSessionDate) >= 2 : false;
+  const currentStreak = streakLapsed ? 0 : loadedStreak;
+  // Preserve the just-lost run so the UI can show it struck through. If we
+  // already lapsed on an earlier load (loadedStreak is 0), keep the value we
+  // stored then rather than overwriting it with 0.
+  const lapsedStreak = streakLapsed
+    ? (loadedStreak > 0 ? loadedStreak : normalizeNonNegativeNumber(loadedStats.lapsedStreak))
+    : 0;
+
   // ── Weekly chart reset ────────────────────────────────────────
   let weeklyData;
   if (!isSameWeek) {
@@ -144,6 +159,8 @@ export function mergeLoadedSave(loaded, initialState) {
     stats: {
       ...initialState.stats,
       ...loadedStats,
+      currentStreak,
+      lapsedStreak,
       dailyGoal,
       todayMinutes,
       todaySeconds,

@@ -186,8 +186,9 @@ export function gameReducer(state, action) {
       // records the session itself and the streak.
       const sessionMins = calcSessionMins(state.focus.elapsed, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
+      const today       = state.ui.debugDate ?? getDateString();
       const newStreak   = sessionMins > 0
-        ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate)
+        ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate, today)
         : state.stats.currentStreak;
 
       return {
@@ -209,7 +210,8 @@ export function gameReducer(state, action) {
           periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
           currentStreak:   newStreak,
           bestStreak:      Math.max(state.stats.bestStreak, newStreak),
-          lastSessionDate: sessionMins > 0 ? getDateString() : state.stats.lastSessionDate,
+          lapsedStreak:    sessionMins > 0 ? 0 : state.stats.lapsedStreak,
+          lastSessionDate: sessionMins > 0 ? today : state.stats.lastSessionDate,
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },
@@ -257,7 +259,8 @@ export function gameReducer(state, action) {
       // cafe are NOT counted: only served customers ever reach the stats.
       const sessionMins = calcSessionMins(state.focus.elapsed, true);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
-      const newStreak   = calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate);
+      const today       = state.ui.debugDate ?? getDateString();
+      const newStreak   = calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate, today);
 
       return {
         ...state,
@@ -277,7 +280,8 @@ export function gameReducer(state, action) {
           periodSessions:  state.stats.periodSessions + 1,
           currentStreak:   newStreak,
           bestStreak:      Math.max(state.stats.bestStreak, newStreak),
-          lastSessionDate: getDateString(),
+          lapsedStreak:    0,
+          lastSessionDate: today,
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },

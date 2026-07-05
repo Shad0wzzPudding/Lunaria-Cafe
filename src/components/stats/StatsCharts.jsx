@@ -110,6 +110,9 @@ const StatsChartsBody = memo(function StatsChartsBody({ stats, debugDate, dispat
 
   const periodLabel = resetPeriod === 'weekly' ? 'This Week' : 'Today';
 
+  // A lapsed streak: current is 0 but a previous run was lost (see mergeLoadedSave).
+  const streakBroken = stats.currentStreak === 0 && (stats.lapsedStreak ?? 0) > 0;
+
   return (
     <div className="space-y-6">
       {/* Controls row */}
@@ -140,7 +143,20 @@ const StatsChartsBody = memo(function StatsChartsBody({ stats, debugDate, dispat
         <StatCard icon={Flame}    label="Focus Time"       value={formatTotal(displayFocus)} color="#e8a040" />
         <StatCard icon={Coins}    label="Coins Earned"     value={displayCoins}              color="#f0c674" />
         <StatCard icon={Users}    label="Customers Served" value={displayCustomers}           color="#7ec8a0" />
-        <StatCard icon={Sparkles} label="Current Streak"   value={`${stats.currentStreak}d`} color="#6b9fdb" />
+        <StatCard icon={Sparkles}
+          label={
+            streakBroken
+              ? <>Current Streak <span className="text-destructive">(Lost!)</span></>
+              : 'Current Streak'
+          }
+          value={
+            streakBroken
+              ? <span className="opacity-50" aria-label={`Streak broken, was ${stats.lapsedStreak} days`}>
+                  0d <span className="line-through">{stats.lapsedStreak}</span>
+                </span>
+              : `${stats.currentStreak}d`
+          }
+          color="#6b9fdb" />
         <StatCard icon={Rabbit}   label="Chaos Events"     value={displayChaos}              color="#d4a0b0" />
       </div>
 

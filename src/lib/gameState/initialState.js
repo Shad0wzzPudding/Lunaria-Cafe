@@ -4,7 +4,6 @@ import { DEFAULT_HEX, DEFAULT_SHADE } from '@/lib/theme/themeDeriver';
 export const initialState = {
   phase: 'menu',
   lastSession: null,
-  lastSessionDate: null,
   coins: 0,
   reputation: 0,
   cafe: {
@@ -110,6 +109,8 @@ export const initialState = {
     totalFocusSeconds: 0,
     totalMinutes: 0,
     bestStreak: 0,
+    lapsedStreak: 0,
+    lastSessionDate: null,
     totalFocusMinutes: 0,
     coinsEarned: 0,
     customersTotal: 0,
