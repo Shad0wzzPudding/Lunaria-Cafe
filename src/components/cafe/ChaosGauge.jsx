@@ -1,12 +1,20 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
+import { chaosGaugeFill } from '@/lib/ai/aiIntegration';
 
 const FILL_COLOR = '#876ade';
 
 export default function ChaosGauge({ className = "absolute top-3 left-3 z-20 w-56 -translate-y-[20%]" }) {
   const { state } = useGame();
-  const { chaosLevel } = state.attention;
+  const { chaosLevel, score } = state.attention;
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
+
+  // Performance mode keeps the cheap stage-stepped fill (0 / ⅓ / ⅔ / 1);
+  // otherwise the bar fills smoothly as the focus score drops.
+  const performanceMode = state.settings?.performanceMode ?? false;
+  const fill = performanceMode
+    ? chaosLevel / 3
+    : chaosGaugeFill(score ?? 100);
 
   return (
     <AnimatePresence>
@@ -23,16 +31,16 @@ export default function ChaosGauge({ className = "absolute top-3 left-3 z-20 w-5
             <div
               className="absolute overflow-hidden rounded-sm"
               style={{
-                left:   '28%',
+                left:   '33%',
                 top:    '41.5%',
-                width:  '55%',
+                width:  '50%',
                 height: '18%',
               }}
             >
               <motion.div
                 className="h-full w-full origin-left rounded-sm"
                 style={{ backgroundColor: FILL_COLOR }}
-                animate={{ scaleX: chaosLevel / 3 }}
+                animate={{ scaleX: fill }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
               />
             </div>

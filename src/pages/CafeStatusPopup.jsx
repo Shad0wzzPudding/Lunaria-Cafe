@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, Heart, Users, Sparkles } from 'lucide-react';
-import { getChaosStage, getAIConfig } from '@/lib/ai/aiIntegration';
+import { getChaosStage, getAIConfig, chaosGaugeFill } from '@/lib/ai/aiIntegration';
 import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 
 function formatElapsed(seconds) {
@@ -103,6 +103,13 @@ export default function CafeStatusPopup() {
   }, [showCamera]);
 
   const chaos    = data ? getChaosStage(data.attentionScore ?? 100) : null;
+  // Match the main-tab gauge: performance mode keeps the stage-stepped fill,
+  // otherwise the bar fills smoothly as the focus score drops.
+  const chaosFill = data
+    ? (data.performanceMode
+        ? (data.chaosLevel ?? 0) / 3
+        : chaosGaugeFill(data.attentionScore ?? 100))
+    : 0;
   const phone    = data?.phoneDetected ?? false;
   const present  = data?.userPresent ?? true;
   const focused  = !phone && present && (data?.attentionScore ?? 100) >= 65;
@@ -209,13 +216,13 @@ export default function CafeStatusPopup() {
             <div className="relative w-full" style={{ clipPath: 'inset(0 14% 0 0)' }}>
               <div
                 className="absolute overflow-hidden rounded-sm"
-                style={{ left: '28%', top: '41.5%', width: '55%', height: '18%' }}
+                style={{ left: '33%', top: '41.5%', width: '50%', height: '18%' }}
               >
                 <div
                   className="h-full w-full rounded-sm"
                   style={{
                     backgroundColor: '#876ade',
-                    transform: `scaleX(${(data?.chaosLevel ?? 0) / 3})`,
+                    transform: `scaleX(${chaosFill})`,
                     transformOrigin: 'left',
                     transition: 'transform 0.6s ease-out',
                   }}

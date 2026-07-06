@@ -187,6 +187,21 @@ export function themeAccentHex(hex) {
   return formatHex({ ...col, l: Math.max((col.l ?? 0.5) - 0.22, 0.32) });
 }
 
+// Shift a semantic color's hue partway toward the theme hue, keeping its
+// lightness and chroma — so a green "up" tone stays green but leans into the
+// active palette. Near-grey inputs get a small chroma bump so the tint reads.
+export function tintTowardTheme(baseHex, themeHex, amount = 0.35) {
+  const base  = oklch(parse(baseHex));
+  const theme = oklch(parse(themeHex));
+  if (!base || !theme) return baseHex;
+  const bh = base.h ?? 0;
+  const th = theme.h ?? bh;
+  const diff = ((th - bh + 540) % 360) - 180; // shortest signed hue delta
+  const h = (bh + diff * amount + 360) % 360;
+  const c = base.c < 0.04 ? 0.045 : base.c;   // let near-greys pick up the tint
+  return formatHex({ mode: 'oklch', l: base.l, c, h });
+}
+
 export function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

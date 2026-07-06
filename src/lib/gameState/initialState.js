@@ -27,7 +27,7 @@ export const initialState = {
     repPenaltyLastAt: null,
   },
   attention: {
-    score: 85,
+    score: 70,
     chaosLevel: 0,
     phoneDetected: false,
     userPresent: true,

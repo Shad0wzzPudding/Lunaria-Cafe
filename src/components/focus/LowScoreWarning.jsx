@@ -22,8 +22,10 @@ export default function LowScoreWarning() {
   const isCritical = score <= 0;
   // Mirror PhoneWarning's exact render condition so exactly one banner owns
   // the slot at any moment (including the final expiry frames). The shared
-  // clock means the countdown carries over between the two banners.
-  const phoneBannerUp = Boolean(phoneDetected && phoneWarningStart && remainingSeconds > 0);
+  // clock means the countdown carries over between the two banners. Once the
+  // score bottoms out, the critical countdown takes over the slot — the phone
+  // banner steps aside — so we stop yielding to it here.
+  const phoneBannerUp = Boolean(phoneDetected && phoneWarningStart && remainingSeconds > 0 && !isCritical);
   // Paused sessions freeze detection, so no warning while paused.
   const shouldShow = isActive && isLow && !phoneBannerUp;
   // X only dismisses the soft variant; the critical countdown can't be closed.

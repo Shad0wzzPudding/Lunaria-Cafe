@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import {
@@ -28,12 +28,16 @@ import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
 import FocusModePrompt from '@/components/cafe/FocusModePrompt';
+import ExitSessionPrompt from '@/components/cafe/ExitSessionPrompt';
 import ZenFocusView from '@/components/cafe/ZenFocusView';
 import { ZEN_PICTURES } from '@/components/cafe/zenPictures';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
 import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle, getGlassGradient, FOCUS_GLASS_BASE } from '@/lib/theme/themeDeriver';
 import { CAFE_W, CAFE_H, findRandomOpenSpot } from '@/lib/cafe/spatial.js';
+import { DANGER_SECONDS } from '@/components/focus/useDangerCountdown';
+
+const CHAOS_STAGE_NAMES = { 1: 'Cute Chaos', 2: 'Magical Chaos', 3: 'Midnight Incident' };
 
 const IS_MAC          = navigator.userAgent.includes('Mac');
 const IS_WINDOWS      = navigator.userAgent.includes('Win');
@@ -397,11 +401,27 @@ export default function CafeView() {
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
   const [showModePrompt, setShowModePrompt] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  // Adjust-during-render: if the session ends underneath the exit dialog
+  // (e.g. an auto-fail), drop the flag so the prompt can't strand over the
+  // summary or resurface on the next session.
+  if (showExitConfirm && !isFocusing) setShowExitConfirm(false);
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupClosing, setPopupClosing] = useState(false);
-  const notifCooldownRef = useRef(false);
-  const notifCooldownTimerRef = useRef(null);
+  // The "still going" nudge has its own cooldown; danger bypasses cooldowns;
+  // chaos is announced by a debounced escalation alert (below) so a run of
+  // stage-ups collapses into a single notification for the highest stage.
+  const stillGoingCooldownRef = useRef(false);
+  const stillGoingCooldownTimerRef = useRef(null);
+  const chaosNotifTimerRef = useRef(null);
   const blurNotifTimerRef = useRef(null);
+  // Track previous values so the alert effects below fire only on a genuine
+  // edge (chaos climbing / the danger clock starting), even across sessions.
+  const prevChaosLevelRef = useRef(0);
+  const prevWarningStartRef = useRef(null);
+  // True once we've alerted for the current danger episode; reset when the
+  // danger clock clears, so a phone flicker (or repeated leaves) can't re-fire.
+  const dangerAlertedRef = useRef(false);
   const focusActiveRef = useRef(false);
   const popupRef = useRef(null);
   const popupCheckRef = useRef(null);
@@ -505,6 +525,25 @@ export default function CafeView() {
     }
   };
 
+  // Fire an OS notification only while the cafe tab is backgrounded (hidden or
+  // unfocused) — the alert is redundant when you're already watching the cafe.
+  // No-op without granted permission; try/catch swallows mobile browsers that
+  // reject the plain Notification constructor (they require a service worker).
+  // Returns true only if a notification was actually shown (permission granted
+  // and the tab is backgrounded), so callers can dedupe per event.
+  const fireBackgroundNotification = useCallback((body) => {
+    if (!NOTIF_SUPPORTED || Notification.permission !== 'granted') return false;
+    // The status popup is a separate window — while it's open the user is
+    // watching it, not the main tab, so treat the main tab as backgrounded.
+    const popupIsOpen = !!(popupRef.current && !popupRef.current.closed);
+    if (!popupIsOpen && !document.hidden && document.hasFocus()) return false;
+    try {
+      const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.svg' });
+      notif.onclick = () => { window.focus(); };
+      return true;
+    } catch { /* mobile without a service worker */ return false; }
+  }, []);
+
   const startFocusSession = () => {
     if (focusViewMode === null) {
       setShowModePrompt(true);
@@ -523,6 +562,22 @@ export default function CafeView() {
     Sounds.sessionStart(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionStart);
     dispatch({ type: 'SET_PHASE', payload: 'focus' });
     dispatch({ type: 'START_FOCUS' });
+  };
+
+  // Abandon any running session and return to the main menu. RESET_FOCUS
+  // records nothing, so no streak is earned (coins/focus-time already banked).
+  const exitToMenu = () => {
+    if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+    popupRef.current = null;
+    toast.dismiss();
+    // Immersive mode forces night only while focusing; leaving mid-session must
+    // restore day, otherwise the menu is stuck on Nightfall — CafeView unmounts
+    // before its timeOfDay effect can revert. (Reallife/freestyle set their own.)
+    if ((state.cafe.bgMode ?? 'freestyle') === 'immersive') {
+      dispatch({ type: 'SET_TIME_OF_DAY', payload: 'day' });
+    }
+    dispatch({ type: 'SET_PHASE', payload: 'menu' });
+    dispatch({ type: 'RESET_FOCUS' });
   };
 
   const toggleFocusViewMode = () => {
@@ -552,6 +607,40 @@ export default function CafeView() {
       return () => clearInterval(interval);
     }
   }, [state.cafe.bgMode, isFocusing, dispatch]);
+
+  // Background alert — chaos escalating. Refs update every render so no false
+  // edge fires at session start (where chaosLevel may carry over). The alert
+  // is debounced so a rapid run of stage-ups (e.g. 1→2→3) collapses into ONE
+  // notification for the highest stage reached, instead of stacking.
+  useEffect(() => {
+    const level = state.attention.chaosLevel;
+    const prev = prevChaosLevelRef.current;
+    prevChaosLevelRef.current = level;
+    if (!isFocusing || level <= prev || level < 1) return;
+    if (chaosNotifTimerRef.current) clearTimeout(chaosNotifTimerRef.current);
+    chaosNotifTimerRef.current = setTimeout(() => {
+      chaosNotifTimerRef.current = null;
+      const current = prevChaosLevelRef.current; // highest stage reached by now
+      if (current >= 1) {
+        fireBackgroundNotification(`Chaos is rising — ${CHAOS_STAGE_NAMES[current] ?? 'Chaos'}! Your cafe needs you.`);
+      }
+    }, 1500);
+  }, [state.attention.chaosLevel, isFocusing, fireBackgroundNotification]);
+
+  // Background alert — the shared 30s danger clock just started (phone in view
+  // or score bottomed out). Fires at most once per danger episode: the clock
+  // clearing re-arms it, so a flickering phone can't stack alerts.
+  useEffect(() => {
+    const start = state.attention.phoneWarningStart;
+    const prev = prevWarningStartRef.current;
+    prevWarningStartRef.current = start;
+    if (!start) { dangerAlertedRef.current = false; return; } // episode ended → re-arm
+    if (isFocusing && !prev && !dangerAlertedRef.current) {   // null → set edge
+      if (fireBackgroundNotification(`${DANGER_SECONDS} seconds to refocus, or the session fails!`)) {
+        dangerAlertedRef.current = true;
+      }
+    }
+  }, [state.attention.phoneWarningStart, isFocusing, fireBackgroundNotification]);
 
   useEffect(() => {
     wasZenRef.current = isZenMode;
@@ -591,6 +680,8 @@ export default function CafeView() {
     maxCustomers: state.cafe.maxCustomers,
     attentionScore: state.attention.score,
     chaosLevel: state.attention.chaosLevel,
+    performanceMode: state.settings.performanceMode,
+    phoneWarningStart: state.attention.phoneWarningStart,
     phoneDetected: state.attention.phoneDetected,
     userPresent: state.attention.userPresent,
     warningMessage: state.attention.warningMessage,
@@ -632,19 +723,20 @@ export default function CafeView() {
       clearInterval(popupCheckRef.current);
       if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
       popupRef.current = null;
+      // Drop any pending chaos alert so it can't fire after the session ends.
+      if (chaosNotifTimerRef.current) { clearTimeout(chaosNotifTimerRef.current); chaosNotifTimerRef.current = null; }
     }
   }, [isFocusing]);
 
   // Keep ref in sync so the visibility handler always sees the current status.
-  // Reset the notification cooldown on each new session so it doesn't carry over.
+  // Reset both notification cooldowns on each new session so they don't carry over.
   useEffect(() => {
     focusActiveRef.current = state.focus.status === 'active';
     if (state.focus.status === 'active') {
-      notifCooldownRef.current = false;
-      if (notifCooldownTimerRef.current) {
-        clearTimeout(notifCooldownTimerRef.current);
-        notifCooldownTimerRef.current = null;
-      }
+      stillGoingCooldownRef.current = false;
+      dangerAlertedRef.current = false;
+      if (stillGoingCooldownTimerRef.current) { clearTimeout(stillGoingCooldownTimerRef.current); stillGoingCooldownTimerRef.current = null; }
+      if (chaosNotifTimerRef.current) { clearTimeout(chaosNotifTimerRef.current); chaosNotifTimerRef.current = null; }
     }
   }, [state.focus.status]);
 
@@ -652,6 +744,7 @@ export default function CafeView() {
   useEffect(() => {
     return () => {
       if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+      if (chaosNotifTimerRef.current) clearTimeout(chaosNotifTimerRef.current);
       toast.dismiss();
     };
   }, []);
@@ -684,23 +777,45 @@ export default function CafeView() {
   // On desktop an in-app toast is also shown as a reliable fallback.
   // Both are skipped entirely on mobile/tablet where popup windows don't work.
   useEffect(() => {
+    // Arm a 60s anti-spam window on the given cooldown ref pair.
+    const armCooldown = (flagRef, timerRef) => {
+      flagRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => { flagRef.current = false; timerRef.current = null; }, 60_000);
+    };
+
     const fireNotif = () => {
       if (!focusActiveRef.current) return;
-      if (notifCooldownRef.current) return;
       if (IS_MOBILE_OR_TABLET) return;
 
-      notifCooldownRef.current = true;
-      if (notifCooldownTimerRef.current) clearTimeout(notifCooldownTimerRef.current);
-      notifCooldownTimerRef.current = setTimeout(() => { notifCooldownRef.current = false; notifCooldownTimerRef.current = null; }, 60_000);
+      // Danger is time-critical and fires on every leave. Chaos is NOT fired
+      // here — it's owned by the debounced escalation alert above, so leaving
+      // mid-chaos never stacks a leave-time alert on top of the stage alert.
+      const danger = Boolean(broadcastDataRef.current.phoneWarningStart);
+      const chaos  = broadcastDataRef.current.chaosLevel ?? 0;
+
+      let body;
+      if (danger) {
+        if (dangerAlertedRef.current) return; // already alerted this danger episode
+        dangerAlertedRef.current = true;
+        body = `${DANGER_SECONDS} seconds to refocus, or the session fails!`;
+      } else if (chaos >= 1) {
+        return; // announced by the debounced chaos escalation effect
+      } else {
+        if (stillGoingCooldownRef.current) return;
+        armCooldown(stillGoingCooldownRef, stillGoingCooldownTimerRef);
+        body = 'The cafe is still going! Click to check in.';
+      }
 
       // Try OS notification
       if (NOTIF_SUPPORTED && Notification.permission === 'granted') {
-        const notif = new Notification('Lunaria Cafe ☕', {
-          body: 'The cafe is still going! Click to check in.',
-          icon: '/favicon.svg',
-        });
+        const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.svg' });
         notif.onclick = () => { window.focus(); openStatusPopup(); };
       }
+
+      // The "minimize" hint toast only belongs with the generic "still going"
+      // nudge — a danger alert shouldn't drag it along.
+      if (danger) return;
 
       // In-app toast — desktop only (mobile/tablet already returned above).
       let notifHint;
@@ -820,11 +935,9 @@ export default function CafeView() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
-              popupRef.current = null;
-              toast.dismiss();
-              dispatch({ type: 'SET_PHASE', payload: 'menu' });
-              dispatch({ type: 'RESET_FOCUS' });
+              // Mid-session, confirm first — leaving forfeits the streak.
+              if (isFocusing) setShowExitConfirm(true);
+              else exitToMenu();
             }}
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
@@ -1137,6 +1250,14 @@ export default function CafeView() {
         </div>
       </footer>
       <AnimatePresence>{showModePrompt && <FocusModePrompt onSelect={handleModeSelect} />}</AnimatePresence>
+      <AnimatePresence>
+        {showExitConfirm && (
+          <ExitSessionPrompt
+            onCancel={() => setShowExitConfirm(false)}
+            onConfirm={() => { setShowExitConfirm(false); exitToMenu(); }}
+          />
+        )}
+      </AnimatePresence>
       <SessionSummary />
     </div>
   );

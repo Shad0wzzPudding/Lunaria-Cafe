@@ -7,10 +7,13 @@ import { useDangerCountdown, DANGER_SECONDS } from './useDangerCountdown';
 
 export default function PhoneWarning() {
   const { state } = useGame();
-  const { phoneWarningStart, phoneDetected } = state.attention;
+  const { phoneWarningStart, phoneDetected, score } = state.attention;
   const { sfxVolume, masterVolume } = state.audio;
   const remainingSeconds = useDangerCountdown(phoneWarningStart);
   const soundPlayedRef = useRef(false);
+  // The critical "Cafe in Danger" countdown (score bottomed out) owns the slot;
+  // the phone warning steps aside while it's up.
+  const isCritical = score <= 0;
 
   useEffect(() => {
     if (!phoneWarningStart || !phoneDetected) {
@@ -24,7 +27,7 @@ export default function PhoneWarning() {
     }
   }, [phoneWarningStart, phoneDetected, sfxVolume, masterVolume, state.audio.sfxPhoneWarning]);
 
-  if (!phoneWarningStart || !phoneDetected || remainingSeconds === 0) {
+  if (!phoneWarningStart || !phoneDetected || remainingSeconds === 0 || isCritical) {
     return null;
   }
 

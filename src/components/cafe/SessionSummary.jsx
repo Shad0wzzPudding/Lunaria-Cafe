@@ -1,9 +1,18 @@
 import { useGame } from '@/lib/gameState/useGame';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Coins, Heart, Sparkles, AlertTriangle } from 'lucide-react';
+import { Clock, Coins, Heart, Sparkles, AlertTriangle, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
+import { getFocusPanelStyle, getThemeHex, tintTowardTheme } from '@/lib/theme/themeDeriver';
+
+// Semantic variant colors for up / no-change / down. In Immersive mode they're
+// tinted toward the active theme hue; otherwise they use their plain values.
+const VARIANT_BASE = { up: '#16a34a', down: '#f87171', neutral: '#9ca3af' };
+function variantColor(kind, immersive, themeHex) {
+  if (kind === 'neutral' && !immersive) return 'var(--muted-foreground)';
+  const base = VARIANT_BASE[kind];
+  return immersive && themeHex ? tintTowardTheme(base, themeHex) : base;
+}
 
 const IS_PHONE = /iPhone|Android.*Mobile/i.test(navigator.userAgent);
 
@@ -72,6 +81,21 @@ export default function SessionSummary() {
   const [hint, setHint] = useState(false);
   const s = state.lastSession;
   const isFail = s?.endReason === 'distracted';
+  // Streak is earned only when the timer runs out (endReason 'completed').
+  // A manually stopped or failed session counts, but earns no streak.
+  const noStreak = s ? s.endReason !== 'completed' : false;
+
+  // Semantic-color variants (Reputation + Streak) follow the theme in Immersive.
+  const immersive = state.cafe?.bgMode === 'immersive';
+  const themeHex  = immersive ? getThemeHex(state.cafe?.timeOfDay ?? 'day') : null;
+
+  const streakBefore = s?.streakBefore ?? 0;
+  const streakAfter  = s?.streakAfter ?? streakBefore;
+  const streakDelta  = streakAfter - streakBefore;
+  const streakKind   = streakDelta > 0 ? 'up' : streakDelta < 0 ? 'down' : 'neutral';
+  const streakDeltaStr = streakDelta > 0 ? `+${streakDelta}` : streakDelta < 0 ? `${streakDelta}` : '±0';
+  const repGain  = s?.reputationGain ?? 0;
+  const repKind  = repGain > 0 ? 'up' : repGain < 0 ? 'down' : 'neutral';
 
   // Message varies per session but is derived purely (render must stay
   // side-effect free): the session's own numbers seed the pick.
@@ -130,6 +154,26 @@ export default function SessionSummary() {
                 transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
               />
               <PixelBubble message={message} />
+
+              {/* A little P.S. Lulys left when the cafe lost reputation */}
+              {repGain < 0 && (
+                <motion.div
+                  className="fixed z-50 pointer-events-none select-none"
+                  style={{ bottom: '28px', left: '300px', maxWidth: '320px' }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.3, ease: 'easeOut', delay: 0.9 }}
+                >
+                  <p
+                    className="font-body text-[12px] italic leading-snug text-rose-200/90"
+                    style={{ textShadow: '0 1px 3px rgba(0,0,0,0.65)' }}
+                  >
+                    P.S. The customers felt a little uneasy this visit — hoping for a calmer one next time.
+                    <span className="block mt-0.5 not-italic text-rose-300/80 text-right">— Lulys ☕</span>
+                  </p>
+                </motion.div>
+              )}
             </>
           )}
 
@@ -188,12 +232,26 @@ export default function SessionSummary() {
                 <StatCard icon={<Heart className="w-3.5 h-3.5 text-rose-300" />}
                   label="Reputation"
                   value={s.reputationGain > 0 ? `+${s.reputationGain}%` : `${s.reputationGain}%`}
-                  color={s.reputationGain > 0 ? 'text-green-600' : s.reputationGain < 0 ? 'text-red-400' : 'text-muted-foreground'} />
+                  colorStyle={variantColor(repKind, immersive, themeHex)} />
+
+                <StatCard icon={<Flame className="w-3.5 h-3.5 text-amber-400" />}
+                  label="Streak"
+                  value={`${streakAfter}d (${streakDeltaStr})`}
+                  colorStyle={variantColor(streakKind, immersive, themeHex)} />
 
                 <StatCard icon={<AlertTriangle className="w-3.5 h-3.5 text-orange-400" />}
                   label="Distractions" value={s.distractions}
                   color={s.distractions > 0 ? "text-orange-400" : "text-muted-foreground"} />
               </div>
+
+              {/* No-streak notice — only when the timer didn't finish */}
+              {noStreak && (
+                <div className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2">
+                  <p className="font-body text-[11px] text-amber-300 text-center leading-snug">
+                    No streak for this one — the session ended before the timer finished.
+                  </p>
+                </div>
+              )}
 
               {/* Button */}
               <Button
@@ -210,11 +268,16 @@ export default function SessionSummary() {
   );
 }
 
-function StatCard({ icon, label, value, color }) {
+function StatCard({ icon, label, value, color, colorStyle }) {
   return (
     <div className="rounded-lg bg-black/30 p-3 flex flex-col items-center gap-1">
       {icon}
-      <span className={`font-pixel text-sm ${color}`}>{value}</span>
+      <span
+        className={`font-pixel text-sm ${colorStyle ? '' : (color ?? '')}`}
+        style={colorStyle ? { color: colorStyle } : undefined}
+      >
+        {value}
+      </span>
       <span className="text-muted-foreground text-[10px] font-body">{label}</span>
     </div>
   );

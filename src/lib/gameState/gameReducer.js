@@ -1,4 +1,4 @@
-import { getChaosStage } from '@/lib/ai/aiIntegration';
+import { getChaosStage, generateChaosEvent } from '@/lib/ai/aiIntegration';
 import { pushPopup } from '@/lib/gameState/feedbackHelpers';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
@@ -182,36 +182,38 @@ export function gameReducer(state, action) {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
 
       // Focus time, distractions, customers, and coins all accumulate live
-      // (TICK_FOCUS / PROCESS_AI_EVENT / SERVE_CUSTOMER) — session end only
-      // records the session itself and the streak.
+      // (TICK_FOCUS / PROCESS_AI_EVENT / SERVE_CUSTOMER) — a manually ended or
+      // failed session records the session count but earns NO streak: only
+      // COMPLETE_FOCUS (the timer reaching its limit) advances the streak.
       const sessionMins = calcSessionMins(state.focus.elapsed, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
-      const today       = state.ui.debugDate ?? getDateString();
-      const newStreak   = sessionMins > 0
-        ? calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate, today)
-        : state.stats.currentStreak;
+      const failed      = state.focus.status === 'distracted';
+      // A failed session always costs 3 reputation, whatever the chaos stage.
+      const reputation  = failed ? Math.max(0, state.reputation - 3) : state.reputation;
 
       return {
         ...state,
         phase: 'management',
+        reputation,
         lastSession: {
           durationSeconds: state.focus.elapsed,
           durationMinutes: sessionMins,
           coinsEarned,
-          reputationGain: state.reputation - (state.focus.reputationAtStart ?? state.reputation),
+          reputationGain: reputation - (state.focus.reputationAtStart ?? reputation),
           attentionScore:  Math.round(state.attention.score),
           distractions:    state.attention.sessionDistractions,
-          endReason: state.focus.status === 'distracted' ? 'distracted' : 'manual',
+          endReason: failed ? 'distracted' : 'manual',
+          // Streak never changes on a manual/failed end — before === after.
+          streakBefore: state.stats.currentStreak,
+          streakAfter:  state.stats.currentStreak,
         },
         focus: { ...state.focus, status: 'idle', elapsed: 0 },
         stats: {
           ...state.stats,
+          // Session counts toward totals, but streak fields are left untouched —
+          // the streak only advances on a timer-completed session.
           totalSessions:   state.stats.totalSessions  + (sessionMins > 0 ? 1 : 0),
           periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
-          currentStreak:   newStreak,
-          bestStreak:      Math.max(state.stats.bestStreak, newStreak),
-          lapsedStreak:    sessionMins > 0 ? 0 : state.stats.lapsedStreak,
-          lastSessionDate: sessionMins > 0 ? today : state.stats.lastSessionDate,
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },
@@ -272,6 +274,9 @@ export function gameReducer(state, action) {
           reputationGain:  state.reputation - (state.focus.reputationAtStart ?? state.reputation),
           attentionScore:  Math.round(state.attention.score),
           distractions:    state.attention.sessionDistractions,
+          endReason:       'completed',
+          streakBefore:    state.stats.currentStreak,
+          streakAfter:     newStreak,
         },
         focus: { ...state.focus, status: 'completed' },
         stats: {
@@ -303,9 +308,11 @@ export function gameReducer(state, action) {
       const now       = Date.now();
 
       const nextEvents = [...state.attention.chaosEvents];
-      if (chaos.level > prevLevel && chaos.level > 0 && action.payload.phone_detected) {
+      // Emit one flavour message whenever a new (higher) chaos stage is first
+      // entered — regardless of whether a phone triggered it.
+      if (chaos.level > prevLevel && chaos.level > 0) {
         nextEvents.push({
-          message:   action.payload.warning_message || `Chaos level: ${chaos.name}`,
+          message:   generateChaosEvent(chaos.level),
           timestamp: now,
         });
       }
@@ -726,9 +733,22 @@ export function gameReducer(state, action) {
       const remaining = state.npcs.customers.filter((c) => c.id !== action.payload);
       const baseCoins = customer ? 8 + Math.floor(Math.random() * 7) : 0;
       const coinsGain = state.attention.chaosLevel >= 3 ? 0
-        : state.attention.chaosLevel >= 1 ? Math.floor(baseCoins * 0.5)
+        : state.attention.chaosLevel >= 2 ? Math.floor(baseCoins * 0.25)  // stage 2: −75%
+        : state.attention.chaosLevel >= 1 ? Math.floor(baseCoins * 0.5)   // stage 1: −50%
         : baseCoins;
-      const repGain   = customer && state.attention.chaosLevel < 2 ? 1 : 0;
+      // Reputation is earned only while highly focused and calm (score ≥ 85,
+      // chaos < 2). From stage 2 up you can't earn it, and an unhappy customer
+      // may even take 1 back (more likely the more chaotic it is). Session-fail
+      // rep loss is handled separately in END_FOCUS.
+      let repGain = 0;
+      if (customer) {
+        if (state.attention.chaosLevel < 2 && state.attention.score >= 85) {
+          repGain = 1;
+        } else if (state.attention.chaosLevel >= 2) {
+          const takeBackChance = state.attention.chaosLevel >= 3 ? 0.7 : 0.4;
+          if (Math.random() < takeBackChance) repGain = -1;
+        }
+      }
       const emoji     = customer?.emoji ?? '☕';
 
       let next = {
@@ -736,7 +756,7 @@ export function gameReducer(state, action) {
         npcs:       { ...state.npcs, customers: remaining },
         cafe:       { ...state.cafe, currentCustomers: remaining.length },
         coins:      state.coins + coinsGain,
-        reputation: Math.min(100, state.reputation + repGain),
+        reputation: Math.max(0, Math.min(100, state.reputation + repGain)),
         stats: {
           ...state.stats,
           customersTotal:       state.stats.customersTotal       + 1,

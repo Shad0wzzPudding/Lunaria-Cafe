@@ -27,13 +27,20 @@ const LANDMARK_MATCH_THRESHOLD = 0.6;
 
 let lastFaceSeenAt = Date.now();
 let focusScore = 0;
-let currentAttentionScore = 85;
+const ATTN_START = 70;
+let currentAttentionScore = ATTN_START;
 // While frozen (game paused) detection keeps running — camera and models
 // stay warm for an instant resume — but the score accumulators hold still.
 let scoreFrozen = false;
 const SCORE_GAIN = 0.5;
 const SCORE_PENALTY = 1.0;
 const SCORE_TICK_MS = 200;
+// Per-200ms-tick attention rates. Drops are gentle; the gain slows sharply as
+// the score nears 100 so a perfect 100 takes ~5 min of unbroken focus.
+const ATTN_DROP_PHONE  = 0.4;
+const ATTN_DROP_NOFACE = 0.25;
+const ATTN_DROP_GAZE   = 0.12;
+const ATTN_BASE_GAIN   = 0.18;
 let lastScoreTick = Date.now();
 
 export function setBrowserAIScoreFrozen(frozen) {
@@ -214,30 +221,36 @@ function processDetections(faceResult, phones) {
   isUserFocusedGlobal = isUserFocused;
 
   if (!scoreFrozen) {
-    if (now - lastScoreTick >= SCORE_TICK_MS) {
+    // Both scores advance on the same fixed 200ms tick so the rate is consistent
+    // regardless of the (variable) inference frame rate. `ticks` catches up on
+    // elapsed real time — capped so a long hidden gap can't dump a huge drop —
+    // making the decay per-second rather than per-frame.
+    const ticks = Math.min(Math.floor((now - lastScoreTick) / SCORE_TICK_MS), 15);
+    if (ticks > 0) {
       lastScoreTick = now;
-      if (isUserFocused) {
-        focusScore = Math.min(focusScore + SCORE_GAIN, 9999);
-      } else if (isPhoneDetected || !isGazeFocused) {
-        focusScore = Math.max(focusScore - SCORE_PENALTY, 0);
-      }
-    }
 
-    if (isPhoneDetected) {
-      currentAttentionScore -= 1.5;
-    } else if (!hasFace && noFaceWarning) {
-      currentAttentionScore -= 1.0;
-    } else if (!isGazeFocused) {
-      currentAttentionScore -= 0.5;
-    } else if (isUserFocused) {
-      const gain = 0.3 + Math.min(0.5, Math.log1p(focusScore) * 0.03);
-      // Diminishing returns above 85: the closer to 100 the slower the gain
-      const dimFactor = currentAttentionScore >= 85
-        ? Math.max(0.05, (100 - currentAttentionScore) / 15)
-        : 1;
-      currentAttentionScore += gain * dimFactor;
+      if (isUserFocused) {
+        focusScore = Math.min(focusScore + SCORE_GAIN * ticks, 9999);
+      } else if (isPhoneDetected || !isGazeFocused) {
+        focusScore = Math.max(focusScore - SCORE_PENALTY * ticks, 0);
+      }
+
+      if (isPhoneDetected) {
+        currentAttentionScore -= ATTN_DROP_PHONE * ticks;
+      } else if (!hasFace && noFaceWarning) {
+        currentAttentionScore -= ATTN_DROP_NOFACE * ticks;
+      } else if (!isGazeFocused) {
+        currentAttentionScore -= ATTN_DROP_GAZE * ticks;
+      } else if (isUserFocused) {
+        // Normal gain up to 75, then a steepening slowdown toward 100: the last
+        // stretch (95→100) crawls, so a perfect score is a long-focus reward.
+        const dimFactor = currentAttentionScore <= 75
+          ? 1
+          : Math.max(0.035, ((100 - currentAttentionScore) / 25) ** 2);
+        currentAttentionScore += ATTN_BASE_GAIN * dimFactor * ticks;
+      }
+      currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
     }
-    currentAttentionScore = Math.max(0, Math.min(100, currentAttentionScore));
   }
 
   return {
@@ -503,7 +516,7 @@ export function stopBrowserAI() {
 
   _onEvent = null;
   focusScore = 0;
-  currentAttentionScore = 85;
+  currentAttentionScore = ATTN_START;
   scoreFrozen = false;
   cachedUserLandmarks = null;
   landmarkCacheTimestamp = 0;

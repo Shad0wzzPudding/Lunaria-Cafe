@@ -192,6 +192,22 @@ export function getChaosStage(score) {
   return { level: 3, name: 'Midnight Incident', color: '#6b7db3' };
 }
 
+/**
+ * Chaos gauge fill fraction (0..1) from the focus score, mapped so each stage
+ * boundary lands on a gauge tick — matching the 3-segment art:
+ *   entering stage 1 (score < 70) → 1/3 (first tick)
+ *   entering stage 2 (score < 50) → 2/3 (second tick)
+ *   entering stage 3 (score < 30) → 1   (full / end)
+ * Within a stage the bar fills progressively toward the next tick.
+ */
+export function chaosGaugeFill(score) {
+  const s = Math.max(0, Math.min(100, score));
+  if (s >= 70) return (100 - s) / 30 / 3;        // stage 0: 0 → 1/3
+  if (s >= 50) return 1 / 3 + (70 - s) / 20 / 3; // stage 1: 1/3 → 2/3
+  if (s >= 30) return 2 / 3 + (50 - s) / 20 / 3; // stage 2: 2/3 → 1
+  return 1;                                       // stage 3: full
+}
+
 export function generateChaosEvent(level) {
   const events = {
     1: [
