@@ -12,7 +12,6 @@ async function initModel() {
     session = await ort.InferenceSession.create(self.location.origin + '/models/yolov8n.onnx', {
       executionProviders: ['wasm']
     });
-    console.log("Model Input Names:", session.inputNames);
     postMessage({ type: 'status', status: 'ready' });
   } catch (err) {
     console.error("YOLO Init Error:", err);
@@ -20,52 +19,6 @@ async function initModel() {
   }
 }
 
-// function preprocess(imageData) {
-//   const { data, width, height } = imageData;
-//   const tensorData = new Float32Array(1 * 3 * 640 * 640);
-  
-//   // แปลงภาพให้อยู่ในรูปแบบ [1, 3, 640, 640] และ Normalize [0-1]
-//   for (let y = 0; y < 640; y++) {
-//     for (let x = 0; x < 640; x++) {
-//       const idx = (y * width + x) * 4;
-//       const r = data[idx] / 255.0;
-//       const g = data[idx + 1] / 255.0;
-//       const b = data[idx + 2] / 255.0;
-      
-//       tensorData[0 * 640 * 640 + y * 640 + x] = r;
-//       tensorData[1 * 640 * 640 + y * 640 + x] = g;
-//       tensorData[2 * 640 * 640 + y * 640 + x] = b;
-//     }
-//   }
-//   return new ort.Tensor('float32', tensorData, [1, 3, 640, 640]);
-// }
-
-// ในไฟล์ src/lib/yoloWorker.js - แก้ฟังก์ชัน preprocess
-
-// function preprocess(imageData) {
-//   const { data, width, height } = imageData;
-  
-//   // สร้าง Float32Array สำหรับเก็บข้อมูล Tensor [1, 3, 640, 640]
-//   const tensorData = new Float32Array(1 * 3 * 640 * 640);
-  
-//   // แปลงภาพและ Normalize ในลูปเดียว
-//   for (let i = 0; i < 640 * 640; i++) {
-//     // โครงสร้างภาพอินพุต (ImageData) คือ RGBA, RGBA, ...
-//     const r = data[i * 4] / 255.0;     // Normalize เป็น 0.0 - 1.0
-//     const g = data[i * 4 + 1] / 255.0;
-//     const b = data[i * 4 + 2] / 255.0;
-    
-//     // จัดวางข้อมูลแบบ NCHW (Batch, Channels, Height, Width) ที่ YOLO ต้องการ
-//     // โดย channels เรียงตาม RGB
-//     tensorData[0 * 640 * 640 + i] = r; // Red channel
-//     tensorData[1 * 640 * 640 + i] = g; // Green channel
-//     tensorData[2 * 640 * 640 + i] = b; // Blue channel
-//   }
-  
-//   return new ort.Tensor('float32', tensorData, [1, 3, 640, 640]);
-// }
-
-// ในไฟล์ src/lib/yoloWorker.js - แก้ฟังก์ชัน preprocess ใหม่ทั้งหมด
 function preprocess(imageData) {
   const { data } = imageData; // flat RGBA 640x640
   const numPixels = 640 * 640;
@@ -94,72 +47,8 @@ function preprocess(imageData) {
     // Alpha channel data[pixelIdx+3] โดนทิ้งไป
   }
 
-  // ส่งคืน Tensor พร้อมระบุ Shape ที่ถูกต้อง
   return new ort.Tensor('float32', tensorData, [1, 3, 640, 640]);
 }
-// function postprocess(output) {
-//   const data = output.data;
-//   const numBoxes = 8400; // YOLOv8n
-//   console.log("Checking class 67 score:", data[(4 + 67) * numBoxes + 0]);
-//   const phones = [];
-
-//   for (let i = 0; i < numBoxes; i++) {
-//     const phoneScore = data[(4 + PHONE_CLASS_INDEX) * numBoxes + i];
-    
-//     if (phoneScore > CONF_THRESHOLD) {
-//       const cx = data[0 * numBoxes + i];
-//       const cy = data[1 * numBoxes + i];
-//       const w = data[2 * numBoxes + i];
-//       const h = data[3 * numBoxes + i];
-
-//       phones.push({
-//         x1: cx - w / 2,
-//         y1: cy - h / 2,
-//         w: w,
-//         h: h,
-//         conf: phoneScore
-//       });
-//     }
-//   }
-  
-//   if (phones.length > 0) {
-//     phones.sort((a, b) => b.conf - a.conf);
-//     return [phones[0]]; // ส่งกล่องที่มั่นใจที่สุดกลับไปกล่องเดียว
-//   }
-//   return [];
-// }
-
-// function postprocess(output) {
-//   const data = output.data; // ขนาด 84 x 8400
-//   const rows = 84;
-//   const cols = 8400;
-//   const phones = [];
-
-//   for (let i = 0; i < cols; i++) {
-//     // class_id สำหรับ phone คือ 67
-//     // คะแนนอยู่ที่ index: (4 + 67) * 8400 + i
-//     const score = data[(4 + 67) * cols + i];
-    
-//     if (score > CONF_THRESHOLD) {
-//       const x = data[0 * cols + i];
-//       const y = data[1 * cols + i];
-//       const w = data[2 * cols + i];
-//       const h = data[3 * cols + i];
-
-//       phones.push({
-//         x1: (x - w / 2) / 640,
-//         y1: (y - h / 2) / 640,
-//         w: w / 640,
-//         h: h / 640,
-//         conf: score
-//       });
-//     }
-//   }
-//   return phones;
-// }
-
-// ในไฟล์ yoloWorker.js
-
 
 function postprocess(output) {
   const data = output.data;
@@ -201,27 +90,24 @@ function postprocess(output) {
 self.onmessage = async (e) => {
   const { type, payload } = e.data;
   if (type === 'init') {
-    console.log("Worker กำลังจะเริ่มโหลดโมเดล...");
     await initModel();
-    console.log("Worker โหลดโมเดลเสร็จแล้ว!");
   }
-  
+
   if (type === 'detect') {
-    console.log("Worker ได้รับภาพแล้ว กำลัง Inference...");
-  }
-  
-  if (type === 'detect' && session) {
+    // Always reply with a result (even empty / on error) so the main thread's
+    // in-flight guard clears — otherwise phone detection wedges for the session.
+    if (!session) {
+      postMessage({ type: 'result', phones: [] });
+      return;
+    }
     try {
       const tensor = preprocess(payload.imageData);
       const results = await session.run({ images: tensor });
-      
-      const outputName = session.outputNames[0];
-      const outputTensor = results[outputName];
-      
-      const phones = postprocess(outputTensor);
-      postMessage({ type: 'result', phones });
+      const outputTensor = results[session.outputNames[0]];
+      postMessage({ type: 'result', phones: postprocess(outputTensor) });
     } catch (err) {
       console.error("Inference Error:", err);
+      postMessage({ type: 'result', phones: [] });
     }
   }
 }

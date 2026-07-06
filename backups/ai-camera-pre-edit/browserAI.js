@@ -8,6 +8,7 @@ import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
 let faceLandmarker = null;
 let videoStream = null;
 let videoElement = null;
+let canvasElement = null; 
 let animFrameId = null;
 let renderFrameId = null;
 let visibilityIntervalId = null;
@@ -73,10 +74,8 @@ export function getBrowserAIStatus() {
 // โหลด MediaPipe
 async function loadFaceLandmarker() {
   if (faceLandmarker) return faceLandmarker;
-  // Pin to the installed package version — @latest can drift out of sync with
-  // the JS API and break the landmarker in production.
   const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
   );
   faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
@@ -92,21 +91,49 @@ async function loadFaceLandmarker() {
   return faceLandmarker;
 }
 
-function initYoloWorker() {
-  if (yoloWorker) return; // guard against creating overlapping workers
-  yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
-  isProcessingYolo = false; // fresh worker — nothing in flight yet
+// เริ่มต้น YOLO Worker
+// function initYoloWorker() {
+//   if (yoloWorker) return;
+  
+//   yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
+  
+//   yoloWorker.onmessage = (e) => {
+//     if (e.data.type === 'status' && e.data.status === 'ready') {
+//       isYoloReady = true;
+//       console.log("YOLO Worker Ready!");
+//     }
+//     if (e.data.type === 'result') {
+//       latestPhones = e.data.phones; // อัปเดตกล่อง
+//       isProcessingYolo = false;     // ปลดล็อคส่งเฟรมใหม่
+//     }
+//   };
+//   yoloWorker.postMessage({ type: 'init' });
+// }
 
+function initYoloWorker() {
+  if (yoloWorker) return; // บรรทัดนี้ห้ามหายนะ! ป้องกันการสร้าง Worker ซ้อนทับกัน
+  
+  yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
+  
   yoloWorker.onmessage = (e) => {
     if (e.data.type === 'status' && e.data.status === 'ready') {
       isYoloReady = true;
+      console.log("YOLO Worker Ready!");
     }
+    
     if (e.data.type === 'result') {
-      latestPhones = e.data.phones;
-      isProcessingYolo = false; // reply received — send the next frame
+      latestPhones = e.data.phones; // อัปเดตกล่อง
+      
+      // เพิ่มบรรทัดนี้:
+      if (latestPhones.length > 0) {
+          console.log("เจอโทรศัพท์แล้ว!!! พิกัด:", latestPhones);
+      }
+      
+      console.log("AI ตอบกลับมาแล้ว! ปลดล็อคส่งเฟรมต่อไป"); 
+      isProcessingYolo = false;
     }
   };
-
+  
   yoloWorker.postMessage({ type: 'init' });
 }
 
@@ -428,6 +455,18 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     hiddenCanvas.height = 640;
     workerCanvasCtx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
 
+    if (!canvasElement && videoElement.parentElement) {
+      videoElement.parentElement.style.position = 'relative';
+      canvasElement = document.createElement('canvas');
+      canvasElement.style.position = 'absolute';
+      canvasElement.style.top = '0';
+      canvasElement.style.left = '0';
+      canvasElement.style.width = '100%';
+      canvasElement.style.height = '100%';
+      canvasElement.style.pointerEvents = 'none';
+      videoElement.parentElement.appendChild(canvasElement);
+    }
+
     focusScore = 0;
     lastFaceSeenAt = Date.now();
     lastScoreTick = Date.now();
@@ -461,6 +500,10 @@ export function stopBrowserAI() {
     videoStream.getTracks().forEach((t) => t.stop());
     videoStream = null;
   }
+  if (canvasElement && canvasElement.parentNode) {
+    canvasElement.parentNode.removeChild(canvasElement);
+    canvasElement = null;
+  }
   if (videoElement) {
     videoElement.srcObject = null;
     videoElement = null;
@@ -478,11 +521,6 @@ export function stopBrowserAI() {
   cachedUserLandmarks = null;
   landmarkCacheTimestamp = 0;
   latestPhones = [];
-  // Reset the in-flight guard: if the session stopped while a frame was mid-
-  // inference the worker's reply never arrives, so leaving this true would
-  // wedge phone detection for the whole next session.
-  isProcessingYolo = false;
-  lastProcessTime = 0;
   setStatus('idle');
 }
 
