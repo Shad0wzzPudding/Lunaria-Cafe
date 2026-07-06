@@ -500,7 +500,13 @@ export default function CafeView() {
 
       if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
         const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
-        if (leaving) dispatch({ type: 'SERVE_CUSTOMER', payload: leaving.id });
+        if (leaving) {
+          // The messier the cafe, the likelier a customer gives up and leaves
+          // unserved (calm → always served; Midnight Incident → usually not).
+          const unservedChance = [0, 0.15, 0.4, 0.75][state.attention.chaosLevel] ?? 0;
+          const served = Math.random() >= unservedChance;
+          dispatch({ type: served ? 'SERVE_CUSTOMER' : 'REMOVE_CUSTOMER', payload: leaving.id });
+        }
       }
     }, 4000);
 

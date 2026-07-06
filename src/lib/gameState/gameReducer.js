@@ -731,6 +731,23 @@ export function gameReducer(state, action) {
     case 'REMOVE_CUSTOMER': {
       const customer  = state.npcs.customers.find((c) => c.id === action.payload);
       const remaining = state.npcs.customers.filter((c) => c.id !== action.payload);
+      const emoji     = customer?.emoji ?? '☕';
+      const isZen     = state.settings.focusViewMode === 'zen';
+
+      // A customer who leaves UNSERVED pays nothing, grants/costs no reputation,
+      // and doesn't count toward customers served — just a "left" notice.
+      if (action.type === 'REMOVE_CUSTOMER') {
+        let left = {
+          ...state,
+          npcs: { ...state.npcs, customers: remaining },
+          cafe: { ...state.cafe, currentCustomers: remaining.length },
+        };
+        if (customer && !isZen) {
+          left = { ...left, ui: pushPopup(left, { message: `${emoji} A customer left unserved…` }) };
+        }
+        return left;
+      }
+
       const baseCoins = customer ? 8 + Math.floor(Math.random() * 7) : 0;
       const coinsGain = state.attention.chaosLevel >= 3 ? 0
         : state.attention.chaosLevel >= 2 ? Math.floor(baseCoins * 0.25)  // stage 2: −75%
@@ -749,7 +766,6 @@ export function gameReducer(state, action) {
           if (Math.random() < takeBackChance) repGain = -1;
         }
       }
-      const emoji     = customer?.emoji ?? '☕';
 
       let next = {
         ...state,
@@ -765,7 +781,6 @@ export function gameReducer(state, action) {
           periodCoinsEarned:    state.stats.periodCoinsEarned    + coinsGain,
         },
       };
-      const isZen = state.settings.focusViewMode === 'zen';
       if (customer && !isZen) {
         // Always carry an explicit amount (even 0 at high chaos) so the coin
         // line shows "+0 coins" rather than being hidden.
