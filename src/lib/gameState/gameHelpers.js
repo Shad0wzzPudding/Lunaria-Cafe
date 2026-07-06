@@ -17,6 +17,37 @@ export function daysBetween(a, b) {
   return Math.round((parseLocalDate(a) - parseLocalDate(b)) / 86400000);
 }
 
+/**
+ * If the day/week has rolled over since these stats were last dated, returns a
+ * patch resetting the period counters (per resetPeriod) + normalizing the date
+ * fields; otherwise null. Shared by TICK_FOCUS (mid-session midnight crossing)
+ * and CHECK_DATE_RESET so both behave identically.
+ * @param {object} stats
+ * @param {string} now  current date YYYY-MM-DD (debug-aware)
+ */
+export function periodRolloverPatch(stats, now) {
+  const nowWeek     = getWeekStart(now);
+  const dayChanged  = stats.todayDate     != null && stats.todayDate     !== now;
+  const weekChanged = stats.weekStartDate != null && stats.weekStartDate !== nowWeek;
+  if (!dayChanged && !weekChanged) return null;
+
+  const resetPeriodStats = (stats.resetPeriod ?? 'daily') === 'weekly' ? weekChanged : dayChanged;
+  return {
+    todayDate:     dayChanged  ? now     : stats.todayDate,
+    weekStartDate: weekChanged ? nowWeek : stats.weekStartDate,
+    ...(weekChanged ? { weeklyData: [0, 0, 0, 0, 0, 0, 0] } : {}),
+    ...(resetPeriodStats ? {
+      todaySeconds:         0,
+      todayMinutes:         0,
+      periodSessions:       0,
+      periodFocusSeconds:   0,
+      periodCoinsEarned:    0,
+      periodCustomersTotal: 0,
+      periodChaosEvents:    0,
+    } : {}),
+  };
+}
+
 /** Returns the Monday of the week containing dateStr as a YYYY-MM-DD string. */
 export function getWeekStart(dateStr) {
   const d = parseLocalDate(dateStr);

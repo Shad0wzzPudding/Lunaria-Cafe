@@ -4,7 +4,7 @@ import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
 import { initialState } from './initialState';
-import { calcSessionMins, calcNewStreak, getDateString, getWeekStart } from './gameHelpers';
+import { calcSessionMins, calcNewStreak, getDateString, getWeekStart, periodRolloverPatch } from './gameHelpers';
 
 const REP_PENALTY_INTERVAL_MS = 1500;
 const USER_ABSENT_GRACE_MS    = 2000;
@@ -126,6 +126,15 @@ export function gameReducer(state, action) {
       };
     }
 
+    // Reset period stats when the day/week rolls over while the app stays open
+    // (load-time reset in mergeLoadedSave only fires on refresh). Debug-aware so
+    // the date simulator drives it too; mirrors the load-time reset logic.
+    case 'CHECK_DATE_RESET': {
+      const now = state.ui.debugDate ?? getDateString();
+      const patch = periodRolloverPatch(state.stats, now);
+      return patch ? { ...state, stats: { ...state.stats, ...patch } } : state;
+    }
+
     case 'SET_DAILY_GOAL': {
       const dailyGoal = Number(action.payload);
       if (!Number.isFinite(dailyGoal) || dailyGoal <= 0) return state;
@@ -226,9 +235,15 @@ export function gameReducer(state, action) {
       // All focus-time stats accumulate per tick so autosaves mid-session
       // capture real progress; session end adds nothing on top.
       const nextElapsed = state.focus.elapsed + 1;
-      const today = getDateString();
-      const dateStr = state.ui.debugDate ?? today;
-      const weeklyData = [...state.stats.weeklyData];
+      const dateStr = state.ui.debugDate ?? getDateString();
+
+      // If this tick crossed midnight (or into a new week), roll the period
+      // counters over first so the pre-midnight focus stays on the old date and
+      // this second is counted on the new one.
+      const rollPatch = periodRolloverPatch(state.stats, dateStr);
+      const s = rollPatch ? { ...state.stats, ...rollPatch } : state.stats;
+
+      const weeklyData = [...s.weeklyData];
       weeklyData[(new Date(dateStr).getDay() + 6) % 7] += 1;
       const minuteCrossed = nextElapsed % 60 === 0;
 
@@ -237,17 +252,18 @@ export function gameReducer(state, action) {
         focus: { ...state.focus, elapsed: nextElapsed },
         cafe:  { ...state.cafe,  currentCustomers: state.npcs.customers.length },
         stats: {
-          ...state.stats,
-          totalFocusSeconds:  state.stats.totalFocusSeconds  + 1,
-          todaySeconds:       state.stats.todaySeconds       + 1,
-          periodFocusSeconds: state.stats.periodFocusSeconds + 1,
-          todayDate:          today,
+          ...s,
+          totalFocusSeconds:  s.totalFocusSeconds  + 1,
+          todaySeconds:       s.todaySeconds       + 1,
+          periodFocusSeconds: s.periodFocusSeconds + 1,
+          todayDate:          dateStr,
+          weekStartDate:      getWeekStart(dateStr),
           weeklyData,
           ...(minuteCrossed
             ? {
-                totalMinutes:      state.stats.totalMinutes      + 1,
-                totalFocusMinutes: state.stats.totalFocusMinutes + 1,
-                todayMinutes:      state.stats.todayMinutes      + 1,
+                totalMinutes:      s.totalMinutes      + 1,
+                totalFocusMinutes: s.totalFocusMinutes + 1,
+                todayMinutes:      s.todayMinutes      + 1,
               }
             : {}),
         },

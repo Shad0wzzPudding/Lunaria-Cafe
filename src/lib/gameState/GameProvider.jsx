@@ -61,6 +61,9 @@ export function GameProvider({ children, userId }) {
         const hydrated = mergeLoadedSave(data, initialState);
         if (hydrated) {
           dispatch({ type: 'HYDRATE', payload: hydrated });
+          // Catch any day/week rollover that happened since the save was written
+          // and normalize the stored date fields.
+          dispatch({ type: 'CHECK_DATE_RESET' });
           if (hydrated.settings?.theme) {
             applyThemeSettings(hydrated.settings.theme, hydrated.cafe?.timeOfDay ?? 'day');
           }
@@ -85,6 +88,22 @@ export function GameProvider({ children, userId }) {
       cancelled = true;
     };
   }, [userId]);
+
+  // Reset period stats when the day/week rolls over while the app stays open
+  // (the load-time reset only fires on refresh). Runs on refocus and once a
+  // minute; works for guests too since it operates on in-memory state.
+  useEffect(() => {
+    const check = () => dispatch({ type: 'CHECK_DATE_RESET' });
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', check);
+    const id = setInterval(check, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', check);
+      clearInterval(id);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     if (!userId || !ready) return;
