@@ -161,9 +161,8 @@ export default function SessionSummary() {
                   className="fixed z-50 pointer-events-none select-none"
                   style={{ bottom: '28px', left: '300px', maxWidth: '320px' }}
                   initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  transition={{ duration: 0.3, ease: 'easeOut', delay: 0.9 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut', delay: 0.9 } }}
+                  exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
                 >
                   <p
                     className="font-body text-[12px] italic leading-snug text-rose-200/90"
