@@ -5,6 +5,15 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import RoundLeaderboard from './RoundLeaderboard';
 
+function formatClock(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+
 async function fetchActiveRound(roomId) {
   const { data, error } = await supabase
     .from('class_rounds')
@@ -22,11 +31,29 @@ export default function InstructorRoundControl({ roomId }) {
   const queryKey = ['class-round', roomId];
   const [timed, setTimed] = useState(true);
   const [minutes, setMinutes] = useState(25);
+  const [now, setNow] = useState(() => Date.now());
 
   const { data: round, isLoading } = useQuery({
     queryKey,
     queryFn: () => fetchActiveRound(roomId),
   });
+
+  // Tick once a second while a round is live, to drive the timer.
+  useEffect(() => {
+    if (!round) return undefined;
+    const tick = () => setNow(Date.now());
+    const t0 = setTimeout(tick, 0);
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(t0);
+      clearInterval(id);
+    };
+    // Restart only when the round identity changes, not on every refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round?.id]);
+
+  const elapsedSec = round ? Math.max(0, Math.floor((now - new Date(round.started_at).getTime()) / 1000)) : 0;
+  const totalSec = round?.duration_seconds ?? 0;
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
@@ -80,11 +107,11 @@ export default function InstructorRoundControl({ roomId }) {
             {round ? 'Live session running' : 'Live session'}
           </span>
           {round && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
               <Clock className="h-3.5 w-3.5" />
               {round.ends_at
-                ? `${Math.max(0, Math.round(round.duration_seconds / 60))} min · ends ${new Date(round.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                : 'open-ended'}
+                ? `${formatClock(Math.min(elapsedSec, totalSec))} / ${formatClock(totalSec)}`
+                : formatClock(elapsedSec)}
             </span>
           )}
         </div>

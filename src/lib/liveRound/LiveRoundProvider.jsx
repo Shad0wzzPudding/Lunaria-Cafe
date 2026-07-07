@@ -162,6 +162,11 @@ export function LiveRoundProvider({ children }) {
 
   const join = useCallback(
     async (round) => {
+      // Already in a (different) live session → must leave that one first.
+      if (begunRoundIdRef.current && begunRoundIdRef.current !== round.round_id) {
+        toast.error("You're already in a live session — leave it first.");
+        return;
+      }
       const go = async () => {
         try {
           await beginParticipation(round);
@@ -257,7 +262,8 @@ export function LiveRoundProvider({ children }) {
 
   // ── Global "join" toast for un-joined live rounds ────────────
   useEffect(() => {
-    if (!userId) return;
+    // While already in a session, don't prompt to join any other round.
+    if (!userId || currentRound) return;
     for (const round of activeRounds) {
       if (round.joined || toastedRef.current.has(round.round_id)) continue;
       toastedRef.current.add(round.round_id);
@@ -271,7 +277,7 @@ export function LiveRoundProvider({ children }) {
     for (const id of toastedRef.current) {
       if (!liveIds.has(id)) toastedRef.current.delete(id);
     }
-  }, [activeRounds, userId, join]);
+  }, [activeRounds, userId, join, currentRound]);
 
   // ── Report round-scoped progress on an interval ──────────────
   useEffect(() => {

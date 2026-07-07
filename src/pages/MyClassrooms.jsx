@@ -160,18 +160,24 @@ export default function MyClassrooms() {
                         {(() => {
                           const liveRound = roundByRoom.get(room.id);
                           if (!liveRound) return null;
-                          const isJoined =
+                          const inThis =
                             liveRound.joined || currentRound?.round_id === liveRound.round_id;
+                          // Already in a different session → can't join this one.
+                          const inOther = currentRound && currentRound.round_id !== liveRound.round_id;
                           return (
                             <Button
                               size="sm"
-                              variant={isJoined ? 'outline' : 'default'}
+                              variant={inThis ? 'outline' : 'default'}
                               className="h-8 w-full text-xs"
-                              disabled={isJoined}
+                              disabled={inThis || inOther}
                               onClick={() => join(liveRound)}
                             >
                               <Radio className="w-3 h-3 mr-1" />
-                              {isJoined ? 'In live session' : 'Join live session'}
+                              {inThis
+                                ? 'In live session'
+                                : inOther
+                                  ? 'In another session'
+                                  : 'Join live session'}
                             </Button>
                           );
                         })()}
