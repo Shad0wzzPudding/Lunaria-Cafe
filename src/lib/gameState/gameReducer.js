@@ -22,6 +22,13 @@ export function gameReducer(state, action) {
     case 'SET_PHASE':
       return { ...state, phase: action.payload };
 
+    case 'VIEW_LEADERBOARD':
+      return {
+        ...state,
+        phase: 'leaderboard',
+        ui: { ...state.ui, leaderboardRoom: action.payload },
+      };
+
     case 'SET_FOCUS_VIEW_MODE':
       return { ...state, settings: { ...state.settings, focusViewMode: action.payload } };
 
@@ -223,6 +230,8 @@ export function gameReducer(state, action) {
           // the streak only advances on a timer-completed session.
           totalSessions:   state.stats.totalSessions  + (sessionMins > 0 ? 1 : 0),
           periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
+          // Even a manual/failed end reflects how focused the member just was.
+          ...(sessionMins > 0 ? { lastFocusScore: Math.round(state.attention.score) } : {}),
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },
@@ -299,6 +308,7 @@ export function gameReducer(state, action) {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
           periodSessions:  state.stats.periodSessions + 1,
+          lastFocusScore:  Math.round(state.attention.score),
           currentStreak:   newStreak,
           bestStreak:      Math.max(state.stats.bestStreak, newStreak),
           lapsedStreak:    0,

@@ -4,7 +4,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy } from 'lucide-react';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
 async function fetchClassrooms() {
@@ -151,14 +151,29 @@ export default function MyClassrooms() {
                         </Button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setLeavingId(room.id)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                      >
-                        <LogOut className="w-3 h-3" />
-                        Leave
-                      </button>
+                      <div className="flex items-center justify-between gap-2">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() =>
+                            dispatch({
+                              type: 'VIEW_LEADERBOARD',
+                              payload: { id: room.id, name: room.name },
+                            })
+                          }
+                        >
+                          <Trophy className="w-3 h-3 mr-1" />
+                          Leaderboard
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setLeavingId(room.id)}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                        >
+                          <LogOut className="w-3 h-3" />
+                          Leave
+                        </button>
+                      </div>
                     )}
                   </RoomCard>
                 ))

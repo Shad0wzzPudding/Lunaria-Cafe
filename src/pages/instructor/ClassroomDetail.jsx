@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, UserMinus, Clock, Flame, Coins, Star } from 'lucide-react';
+import { ArrowLeft, Mail, UserMinus, Clock, Flame, Coins, Star, Users, Trophy } from 'lucide-react';
 import { INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
+import Leaderboard from '@/components/leaderboard/Leaderboard';
 
 async function fetchRoster(roomId) {
   const { data, error } = await supabase.rpc('get_classroom_stats', { _classroom_id: roomId });
@@ -100,6 +101,7 @@ function StudentRow({ student, onRemove, removePending }) {
 
 export default function ClassroomDetail({ roomId, onBack }) {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState('students'); // 'students' | 'leaderboard'
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMsg, setInviteMsg] = useState(null); // { ok, text }
 
@@ -152,6 +154,31 @@ export default function ClassroomDetail({ roomId, onBack }) {
         All classrooms
       </button>
 
+      <div className="flex gap-1.5">
+        {[
+          { key: 'students', label: 'Students', icon: Users },
+          { key: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              tab === key
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card/60 text-muted-foreground hover:text-foreground border border-border/40'
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'leaderboard' ? (
+        <Leaderboard roomId={roomId} />
+      ) : (
+      <>
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -201,6 +228,8 @@ export default function ClassroomDetail({ roomId, onBack }) {
             />
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -112,6 +112,7 @@ export const initialState = {
     lapsedStreak: 0,
     lastSessionDate: null,
     totalFocusMinutes: 0,
+    lastFocusScore: null,
     coinsEarned: 0,
     customersTotal: 0,
     currentStreak: 0,
@@ -134,6 +135,7 @@ export const initialState = {
     popups: [],
     coinFloat: null,
     debugDate: null,
+    leaderboardRoom: null, // { id, name } — which classroom's board is open
   },
   pets: {
     owned: [],

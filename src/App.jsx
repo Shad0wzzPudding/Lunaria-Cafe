@@ -14,6 +14,7 @@ import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import MyClassrooms from '@/pages/MyClassrooms'
+import LeaderboardPage from '@/pages/LeaderboardPage'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
@@ -141,6 +142,7 @@ function GameRouter() {
       {phase === 'menu'       && <MainMenu />}
       {phase === 'stats'      && <Statistics />}
       {phase === 'classrooms' && <MyClassrooms />}
+      {phase === 'leaderboard' && <LeaderboardPage />}
       {phase === 'settings' && <GameSettings />}
 
       {debugOpen && <DebugPanel onClose={() => setDebugOpen(false)} />}
