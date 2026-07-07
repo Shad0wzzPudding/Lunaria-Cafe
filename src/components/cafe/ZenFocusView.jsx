@@ -31,9 +31,13 @@ export default function ZenFocusView({ state }) {
   const [picture] = useState(() => ZEN_PICTURES[Math.floor(Math.random() * ZEN_PICTURES.length)]);
   const [tip]     = useState(() => picture.tips[Math.floor(Math.random() * picture.tips.length)]);
 
+  // In a live session show reputation earned THIS session (held out of lifetime).
+  const inRound = state.focus.roundControlled;
+  const sessionRep = state.focus.sessionRep ?? 0;
+
   const stats = [
     { icon: Coins,    label: 'Coins',       value: state.coins ?? 0,                                                    color: '#f0c674' },
-    { icon: Heart,    label: 'Reputation',  value: `${state.reputation ?? 0}%`,                                         color: '#f0a0b8' },
+    { icon: Heart,    label: inRound ? 'Session Rep' : 'Reputation', value: inRound ? `${sessionRep >= 0 ? '+' : ''}${sessionRep}` : `${state.reputation ?? 0}%`, color: '#f0a0b8' },
     { icon: Users,    label: 'Customers',   value: `${state.cafe.currentCustomers ?? 0}/${state.cafe.maxCustomers ?? 8}`, color: '#9ec8e8' },
     { icon: Sparkles, label: 'Focus Score', value: state.attention.score ?? 100,                                         color: chaos.color },
   ];

@@ -15,6 +15,7 @@ import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import MyClassrooms from '@/pages/MyClassrooms'
 import LeaderboardPage from '@/pages/LeaderboardPage'
+import { LiveRoundProvider } from '@/lib/liveRound/LiveRoundProvider'
 import GameSettings from '@/pages/GameSettings'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
@@ -182,11 +183,13 @@ function AppShell() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <GameProvider userId={isGuest ? null : user?.id}>
-        <main className="dark min-h-screen relative">
-          <GameRouter />
-        </main>
+        <LiveRoundProvider>
+          <main className="dark min-h-screen relative">
+            <GameRouter />
+          </main>
+        </LiveRoundProvider>
       </GameProvider>
-      <div className="dark"><Toaster theme="dark" /></div>
+      <div className="dark"><Toaster theme="dark" expand /></div>
     </QueryClientProvider>
   )
 }

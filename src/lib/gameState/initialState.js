@@ -25,6 +25,9 @@ export const initialState = {
     duration: 25 * 60,
     mode: 'pomodoro',
     repPenaltyLastAt: null,
+    roundControlled: false, // true while a teacher's live round drives this session
+    endsAt: null,           // wall-clock ms when a timed round ends (null = open-ended)
+    sessionRep: 0,          // reputation earned THIS live session (held out of lifetime)
   },
   attention: {
     score: 70,

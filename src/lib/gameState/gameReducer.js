@@ -164,6 +164,10 @@ export function gameReducer(state, action) {
           ...state.focus,
           status: 'active',
           elapsed: 0,
+          duration: action.payload?.durationSeconds ?? state.focus.duration,
+          roundControlled: action.payload?.roundControlled ?? false,
+          endsAt: action.payload?.endsAt ?? null,
+          sessionRep: 0,
           coinsAtStart: state.coins,
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
@@ -192,7 +196,7 @@ export function gameReducer(state, action) {
       return { ...state, focus: { ...state.focus, status: 'active' } };
 
     case 'RESET_FOCUS':
-      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0 } };
+      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null } };
 
     case 'END_FOCUS': {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
@@ -204,8 +208,15 @@ export function gameReducer(state, action) {
       const sessionMins = calcSessionMins(state.focus.elapsed, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
       const failed      = state.focus.status === 'distracted';
-      // A failed session always costs 3 reputation, whatever the chaos stage.
-      const reputation  = failed ? Math.max(0, state.reputation - 3) : state.reputation;
+      const isRoundEnd  = state.focus.roundControlled;
+      // In a live session the fail penalty lands on session rep (not lifetime),
+      // then lifetime gets the 10% diligence reward. Solo sessions keep the
+      // classic behaviour: a failed session costs 3 lifetime reputation.
+      const eSessionRep   = (state.focus.sessionRep ?? 0) - (isRoundEnd && failed ? 3 : 0);
+      const eDiligenceRep = isRoundEnd ? Math.max(0, Math.floor(eSessionRep * 0.1)) : 0;
+      const reputation    = isRoundEnd
+        ? Math.min(100, state.reputation + eDiligenceRep)
+        : (failed ? Math.max(0, state.reputation - 3) : state.reputation);
 
       return {
         ...state,
@@ -222,8 +233,9 @@ export function gameReducer(state, action) {
           // Streak never changes on a manual/failed end — before === after.
           streakBefore: state.stats.currentStreak,
           streakAfter:  state.stats.currentStreak,
+          ...(isRoundEnd ? { diligenceRep: eDiligenceRep, sessionRep: eSessionRep } : {}),
         },
-        focus: { ...state.focus, status: 'idle', elapsed: 0 },
+        focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, sessionRep: 0 },
         stats: {
           ...state.stats,
           // Session counts toward totals, but streak fields are left untouched —
@@ -289,21 +301,30 @@ export function gameReducer(state, action) {
       const today       = state.ui.debugDate ?? getDateString();
       const newStreak   = calcNewStreak(state.stats.currentStreak, state.stats.lastSessionDate, today);
 
+      // Live session: lifetime rep gains 10% (floored) of the session rep held.
+      const cSessionRep    = state.focus.sessionRep ?? 0;
+      const cDiligenceRep  = state.focus.roundControlled ? Math.max(0, Math.floor(cSessionRep * 0.1)) : 0;
+      const cReputation    = Math.min(100, state.reputation + cDiligenceRep);
+
       return {
         ...state,
         phase: 'management',
+        reputation: cReputation,
         lastSession: {
           durationSeconds: state.focus.elapsed,
           durationMinutes: sessionMins,
           coinsEarned,
-          reputationGain:  state.reputation - (state.focus.reputationAtStart ?? state.reputation),
+          reputationGain:  cReputation - (state.focus.reputationAtStart ?? cReputation),
           attentionScore:  Math.round(state.attention.score),
           distractions:    state.attention.sessionDistractions,
           endReason:       'completed',
           streakBefore:    state.stats.currentStreak,
           streakAfter:     newStreak,
+          ...(state.focus.roundControlled
+            ? { diligenceRep: cDiligenceRep, sessionRep: cSessionRep }
+            : {}),
         },
-        focus: { ...state.focus, status: 'completed' },
+        focus: { ...state.focus, status: 'completed', roundControlled: false, endsAt: null, sessionRep: 0 },
         stats: {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
@@ -793,12 +814,20 @@ export function gameReducer(state, action) {
         }
       }
 
+      // In a live session, reputation is HELD as session rep (out of lifetime);
+      // lifetime only receives a 10% diligence reward when the session ends.
+      const isRoundServe = state.focus.roundControlled;
       let next = {
         ...state,
         npcs:       { ...state.npcs, customers: remaining },
         cafe:       { ...state.cafe, currentCustomers: remaining.length },
         coins:      state.coins + coinsGain,
-        reputation: Math.max(0, Math.min(100, state.reputation + repGain)),
+        reputation: isRoundServe
+          ? state.reputation
+          : Math.max(0, Math.min(100, state.reputation + repGain)),
+        focus: isRoundServe
+          ? { ...state.focus, sessionRep: (state.focus.sessionRep ?? 0) + repGain }
+          : state.focus,
         stats: {
           ...state.stats,
           customersTotal:       state.stats.customersTotal       + 1,

@@ -25,6 +25,10 @@ export default function CafeHUD() {
     return () => clearTimeout(t);
   }, [state.ui.coinFloat, dispatch]);
   const chaos = getChaosStage(state.attention.score);
+  // In a teacher-controlled live session, show the reputation earned THIS
+  // session (starts at 0) instead of lifetime reputation.
+  const inRound = state.focus.roundControlled;
+  const sessionRep = state.focus.sessionRep ?? 0;
   const aiStatus = getConnectionStatus();
   const sourceLabel =
     state.attention.source === 'browser'
@@ -61,10 +65,14 @@ export default function CafeHUD() {
       </span>
       <StatPill
         icon={Heart}
-        value={`${state.reputation}%`}
+        value={inRound ? `${sessionRep >= 0 ? '+' : ''}${sessionRep}` : `${state.reputation}%`}
         colorClass="text-rose-300"
         iconColor="#f0a0b8"
-        title="Cafe reputation — goes up when you serve customers and complete focus"
+        title={
+          inRound
+            ? 'Reputation earned this live session'
+            : 'Cafe reputation — goes up when you serve customers and complete focus'
+        }
       />
       <StatPill
         icon={Users}

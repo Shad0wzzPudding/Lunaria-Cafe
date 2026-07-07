@@ -1,12 +1,14 @@
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
+import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { Button } from '@/components/ui/button';
-import { Play, BarChart3, Settings, BookOpen, Users } from 'lucide-react';
+import { Play, BarChart3, Settings, BookOpen, Users, Radio } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
   const { dispatch, logout } = useGame();
   const { user, profile, isGuest, chooseRole } = useAuth();
+  const { currentRound } = useLiveRound();
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
   const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
 
@@ -64,6 +66,12 @@ export default function MainMenu() {
             <p className="font-pixel text-sm text-white/55 drop-shadow-md">
               A tiny magical world quietly waiting beside you.
             </p>
+            {currentRound && (
+              <p className="font-pixel text-xs text-emerald-300 drop-shadow-md flex items-center gap-1.5 pt-1">
+                <Radio className="w-3.5 h-3.5" />
+                You're in the live-session of {currentRound.classroom_name}!
+              </p>
+            )}
           </div>
 
           {/* Buttons */}

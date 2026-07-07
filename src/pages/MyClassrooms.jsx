@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
+import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy } from 'lucide-react';
+import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy, Radio } from 'lucide-react';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
 async function fetchClassrooms() {
@@ -34,7 +35,11 @@ function RoomCard({ room, children }) {
 export default function MyClassrooms() {
   const { dispatch } = useGame();
   const { user } = useAuth();
+  const { activeRounds, currentRound, join } = useLiveRound();
   const queryClient = useQueryClient();
+
+  // Map classroom_id → live round, so each enrolled card can offer "Join".
+  const roundByRoom = new Map((activeRounds ?? []).map((r) => [r.classroom_id, r]));
 
   const [joiningId, setJoiningId] = useState(null);
   const [pin, setPin] = useState('');
@@ -151,28 +156,48 @@ export default function MyClassrooms() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() =>
-                            dispatch({
-                              type: 'VIEW_LEADERBOARD',
-                              payload: { id: room.id, name: room.name },
-                            })
-                          }
-                        >
-                          <Trophy className="w-3 h-3 mr-1" />
-                          Leaderboard
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => setLeavingId(room.id)}
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-                        >
-                          <LogOut className="w-3 h-3" />
-                          Leave
-                        </button>
+                      <div className="space-y-2">
+                        {(() => {
+                          const liveRound = roundByRoom.get(room.id);
+                          if (!liveRound) return null;
+                          const isJoined =
+                            liveRound.joined || currentRound?.round_id === liveRound.round_id;
+                          return (
+                            <Button
+                              size="sm"
+                              variant={isJoined ? 'outline' : 'default'}
+                              className="h-8 w-full text-xs"
+                              disabled={isJoined}
+                              onClick={() => join(liveRound)}
+                            >
+                              <Radio className="w-3 h-3 mr-1" />
+                              {isJoined ? 'In live session' : 'Join live session'}
+                            </Button>
+                          );
+                        })()}
+                        <div className="flex items-center justify-between gap-2">
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() =>
+                              dispatch({
+                                type: 'VIEW_LEADERBOARD',
+                                payload: { id: room.id, name: room.name },
+                              })
+                            }
+                          >
+                            <Trophy className="w-3 h-3 mr-1" />
+                            Leaderboard
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => setLeavingId(room.id)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                          >
+                            <LogOut className="w-3 h-3" />
+                            Leave
+                          </button>
+                        </div>
                       </div>
                     )}
                   </RoomCard>

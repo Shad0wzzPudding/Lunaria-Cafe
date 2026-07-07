@@ -21,7 +21,7 @@ import LowScoreWarning from '@/components/focus/LowScoreWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2, Radio } from 'lucide-react';
 import StatsCharts from '@/components/stats/StatsCharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
@@ -30,6 +30,8 @@ import PetShopPanel from '@/components/cafe/PetShopPanel';
 import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ExitSessionPrompt from '@/components/cafe/ExitSessionPrompt';
 import ZenFocusView from '@/components/cafe/ZenFocusView';
+import RoundOverlay from '@/components/liveRound/RoundOverlay';
+import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { ZEN_PICTURES } from '@/components/cafe/zenPictures';
 import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
@@ -384,6 +386,8 @@ function BgModePanel({ state, dispatch, onClose }) {
 
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
+  const { currentRound, leave: leaveRound } = useLiveRound();
+  const inRound = state.focus.roundControlled; // teacher-controlled live session
   const isFocusing = state.focus.status === 'active' || state.focus.status === 'paused';
   const isPaused = state.focus.status === 'paused';
 
@@ -573,6 +577,8 @@ export default function CafeView() {
   // Abandon any running session and return to the main menu. RESET_FOCUS
   // records nothing, so no streak is earned (coins/focus-time already banked).
   const exitToMenu = () => {
+    // Leaving to the menu mid-round means opting out of the live session.
+    if (state.focus.roundControlled) leaveRound();
     if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
     popupRef.current = null;
     toast.dismiss();
@@ -925,6 +931,7 @@ export default function CafeView() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: isImmersive ? shadeHex : 'var(--background)' }}>
+      <RoundOverlay />
       {isFocusing && <PhoneWarning />}
       {isFocusing && <LowScoreWarning />}
       <header
@@ -1180,14 +1187,26 @@ export default function CafeView() {
                   <Sofa className="w-3.5 h-3.5" />
                   Decorate
                 </Button>
-                <Button
-                  onClick={startFocusSession}
-                  size="sm"
-                  className="gap-2 font-pixel text-xs"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Start Focus
-                </Button>
+                {currentRound ? (
+                  <Button
+                    size="sm"
+                    className="gap-2 font-pixel text-xs"
+                    disabled
+                    title="Your instructor controls this live session"
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    Teacher-controlled
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={startFocusSession}
+                    size="sm"
+                    className="gap-2 font-pixel text-xs"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Start Focus
+                  </Button>
+                )}
               </>
             )}
             {isFocusing && (
@@ -1241,15 +1260,28 @@ export default function CafeView() {
                     Resume
                   </Button>
                 )}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2 font-pixel text-xs"
-                  onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
-                >
-                  <Square className="w-3.5 h-3.5" />
-                  Stop Focus
-                </Button>
+                {inRound ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2 font-pixel text-xs"
+                    onClick={() => leaveRound()}
+                    title="Leave the teacher's live session"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    Leave session
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2 font-pixel text-xs"
+                    onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    Stop Focus
+                  </Button>
+                )}
               </>
             )}
           </div>

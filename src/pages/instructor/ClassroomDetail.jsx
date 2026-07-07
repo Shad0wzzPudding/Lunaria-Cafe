@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Mail, UserMinus, Clock, Flame, Coins, Star, Users, Trophy } from 'lucide-react';
 import { INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
 import Leaderboard from '@/components/leaderboard/Leaderboard';
+import InstructorRoundControl from '@/components/liveRound/InstructorRoundControl';
 
 async function fetchRoster(roomId) {
   const { data, error } = await supabase.rpc('get_classroom_stats', { _classroom_id: roomId });
@@ -153,6 +154,8 @@ export default function ClassroomDetail({ roomId, onBack }) {
         <ArrowLeft className="h-3.5 w-3.5" />
         All classrooms
       </button>
+
+      <InstructorRoundControl roomId={roomId} />
 
       <div className="flex gap-1.5">
         {[

@@ -201,9 +201,13 @@ export default function SessionSummary() {
             )}
           </AnimatePresence>
 
+            {/* Card + side notes. The wrapper keeps the card's width so the
+                card stays screen-centred; the notes float beside it (absolute)
+                without shifting the summary. */}
+            <div className="relative w-full max-w-xs">
             {/* Card — everything inside here */}
             <motion.div
-              className="w-full max-w-xs rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl"
+              className="w-full rounded-2xl border border-violet-500/30 bg-card/95 backdrop-blur-md p-6 space-y-5 shadow-2xl"
               style={getFocusPanelStyle()}
               animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : {}}
               transition={{ duration: 0.4 }}
@@ -243,15 +247,6 @@ export default function SessionSummary() {
                   color={s.distractions > 0 ? "text-orange-400" : "text-muted-foreground"} />
               </div>
 
-              {/* No-streak notice — only when the timer didn't finish */}
-              {noStreak && (
-                <div className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2">
-                  <p className="font-body text-[11px] text-amber-300 text-center leading-snug">
-                    No streak for this one — the session ended before the timer finished.
-                  </p>
-                </div>
-              )}
-
               {/* Button */}
               <Button
                 className="w-full font-pixel text-xs"
@@ -260,6 +255,31 @@ export default function SessionSummary() {
                 Back to Cafe
               </Button>
             </motion.div>
+
+            {/* After-session notes — beside the card, each in its own box */}
+            {(s.diligenceRep >= 1 || noStreak) && (
+              <div
+                className="absolute left-full top-0 ml-3 w-56 space-y-2"
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="font-pixel text-xs text-white/90 px-1">After-Session notes~</h3>
+                {s.diligenceRep >= 1 && (
+                  <div className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2">
+                    <p className="font-body text-[11px] text-rose-200 leading-snug">
+                      You earned {s.sessionRep} session rep — +{s.diligenceRep} Rep added to your lifetime for your diligence! 🌟
+                    </p>
+                  </div>
+                )}
+                {noStreak && (
+                  <div className="rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-2">
+                    <p className="font-body text-[11px] text-amber-300 leading-snug">
+                      No streak for this one — the session ended before the timer finished.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            </div>
           </motion.div>
         </>
       )}
