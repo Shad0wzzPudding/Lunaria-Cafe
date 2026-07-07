@@ -1,3 +1,6 @@
+// NOT USED — the purpose of this file is just a backup of the original
+// before Claude's edit. The live version lives at src/lib/ai/yoloWorker.js.
+
 import * as ort from 'onnxruntime-web';
 
 // บังคับให้โหลด WASM จาก CDN ป้องกันปัญหาตอน Deploy ลง Vercel

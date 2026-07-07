@@ -1,3 +1,6 @@
+// NOT USED — the purpose of this file is just a backup of the original
+// before Claude's edit. The live version lives at src/lib/ai/browserAI.js.
+
 /**
  * Browser-native AI attention tracking using MediaPipe Face Landmarker
  * and YOLOv8 ONNX (via Web Worker) for phone detection.
