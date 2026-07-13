@@ -54,8 +54,13 @@ function ensureMusicEl() {
     musicEl = new Audio();
     musicEl.preload = 'auto';
     musicEl.volume = 0;
-    // Only fires in shuffle mode — a pinned track has loop = true.
-    musicEl.addEventListener('ended', () => loadTrack(pickNextTrack()));
+    // Only fires in shuffle mode — a pinned track has loop = true. Re-apply the
+    // whole mix afterwards so the next track plays at ITS gain; loading a track
+    // alone would leave the previous track's volume on the element.
+    musicEl.addEventListener('ended', () => {
+      loadTrack(pickNextTrack());
+      if (lastAudio) applyAudio(lastAudio, lastPhase);
+    });
   }
   return musicEl;
 }
@@ -75,12 +80,27 @@ function pickNextTrack() {
   return next;
 }
 
+/**
+ * A pinned track index we can trust. A save can outlive the track list (a
+ * removed or reordered track), and MUSIC_TRACKS[bad].src would throw inside
+ * the render effect that drives the audio — so anything unknown falls back to
+ * the first track.
+ */
+function trackIndex(value) {
+  const i = Number(value);
+  return Number.isInteger(i) && i >= 0 && i < MUSIC_TRACKS.length ? i : 0;
+}
+
+/**
+ * Point the element at a track. Deliberately does NOT start playback — the
+ * caller follows up with applyAudio(), which is the single place that decides
+ * volume and play/pause from the current settings.
+ */
 function loadTrack(index) {
   const el = ensureMusicEl();
   if (musicIndex === index) return;
   musicIndex = index;
   el.src = MUSIC_TRACKS[index].src;
-  if (el.volume > 0.001) el.play().catch(() => {});
 }
 
 function playTrack(el, volume, enabled = true) {
@@ -106,11 +126,12 @@ function applyAudio(audio, phase) {
   playTrack(amb.chatter, ambVol * AMBIENCE.chatter.gain, audio.chatterEnabled);
 
   const shuffle = audio.musicTrack === 'shuffle';
+  const pinned = shuffle ? -1 : trackIndex(audio.musicTrack);
   music.loop = !shuffle;
   if (musicIndex < 0) {
-    loadTrack(shuffle ? Math.floor(Math.random() * MUSIC_TRACKS.length) : Number(audio.musicTrack) || 0);
-  } else if (!shuffle && musicIndex !== Number(audio.musicTrack)) {
-    loadTrack(Number(audio.musicTrack));
+    loadTrack(shuffle ? Math.floor(Math.random() * MUSIC_TRACKS.length) : pinned);
+  } else if (!shuffle && musicIndex !== pinned) {
+    loadTrack(pinned);
   }
   playTrack(music, master * audio.musicVolume * MUSIC_TRACKS[musicIndex].gain, audio.musicEnabled);
 }
@@ -213,14 +234,3 @@ export async function playDancePadNote(key = '', sfxVolume = 0.7, masterVolume =
   }
 }
 
-export function stopAllCafeAudio() {
-  if (musicEl) {
-    musicEl.pause();
-    musicEl.currentTime = 0;
-  }
-  if (!ambience) return;
-  Object.values(ambience).forEach((el) => {
-    el.pause();
-    el.currentTime = 0;
-  });
-}
