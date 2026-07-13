@@ -57,6 +57,64 @@ let latestPhones = []; // รับข้อมูลจาก Worker
 let latestWarning = '';
 let isUserFocusedGlobal = true;
 
+// A confirmed phone drops the focus score and starts the shared 30s danger
+// clock, so one noisy frame must not be able to trigger it: the phone has to be
+// seen in PHONE_CONFIRM_FRAMES detections in a row, and once counted it survives
+// PHONE_RELEASE_FRAMES misses before it clears (so a single dropped detection
+// mid-scroll doesn't flicker the penalty off and on).
+//
+// Counted in FRAMES, not milliseconds. Detections only arrive every
+// PROCESS_INTERVAL_MS (800ms), and every 2000ms while the tab is hidden, so any
+// wall-clock window below that is either meaningless or silently means something
+// different in the two modes — an earlier ms-based version of this had a 700ms
+// release that could never survive a single 800ms frame gap.
+//
+// Note this only defends against FLICKER. A false positive that sits still in
+// frame (headphones on the desk) is caught by the argmax + threshold in
+// yoloWorker, not here.
+const PHONE_CONFIRM_FRAMES = 2;
+const PHONE_RELEASE_FRAMES = 2;
+// Streaks only advance on fresh results, so if results stop arriving entirely
+// (stalled inference, a wedged worker) a confirmed phone would otherwise never
+// clear: the score keeps draining and the 30s danger clock runs the session to
+// failure with no way out. Detections normally arrive every 800ms (2000ms when
+// hidden), so silence this long means the pipeline is broken, not that the user
+// is still holding a phone — give them the benefit of the doubt.
+const PHONE_STALE_MS = 5000;
+// Detections are only fresh when the worker replies; the loop re-reads the same
+// latestPhones buffer in between. Counting those repeats would let ONE inference
+// confirm a phone all by itself, so the streaks only advance on a new result.
+let phoneResultSeq = 0;    // bumped by the worker's onmessage
+let phoneSeenSeq = -1;     // last result this state machine consumed
+let phoneLastResultAt = 0; // when that result arrived
+let phoneHitStreak = 0;
+let phoneMissStreak = 0;
+let phoneConfirmed = false;
+
+function confirmPhone(rawHit, now) {
+  // Nothing new to judge — the loop is re-reading the same latestPhones buffer.
+  if (phoneSeenSeq === phoneResultSeq) {
+    if (phoneConfirmed && phoneLastResultAt && now - phoneLastResultAt > PHONE_STALE_MS) {
+      phoneHitStreak = 0;
+      phoneMissStreak = 0;
+      phoneConfirmed = false;
+    }
+    return phoneConfirmed;
+  }
+  phoneSeenSeq = phoneResultSeq;
+
+  if (rawHit) {
+    phoneMissStreak = 0;
+    phoneHitStreak += 1;
+    if (phoneHitStreak >= PHONE_CONFIRM_FRAMES) phoneConfirmed = true;
+  } else {
+    phoneHitStreak = 0;
+    phoneMissStreak += 1;
+    if (phoneMissStreak >= PHONE_RELEASE_FRAMES) phoneConfirmed = false;
+  }
+  return phoneConfirmed;
+}
+
 let _onEvent = null;
 let _onStatusChange = null;
 let _status = 'idle';
@@ -103,6 +161,8 @@ function initYoloWorker() {
     }
     if (e.data.type === 'result') {
       latestPhones = e.data.phones;
+      phoneResultSeq += 1; // a genuinely new detection for confirmPhone to judge
+      phoneLastResultAt = Date.now();
       isProcessingYolo = false; // reply received — send the next frame
     }
   };
@@ -160,8 +220,8 @@ function verifyUserPresence(currentLandmarks) {
 }
 
 function processDetections(faceResult, phones) {
-  const isPhoneDetected = phones.length > 0;
   const now = Date.now();
+  const isPhoneDetected = confirmPhone(phones.length > 0, now);
 
   const hasFace = faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0;
   const isGazeFocused = hasFace ? checkGazeFocused(faceResult.faceBlendshapes) : true;
@@ -333,7 +393,10 @@ function renderLoop() {
   } else if (isUserFocusedGlobal) {
     badgeText = " FOCUSED ";
     badgeColor = 'rgba(34, 139, 34, 0.9)';
-  } else if (latestPhones.length > 0) {
+  } else if (phoneConfirmed) {
+    // The confirmed state, not the raw box — otherwise the badge accuses the
+    // user on a single unconfirmed frame that costs them nothing. (The boxes
+    // below still draw raw hits with their score, which is what you tune against.)
     badgeText = " DISTRACTED ";
     badgeColor = 'rgba(200, 0, 0, 0.9)';
   } else {
@@ -478,6 +541,14 @@ export function stopBrowserAI() {
   cachedUserLandmarks = null;
   landmarkCacheTimestamp = 0;
   latestPhones = [];
+  // Clear the confirmation streaks too, or a phone held at the end of one
+  // session stays "confirmed" into the start of the next.
+  phoneResultSeq = 0;
+  phoneSeenSeq = -1;
+  phoneLastResultAt = 0;
+  phoneHitStreak = 0;
+  phoneMissStreak = 0;
+  phoneConfirmed = false;
   // Reset the in-flight guard: if the session stopped while a frame was mid-
   // inference the worker's reply never arrives, so leaving this true would
   // wedge phone detection for the whole next session.

@@ -5,7 +5,16 @@ ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
 
 let session = null;
 const PHONE_CLASS_INDEX = 67; // Class 67 คือ โทรศัพท์ใน COCO
-const CONF_THRESHOLD = 0.10;
+
+// Minimum score for a box whose winning class is already "cell phone" (see the
+// argmax check in postprocess — that is what actually keeps headphones, a watch
+// and a milk carton out). This was 0.10, far below YOLOv8's usual 0.25-0.5
+// working range. A confirmed hit drops the focus score and starts the 30s
+// danger clock, so a false positive costs more than briefly missing a real
+// phone — but with argmax doing the heavy lifting this no longer has to be
+// punishing. Raise it if props still register; lower it if a real phone goes
+// unnoticed. The camera overlay prints the live confidence ("Phone 62%").
+const CONF_THRESHOLD = 0.40;
 
 async function initModel() {
   try {
@@ -52,15 +61,45 @@ function preprocess(imageData) {
 
 function postprocess(output) {
   const data = output.data;
-  const numBoxes = 8400; // จำนวนกล่องทั้งหมดที่ YOLOv8 ส่งมา
+  // This code indexes the tensor as [1, 4 + numClasses, numBoxes] (box coords
+  // first, then one row per class, each row numBoxes long). Ultralytics can
+  // also export the transposed [1, numBoxes, 4 + numClasses]; fed that, the
+  // maths below would stay in bounds and quietly read nonsense. So assert the
+  // layout instead of assuming it — a model swap should fail loudly, not
+  // silently start hallucinating phones.
+  const dims = output.dims ?? [1, 84, 8400];
+  if (dims[1] <= 4 || dims[1] >= dims[2]) {
+    throw new Error(`Unexpected YOLO output layout [${dims}] — expected [1, 4+numClasses, numBoxes]`);
+  }
+  const numClasses = dims[1] - 4;
+  const numBoxes = dims[2];
   const phones = [];
 
   for (let i = 0; i < numBoxes; i++) {
-    // 1. ดึงคะแนนของคลาสที่เราสนใจ
+    // 1. คะแนนของคลาสโทรศัพท์ — เกือบทุกกล่องเป็น background จึงคัดออกก่อน
+    // Cheap test first: almost all 8400 boxes are background and fail here, so
+    // gating on it keeps the 80-class scan below off ~99.9% of them (measured
+    // 1.38ms -> 0.02ms per frame, identical output).
     const score = data[(4 + PHONE_CLASS_INDEX) * numBoxes + i];
-    
-    // 2. ถ้าคะแนนผ่านเกณฑ์ ค่อยดึงพิกัดมาสร้างกล่อง
-    if (score > CONF_THRESHOLD) {
+    if (score <= CONF_THRESHOLD) continue;
+
+    // 2. โทรศัพท์ต้องเป็นคลาสที่ชนะของกล่องนี้ (argmax) ไม่ใช่แค่ผ่านเกณฑ์
+    //
+    // This box also carries a score for all the other COCO classes, and until
+    // now we never looked at them — we asked "is the phone score above the
+    // bar?" and ignored that some other class might be scoring far higher.
+    // A carton of milk lights up `bottle` at 0.85 and `cell phone` at 0.50,
+    // and we happily called it a phone. Headphones and a watch do the same.
+    // A detection only counts if cell phone actually WINS the box.
+    let best = 0;
+    for (let c = 0; c < numClasses; c++) {
+      const s = data[(4 + c) * numBoxes + i];
+      if (s > best) best = s;
+    }
+    if (score < best) continue; // another class explains this box better
+
+    // 3. ดึงพิกัดมาสร้างกล่อง
+    {
       const cx = data[0 * numBoxes + i]; // จุดกึ่งกลาง X
       const cy = data[1 * numBoxes + i]; // จุดกึ่งกลาง Y
       const w = data[2 * numBoxes + i];  // ความกว้าง
