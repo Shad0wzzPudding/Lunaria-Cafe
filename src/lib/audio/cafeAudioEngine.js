@@ -1,64 +1,86 @@
-/** Royalty-free previews from Mixkit (https://mixkit.co) */
-const SOURCES = {
-  music: 'https://assets.mixkit.co/music/preview/mixkit-sparse-lazy-day-168.mp3',
-  rain: 'https://assets.mixkit.co/sfx/preview/mixkit-light-rain-loop-1249.mp3',
-  fire: 'https://assets.mixkit.co/sfx/preview/mixkit-campfire-crackles-1330.mp3',
-  chatter: 'https://assets.mixkit.co/sfx/preview/mixkit-restaurant-crowd-talking-ambience-1213.mp3',
+/**
+ * Local audio assets (public/assets/sounds).
+ *
+ * `gain` trims each source to a common loudness so the mix stays even — the
+ * files are mastered at quite different levels (measured RMS in comments).
+ * These can only attenuate: HTMLAudioElement.volume is capped at 1.0, so a
+ * source that is too quiet has to be fixed in the file, not here.
+ */
+export const MUSIC_TRACKS = [
+  { id: 0, label: 'Track 1', src: '/assets/sounds/music_bg1.m4a', gain: 0.68 }, // -16.3 dB
+  { id: 1, label: 'Track 2', src: '/assets/sounds/music_bg2.m4a', gain: 1.0 },  // -19.6 dB — quietest, the reference
+  { id: 2, label: 'Track 3', src: '/assets/sounds/music_bg3.m4a', gain: 0.48 }, // -13.3 dB
+];
+
+const AMBIENCE = {
+  rain:    { src: '/assets/sounds/ambient_rain.m4a',     gain: 1.0 },  // -31.2 dB — the reference bed
+  fire:    { src: '/assets/sounds/ambient_campfire.m4a', gain: 1.0 },  // -38.5 dB — sits under the rain by design
+  chatter: { src: '/assets/sounds/ambient_chatter.m4a',  gain: 0.46 }, // -24.4 dB — hottest source, trimmed to match rain
 };
 
-function createLoop(id, src) {
+function createLoop(src) {
   const el = new Audio(src);
   el.loop = true;
   el.preload = 'auto';
-  el.id = id;
   el.volume = 0;
   return el;
 }
 
-let tracks = null;
+let ambience = null;
+let musicEl = null;
+let musicIndex = -1; // track currently loaded into musicEl; -1 = none
 let sfxCtx = null;
 let unlocked = false;
 
-function ensureTracks() {
-  if (tracks) return tracks;
-  tracks = {
-    music: createLoop('music', SOURCES.music),
-    rain: createLoop('rain', SOURCES.rain),
-    fire: createLoop('fire', SOURCES.fire),
-    chatter: createLoop('chatter', SOURCES.chatter),
-  };
-  return tracks;
+// Remembered so unlocking can immediately apply the settings that were in
+// effect before the first user gesture (otherwise nothing starts until the
+// next phase/settings change).
+let lastAudio = null;
+let lastPhase = null;
+
+function ensureAmbience() {
+  if (!ambience) {
+    ambience = {
+      rain: createLoop(AMBIENCE.rain.src),
+      fire: createLoop(AMBIENCE.fire.src),
+      chatter: createLoop(AMBIENCE.chatter.src),
+    };
+  }
+  return ambience;
+}
+
+function ensureMusicEl() {
+  if (!musicEl) {
+    musicEl = new Audio();
+    musicEl.preload = 'auto';
+    musicEl.volume = 0;
+    // Only fires in shuffle mode — a pinned track has loop = true.
+    musicEl.addEventListener('ended', () => loadTrack(pickNextTrack()));
+  }
+  return musicEl;
 }
 
 function ensureSfxCtx() {
-  if (!sfxCtx) {
-    sfxCtx = new AudioContext();
-  }
+  if (!sfxCtx) sfxCtx = new AudioContext();
   return sfxCtx;
 }
 
-export async function unlockCafeAudio() {
-  const t = ensureTracks();
-  if (unlocked) return;
-  unlocked = true;
-
-  const ctx = ensureSfxCtx();
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
+/** A random track that isn't the one currently playing. */
+function pickNextTrack() {
+  if (MUSIC_TRACKS.length < 2) return 0;
+  let next = musicIndex;
+  while (next === musicIndex) {
+    next = Math.floor(Math.random() * MUSIC_TRACKS.length);
   }
+  return next;
+}
 
-  await Promise.all(
-    Object.values(t).map(
-      (el) =>
-        el
-          .play()
-          .then(() => {
-            el.pause();
-            el.currentTime = 0;
-          })
-          .catch(() => {}),
-    ),
-  );
+function loadTrack(index) {
+  const el = ensureMusicEl();
+  if (musicIndex === index) return;
+  musicIndex = index;
+  el.src = MUSIC_TRACKS[index].src;
+  if (el.volume > 0.001) el.play().catch(() => {});
 }
 
 function playTrack(el, volume, enabled = true) {
@@ -67,21 +89,60 @@ function playTrack(el, volume, enabled = true) {
     return;
   }
   el.volume = Math.min(1, volume);
-  if (el.paused) {
-    el.play().catch(() => {});
-  }
+  if (el.paused) el.play().catch(() => {});
 }
 
-export function updateCafeAudio(audio, phase) {
-  if (!unlocked) return;
-  const t = ensureTracks();
+function applyAudio(audio, phase) {
+  const amb = ensureAmbience();
+  const music = ensureMusicEl();
+
+  // The cafe is the focal point — everything else runs quiet in the background.
   const phaseMul = phase === 'management' || phase === 'focus' ? 1 : 0.25;
   const master = audio.masterVolume * phaseMul;
 
-  playTrack(t.music, master * audio.musicVolume, true);
-  playTrack(t.rain, master * audio.ambienceVolume, audio.rainEnabled);
-  playTrack(t.fire, master * audio.ambienceVolume * 0.85, audio.fireplaceEnabled);
-  playTrack(t.chatter, master * audio.ambienceVolume * 0.7, audio.chatterEnabled);
+  const ambVol = master * audio.ambienceVolume;
+  playTrack(amb.rain, ambVol * AMBIENCE.rain.gain, audio.rainEnabled);
+  playTrack(amb.fire, ambVol * AMBIENCE.fire.gain, audio.fireplaceEnabled);
+  playTrack(amb.chatter, ambVol * AMBIENCE.chatter.gain, audio.chatterEnabled);
+
+  const shuffle = audio.musicTrack === 'shuffle';
+  music.loop = !shuffle;
+  if (musicIndex < 0) {
+    loadTrack(shuffle ? Math.floor(Math.random() * MUSIC_TRACKS.length) : Number(audio.musicTrack) || 0);
+  } else if (!shuffle && musicIndex !== Number(audio.musicTrack)) {
+    loadTrack(Number(audio.musicTrack));
+  }
+  playTrack(music, master * audio.musicVolume * MUSIC_TRACKS[musicIndex].gain, audio.musicEnabled);
+}
+
+export function updateCafeAudio(audio, phase) {
+  lastAudio = audio;
+  lastPhase = phase;
+  if (!unlocked) return;
+  applyAudio(audio, phase);
+}
+
+export async function unlockCafeAudio() {
+  if (unlocked) return;
+  unlocked = true;
+
+  const ctx = ensureSfxCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
+
+  // Prime the loops inside the user gesture so later play() calls are allowed.
+  await Promise.all(
+    Object.values(ensureAmbience()).map((el) =>
+      el
+        .play()
+        .then(() => {
+          el.pause();
+          el.currentTime = 0;
+        })
+        .catch(() => {}),
+    ),
+  );
+
+  if (lastAudio) applyAudio(lastAudio, lastPhase);
 }
 
 export async function playCoinChime(sfxVolume = 0.7, masterVolume = 0.8) {
@@ -153,10 +214,13 @@ export async function playDancePadNote(key = '', sfxVolume = 0.7, masterVolume =
 }
 
 export function stopAllCafeAudio() {
-  if (!tracks) return;
-  Object.values(tracks).forEach((el) => {
+  if (musicEl) {
+    musicEl.pause();
+    musicEl.currentTime = 0;
+  }
+  if (!ambience) return;
+  Object.values(ambience).forEach((el) => {
     el.pause();
     el.currentTime = 0;
   });
 }
-

@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, CloudRain, Flame, MessageSquare, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette } from 'lucide-react';
 import ThemePicker from '@/components/settings/ThemePicker';
 import {
   setAIConfig,
@@ -109,6 +109,9 @@ export default function GameSettings() {
             <AudioSlider icon={Music} label="Music" value={audio.musicVolume} onChange={(v) => setAudio({ musicVolume: v })} />
             <AudioSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
             <AudioSlider icon={Volume2} label="SFX" value={audio.sfxVolume} onChange={(v) => setAudio({ sfxVolume: v })} />
+            <p className="text-xs text-muted-foreground pt-1 border-t border-border/30">
+              Music track and ambience (rain, fireplace, chatter) live in the Sound panel in the cafe.
+            </p>
           </div>
         </section>
 
@@ -136,17 +139,6 @@ export default function GameSettings() {
               <ToggleSetting icon={AlertTriangle} label="Phone Warning"    checked={audio.sfxPhoneWarning}      onCheckedChange={(v) => setAudio({ sfxPhoneWarning: v })} />
             </div>
           )}
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="font-display text-base text-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> Ambience
-          </h2>
-          <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5 space-y-2">
-            <ToggleSetting icon={CloudRain} label="Rain Sounds" description="Soft rain on the windows" checked={audio.rainEnabled} onCheckedChange={(v) => setAudio({ rainEnabled: v })} />
-            <ToggleSetting icon={Flame} label="Fireplace" description="Warm crackling fire" checked={audio.fireplaceEnabled} onCheckedChange={(v) => setAudio({ fireplaceEnabled: v })} />
-            <ToggleSetting icon={MessageSquare} label="Cafe Chatter" description="Gentle background voices" checked={audio.chatterEnabled} onCheckedChange={(v) => setAudio({ chatterEnabled: v })} />
-          </div>
         </section>
 
         <section className="space-y-4">

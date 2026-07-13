@@ -21,12 +21,13 @@ import LowScoreWarning from '@/components/focus/LowScoreWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2, Radio } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2, Radio, Volume2, VolumeX } from 'lucide-react';
 import StatsCharts from '@/components/stats/StatsCharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
 import JournalPanel from '@/components/cafe/JournalPanel';
 import PetShopPanel from '@/components/cafe/PetShopPanel';
+import SoundPanel from '@/components/cafe/SoundPanel';
 import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ExitSessionPrompt from '@/components/cafe/ExitSessionPrompt';
 import ZenFocusView from '@/components/cafe/ZenFocusView';
@@ -397,7 +398,15 @@ export default function CafeView() {
     setAIScoreFrozen(isPaused);
   }, [isPaused]);
   const isManagement = state.phase === 'management';
+  // Nothing audible — every layer off, or the master pulled to zero.
+  const soundMuted =
+    state.audio.masterVolume <= 0 ||
+    (!state.audio.musicEnabled &&
+      !state.audio.rainEnabled &&
+      !state.audio.fireplaceEnabled &&
+      !state.audio.chatterEnabled);
   const [showBgModePanel, setShowBgModePanel] = useState(false);
+  const [showSoundPanel, setShowSoundPanel] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [showStatsPopup, setShowStatsPopup] = useState(false);
   const statsPopupAnchorRef = useRef(null);
@@ -1099,7 +1108,26 @@ export default function CafeView() {
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Sound panel — anchored to the footer's left edge so it opens
+              bottom-left. Available during focus too, so music can be changed
+              without ending a session. */}
+          {!state.cafe.decorateMode && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowSoundPanel(v => !v)}
+                title="Sound"
+              >
+                {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </Button>
+              {showSoundPanel && <SoundPanel onClose={() => setShowSoundPanel(false)} />}
+            </div>
+          )}
+
           <CafeHUD />
+
           <div className="flex flex-wrap gap-2 ml-auto">
             {isManagement && !state.cafe.decorateMode && (
               <>

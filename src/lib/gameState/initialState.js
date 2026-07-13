@@ -94,6 +94,8 @@ export const initialState = {
     musicVolume: 0.6,
     ambienceVolume: 0.5,
     sfxVolume: 0.7,
+    musicEnabled: true,
+    musicTrack: 'shuffle', // 'shuffle' | 0 | 1 | 2 (index into MUSIC_TRACKS)
     rainEnabled: true,
     fireplaceEnabled: false,
     chatterEnabled: true,
