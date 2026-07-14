@@ -1,20 +1,25 @@
 import * as ort from 'onnxruntime-web';
 
 // บังคับให้โหลด WASM จาก CDN ป้องกันปัญหาตอน Deploy ลง Vercel
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+// Pin to the installed package version, exactly as MediaPipe is pinned in
+// browserAI: an unversioned jsdelivr path serves @latest, and WASM binaries
+// newer than the JS that drives them will break inference in production on a
+// day nobody touched this repo.
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/';
 
 // ONNX inference session, initialised once on 'init' message
 let session = null;
-const PHONE_CLASS_INDEX = 67; // Class 67 คือ โทรศัพท์ใน COCO
+const PHONE_CLASS_ID = 67; // Class 67 คือ โทรศัพท์ใน COCO
 
-// Minimum score for a box whose winning class is already "cell phone" (see the
-// argmax check in postprocess — that is what actually keeps headphones, a watch
-// and a milk carton out). This was 0.10, far below YOLOv8's usual 0.25-0.5
-// working range. A confirmed hit drops the focus score and starts the 30s
-// danger clock, so a false positive costs more than briefly missing a real
-// phone — but with argmax doing the heavy lifting this no longer has to be
-// punishing. Raise it if props still register; lower it if a real phone goes
-// unnoticed. The camera overlay prints the live confidence ("Phone 62%").
+// Minimum confidence for a detection the model has already labelled "cell
+// phone". YOLO26 runs end-to-end: it picks the winning class itself and hands
+// back one row per surviving detection, so the old argmax scan (which existed
+// to stop a milk carton scoring `bottle` 0.85 / `cell phone` 0.50 from counting
+// as a phone) is no longer needed — a losing class never reaches us at all.
+// A confirmed hit drops the focus score and starts the 30s danger clock, so a
+// false positive costs more than briefly missing a real phone. Raise this if
+// props still register; lower it if a real phone goes unnoticed. The camera
+// overlay prints the live confidence ("Phone 62%").
 const CONF_THRESHOLD = 0.40;
 
 async function initModel() {
@@ -60,72 +65,57 @@ function preprocess(imageData) {
   return new ort.Tensor('float32', tensorData, [1, 3, 640, 640]);
 }
 
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
 function postprocess(output) {
   const data = output.data;
-  // This code indexes the tensor as [1, 4 + numClasses, numBoxes] (box coords
-  // first, then one row per class, each row numBoxes long). Ultralytics can
-  // also export the transposed [1, numBoxes, 4 + numClasses]; fed that, the
-  // maths below would stay in bounds and quietly read nonsense. So assert the
-  // layout instead of assuming it — a model swap should fail loudly, not
+  // YOLO26 exports end-to-end (NMS-free): [1, numDetections, 6], where every
+  // row is [x1, y1, x2, y2, conf, classId] — corners in INPUT-PIXEL space
+  // (0-640), not the cxcywh + one-row-per-class grid YOLOv8 produced. Fed a
+  // YOLOv8 tensor the maths below would stay in bounds and quietly read
+  // nonsense, so assert the layout: a model swap must fail loudly, not
   // silently start hallucinating phones.
-  const dims = output.dims ?? [1, 84, 8400];
-  if (dims[1] <= 4 || dims[1] >= dims[2]) {
-    throw new Error(`Unexpected YOLO output layout [${dims}] — expected [1, 4+numClasses, numBoxes]`);
+  const dims = output.dims ?? [];
+  if (dims.length !== 3 || dims[2] !== 6) {
+    throw new Error(`Unexpected YOLO output layout [${dims}] — expected [1, numDetections, 6]`);
   }
-  const numClasses = dims[1] - 4;
-  const numBoxes = dims[2];
-  const phones = [];
+  const numDets = dims[1];
 
-  for (let i = 0; i < numBoxes; i++) {
-    // 1. คะแนนของคลาสโทรศัพท์ — เกือบทุกกล่องเป็น background จึงคัดออกก่อน
-    // Cheap test first: almost all 8400 boxes are background and fail here, so
-    // gating on it keeps the 80-class scan below off ~99.9% of them (measured
-    // 1.38ms -> 0.02ms per frame, identical output).
-    const score = data[(4 + PHONE_CLASS_INDEX) * numBoxes + i];
-    if (score <= CONF_THRESHOLD) continue;
+  // Rows arrive sorted by confidence, but don't lean on that — scan them all
+  // and keep the single best phone. (One box is all the game ever draws.)
+  let best = null;
 
-    // 2. โทรศัพท์ต้องเป็นคลาสที่ชนะของกล่องนี้ (argmax) ไม่ใช่แค่ผ่านเกณฑ์
-    //
-    // This box also carries a score for all the other COCO classes, and until
-    // now we never looked at them — we asked "is the phone score above the
-    // bar?" and ignored that some other class might be scoring far higher.
-    // A carton of milk lights up `bottle` at 0.85 and `cell phone` at 0.50,
-    // and we happily called it a phone. Headphones and a watch do the same.
-    // A detection only counts if cell phone actually WINS the box.
-    let best = 0;
-    for (let c = 0; c < numClasses; c++) {
-      const s = data[(4 + c) * numBoxes + i];
-      if (s > best) best = s;
-    }
-    if (score < best) continue; // another class explains this box better
+  for (let i = 0; i < numDets; i++) {
+    const o = i * 6;
 
-    // 3. ดึงพิกัดมาสร้างกล่อง
-    {
-      const cx = data[0 * numBoxes + i]; // จุดกึ่งกลาง X
-      const cy = data[1 * numBoxes + i]; // จุดกึ่งกลาง Y
-      const w = data[2 * numBoxes + i];  // ความกว้าง
-      const h = data[3 * numBoxes + i];  // ความสูง
+    // Cheap tests first: most of the 300 rows are padding with conf 0.
+    const conf = data[o + 4];
+    if (conf <= CONF_THRESHOLD) continue;
+    if (Math.round(data[o + 5]) !== PHONE_CLASS_ID) continue;
+    if (best && conf <= best.conf) continue;
 
-      // แปลงพิกัดให้อยู่ในช่วง 0.0 - 1.0 เพื่อส่งให้ React เอาไปคูณขนาดหน้าจอ
-      phones.push({
-        x1: (cx - w / 2) / 640,
-        y1: (cy - h / 2) / 640,
-        w: w / 640,
-        h: h / 640,
-        conf: score
-      });
-    }
+    // Corners can sit slightly outside the frame (the model happily returns
+    // x1 = -4), which would draw a box hanging off the canvas — clamp first.
+    const x1 = clamp01(data[o] / 640);
+    const y1 = clamp01(data[o + 1] / 640);
+    const x2 = clamp01(data[o + 2] / 640);
+    const y2 = clamp01(data[o + 3] / 640);
+    const w = x2 - x1;
+    const h = y2 - y1;
+    if (w <= 0 || h <= 0) continue; // fully off-frame after clamping
+
+    // Normalised 0.0-1.0 so React can just multiply by the canvas size.
+    best = { x1, y1, w, h, conf };
   }
-  
-  // 3. ถ้าเจอกล่อง ให้เรียงลำดับความมั่นใจ แล้วส่งกล่องที่ดีที่สุดกลับไป 1 กล่อง
-  if (phones.length > 0) {
-    phones.sort((a, b) => b.conf - a.conf);
-    return [phones[0]]; 
-  }
-  
-  // 4. ถ้าหาไม่เจอจริงๆ ค่อยคืนค่าว่าง
-  return []; 
+
+  return best ? [best] : [];
 }
+
+// An empty result is indistinguishable from "no phone in frame", so a failing
+// inference would otherwise score the player as focused forever while only
+// whispering to the console — the same silent failure a missing model file
+// caused. Report it once (it repeats every frame) so the main thread can warn.
+let inferenceFailed = false;
 
 self.onmessage = async (e) => {
   const { type, payload } = e.data;
@@ -145,8 +135,22 @@ self.onmessage = async (e) => {
       const results = await session.run({ images: tensor });
       const outputTensor = results[session.outputNames[0]];
       postMessage({ type: 'result', phones: postprocess(outputTensor) });
+      // Recovered: say so, or the main thread leaves "PHONE DETECTION OFFLINE"
+      // on the camera for the rest of the session while detection quietly works
+      // again. It has to be said explicitly — a plain result cannot mean
+      // "healthy", because a failed model load posts empty results too (see the
+      // !session branch above), and treating those as recovery would erase the
+      // one banner that must never disappear.
+      if (inferenceFailed) {
+        inferenceFailed = false;
+        postMessage({ type: 'status', status: 'ready' });
+      }
     } catch (err) {
       console.error("Inference Error:", err);
+      if (!inferenceFailed) {
+        inferenceFailed = true;
+        postMessage({ type: 'status', status: 'error', error: err.message });
+      }
       postMessage({ type: 'result', phones: [] });
     }
   }

@@ -1,6 +1,6 @@
 /**
  * Browser-native AI attention tracking using MediaPipe Face Landmarker
- * and YOLOv8 ONNX (via Web Worker) for phone detection.
+ * and YOLO26 ONNX (via Web Worker) for phone detection.
  */
 
 import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
@@ -18,11 +18,18 @@ let yoloWorker = null;
 let isYoloReady = false;
 let isProcessingYolo = false;
 let workerCanvasCtx = null;
+// Set when the worker fails to load the ONNX model. Phone detection is then
+// dead for the whole session while face/gaze tracking carries on perfectly —
+// the exact failure that hid a missing model file for two commits, because the
+// session still reported 'active' and the overlay still said FOCUSED. Kept
+// SEPARATE from _status on purpose: _status !== 'active' halts the render loop
+// and the visibility handler, so flipping it to 'error' here would blank the
+// overlay instead of warning on it.
+let yoloError = null;
 
 const PROCESS_INTERVAL_MS = 800;
 const GAZE_THRESHOLD = 0.55;
 const NO_FACE_GRACE_MS = 3000;
-const LANDMARK_MATCH_THRESHOLD = 0.6;
 
 let lastFaceSeenAt = Date.now();
 let focusScore = 0;
@@ -49,10 +56,6 @@ export function setBrowserAIScoreFrozen(frozen) {
   if (!frozen) lastScoreTick = Date.now();
 }
 
-let cachedUserLandmarks = null;
-let landmarkCacheTimestamp = 0;
-const LANDMARK_CACHE_DURATION_MS = 5000;
-
 let latestPhones = []; // รับข้อมูลจาก Worker
 let latestWarning = '';
 let isUserFocusedGlobal = true;
@@ -70,8 +73,9 @@ let isUserFocusedGlobal = true;
 // release that could never survive a single 800ms frame gap.
 //
 // Note this only defends against FLICKER. A false positive that sits still in
-// frame (headphones on the desk) is caught by the argmax + threshold in
-// yoloWorker, not here.
+// frame (headphones on the desk) is caught in yoloWorker, not here: YOLO26
+// decides the winning class itself, so a box the model calls `headphones` never
+// reaches us as a phone, and CONF_THRESHOLD screens what is left.
 const PHONE_CONFIRM_FRAMES = 2;
 const PHONE_RELEASE_FRAMES = 2;
 // Streaks only advance on fresh results, so if results stop arriving entirely
@@ -150,14 +154,38 @@ async function loadFaceLandmarker() {
   return faceLandmarker;
 }
 
+function reportYoloError(message) {
+  yoloError = message || 'unknown error';
+  console.error('[BrowserAI] Phone detection unavailable:', yoloError);
+  // 'degraded', not 'error': the session is still usefully running, so don't
+  // tear it down — just make sure the failure is impossible to miss (settings
+  // shows the detail, renderLoop paints a banner on the camera).
+  if (_onStatusChange) {
+    _onStatusChange({ status: 'degraded', detail: `Phone detection offline — ${yoloError}` });
+  }
+}
+
 function initYoloWorker() {
   if (yoloWorker) return; // guard against creating overlapping workers
   yoloWorker = new Worker(new URL('./yoloWorker.js', import.meta.url), { type: 'module' });
   isProcessingYolo = false; // fresh worker — nothing in flight yet
 
+  // A worker that fails to load or throws at top level never sends a single
+  // message, so the onmessage handler below could not report it: without this,
+  // that failure mode is still completely silent.
+  yoloWorker.onerror = (err) => reportYoloError(err.message || 'worker failed to load');
+
   yoloWorker.onmessage = (e) => {
     if (e.data.type === 'status' && e.data.status === 'ready') {
       isYoloReady = true;
+      yoloError = null;
+    }
+    if (e.data.type === 'status' && e.data.status === 'error') {
+      // Deliberately does NOT clear isYoloReady. If the model failed to load it
+      // was never set; if inference failed mid-session, clearing it would stop
+      // us ever sending another frame — turning one bad frame into a permanently
+      // dead detector. Keep feeding the worker; it recovers if the fault passes.
+      reportYoloError(e.data.error);
     }
     if (e.data.type === 'result') {
       latestPhones = e.data.phones;
@@ -189,49 +217,33 @@ function checkGazeFocused(blendshapes) {
   return true;
 }
 
-function cacheUserLandmarks(landmarks) {
-  if (!landmarks || landmarks.length === 0) return;
-  const keyLandmarks = [];
-  for (const landmark of landmarks) {
-    keyLandmarks.push({ x: landmark.x, y: landmark.y, z: landmark.z });
-  }
-  cachedUserLandmarks = keyLandmarks;
-  landmarkCacheTimestamp = Date.now();
-}
-
-function verifyUserPresence(currentLandmarks) {
-  if (!currentLandmarks || currentLandmarks.length === 0) return false;
-  if (!cachedUserLandmarks || Date.now() - landmarkCacheTimestamp > LANDMARK_CACHE_DURATION_MS) {
-    cacheUserLandmarks(currentLandmarks);
-    return true; 
-  }
-  let matchCount = 0;
-  const totalLandmarks = Math.min(currentLandmarks.length, cachedUserLandmarks.length);
-  for (let i = 0; i < totalLandmarks; i++) {
-    const current = currentLandmarks[i];
-    const cached = cachedUserLandmarks[i];
-    const distance = Math.sqrt(
-      Math.pow(current.x - cached.x, 2) + Math.pow(current.y - cached.y, 2) + Math.pow(current.z - cached.z, 2)
-    );
-    if (distance < 0.1) matchCount++;
-  }
-  const matchRatio = matchCount / totalLandmarks;
-  return matchRatio >= LANDMARK_MATCH_THRESHOLD;
+// Presence is exactly "MediaPipe found a face this frame".
+//
+// This used to compare the current landmarks against a snapshot of the player
+// taken up to 5s earlier and call them ABSENT if 40% of the points had moved —
+// which is motion detection wearing a presence detector's name. It could never
+// have verified identity (there is no enrolment step; the snapshot was simply
+// re-taken from whoever was in frame every 5s), and it punished the player for
+// moving: lean back, turn your head or stretch, and you were marked absent
+// while sitting right there, which after the 3s grace window fired a false
+// "USER NOT FOCUSED - COME BACK!" and drained the attention score. It then
+// healed itself on the next cache refresh, so it surfaced as random unfair
+// penalties nobody could reproduce rather than as an obvious failure.
+function isUserPresent(faceResult) {
+  return !!(faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0);
 }
 
 function processDetections(faceResult, phones) {
   const now = Date.now();
   const isPhoneDetected = confirmPhone(phones.length > 0, now);
 
-  const hasFace = faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0;
+  const hasFace = isUserPresent(faceResult);
   const isGazeFocused = hasFace ? checkGazeFocused(faceResult.faceBlendshapes) : true;
 
-
-  const isVerifiedUser = hasFace ? verifyUserPresence(faceResult.faceLandmarks[0]) : false;
-  if (isVerifiedUser) lastFaceSeenAt = now;
+  if (hasFace) lastFaceSeenAt = now;
 
   const faceAbsentMs = now - lastFaceSeenAt;
-  const noFaceWarning = !isVerifiedUser && faceAbsentMs >= NO_FACE_GRACE_MS;
+  const noFaceWarning = !hasFace && faceAbsentMs >= NO_FACE_GRACE_MS;
 
   let isUserFocused;
   let warningMessage;
@@ -239,14 +251,14 @@ function processDetections(faceResult, phones) {
   if (isPhoneDetected) {
     isUserFocused = false;
     warningMessage = 'DISTRACTION DETECTED - PUT YOUR PHONE AWAY!';
-  } else if (!isGazeFocused && isVerifiedUser) {
+  } else if (!isGazeFocused && hasFace) {
     isUserFocused = false;
     warningMessage = 'GAZE DISTRACTED - LOOK AT THE SCREEN!';
   } else if (noFaceWarning) {
     isUserFocused = false;
     warningMessage = 'USER NOT FOCUSED - COME BACK!';
   } else {
-    isUserFocused = isVerifiedUser;
+    isUserFocused = hasFace;
     warningMessage = '';
   }
 
@@ -264,13 +276,17 @@ function processDetections(faceResult, phones) {
 
       if (isUserFocused) {
         focusScore = Math.min(focusScore + SCORE_GAIN * ticks, 9999);
-      } else if (isPhoneDetected || !isGazeFocused) {
+      } else if (isPhoneDetected || !isGazeFocused || noFaceWarning) {
+        // noFaceWarning belongs here: walking away used to match NEITHER branch
+        // (no face means no phone and gaze defaults to focused), so the focus
+        // score simply froze while the attention score fell. Leaving the desk
+        // was the one distraction that cost you nothing on the overlay.
         focusScore = Math.max(focusScore - SCORE_PENALTY * ticks, 0);
       }
 
       if (isPhoneDetected) {
         currentAttentionScore -= ATTN_DROP_PHONE * ticks;
-      } else if (!hasFace && noFaceWarning) {
+      } else if (noFaceWarning) {
         currentAttentionScore -= ATTN_DROP_NOFACE * ticks;
       } else if (!isGazeFocused) {
         currentAttentionScore -= ATTN_DROP_GAZE * ticks;
@@ -289,7 +305,7 @@ function processDetections(faceResult, phones) {
   return {
     phone_detected: isPhoneDetected,
     attention_score: Math.round(currentAttentionScore),
-    user_present: isVerifiedUser,
+    user_present: hasFace,
     timestamp: now,
     warning_message: warningMessage,
     tracker_score: focusScore,
@@ -446,6 +462,17 @@ function renderLoop() {
     ctx.fillText(warningToShow, cx, cy);
   }
 
+  // --- แถบเตือนเมื่อ AI ตรวจจับโทรศัพท์ไม่ได้ ---
+  // Phone detection is down but face tracking still works, so nothing else on
+  // screen would look wrong. Say so plainly instead of quietly scoring the
+  // player as focused while they hold a phone.
+  if (yoloError) {
+    ctx.font = `bold 11px "Segoe UI", sans-serif`;
+    const msg = 'PHONE DETECTION OFFLINE';
+    const msgWidth = ctx.measureText(msg).width;
+    drawTextWithBg(ctx, msg, (width - msgWidth) / 2, height - 10, 'rgba(200,120,0,0.9)', '#fff', 11);
+  }
+
   // เรียกตัวเองเพื่อวาดเฟรมถัดไป (ห้ามลืมบรรทัดนี้!)
   renderFrameId = requestAnimationFrame(renderLoop);
 }
@@ -532,15 +559,20 @@ export function stopBrowserAI() {
     yoloWorker.terminate(); // ปิด Worker เมื่อหยุดใช้งาน
     yoloWorker = null;
     isYoloReady = false;
+    yoloError = null;
   }
 
   _onEvent = null;
   focusScore = 0;
   currentAttentionScore = ATTN_START;
   scoreFrozen = false;
-  cachedUserLandmarks = null;
-  landmarkCacheTimestamp = 0;
   latestPhones = [];
+  // The overlay reads these directly and starts drawing before the first
+  // detection of the next session lands, so a warning left over from the last
+  // one ("PUT YOUR PHONE AWAY!") would flash onto a camera showing an empty desk.
+  latestWarning = '';
+  isUserFocusedGlobal = true;
+  lastFaceSeenAt = Date.now();
   // Clear the confirmation streaks too, or a phone held at the end of one
   // session stays "confirmed" into the start of the next.
   phoneResultSeq = 0;
@@ -555,6 +587,14 @@ export function stopBrowserAI() {
   isProcessingYolo = false;
   lastProcessTime = 0;
   setStatus('idle');
+}
+
+// The one live camera stream. AttentionCamera reuses this for its preview
+// rather than calling getUserMedia a second time: two streams meant the pixels
+// the player watched were not the pixels the model judged, and the overlay's
+// box coordinates were scaled against the wrong video's dimensions.
+export function getBrowserAIStream() {
+  return videoStream;
 }
 
 export function isBrowserAISupported() {

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { getAIConfig } from '@/lib/ai/aiIntegration';
+import { getBrowserAIStream, getBrowserAIStatus } from '@/lib/ai/browserAI';
 import Draggable from 'react-draggable';
+
+// How long to wait for browserAI to hand over its stream before giving up.
+// Model load + camera permission can take a while on a cold start.
+const ATTACH_TIMEOUT_MS = 30000;
+const ATTACH_POLL_MS = 200;
 
 export default function AttentionCamera() {
   const { aiMode } = getAIConfig();
@@ -11,48 +17,71 @@ export default function AttentionCamera() {
 
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState(null);
-  const localStreamRef = useRef(null);
+  // Mirrors isReady for the poll loop, which is a closure created once per
+  // effect run and would otherwise capture isReady's stale first value.
+  const isReadyRef = useRef(false);
 
   const showCamera = aiMode === 'browser';
 
   useEffect(() => {
-    if (!showCamera || !videoRef.current) return;
+    if (!showCamera) return;
 
     let cancelled = false;
+    let timer = null;
+    const deadline = Date.now() + ATTACH_TIMEOUT_MS;
+    const videoEl = videoRef.current; // always mounted while showCamera
 
-    const startDisplayCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+    // Show the stream browserAI already opened. This panel used to call
+    // getUserMedia itself, which lit up a second camera stream at a different
+    // resolution — so the preview under the overlay was not the video the model
+    // actually scored, and #ai-canvas (sized from the model's video) drew its
+    // phone boxes against the wrong dimensions. One stream, one set of pixels.
+    // Keep polling for the lifetime of the panel rather than stopping at the
+    // first successful attach: stopBrowserAI() stops the tracks and opens a
+    // fresh stream on the next session, and a one-shot attach would leave this
+    // <video> holding the dead one — a frozen preview that never recovers. The
+    // poll is a getter and an identity compare; it re-attaches on a swap.
+    const attach = () => {
+      if (cancelled) return;
 
-        if (cancelled) {
-          stream.getTracks().forEach(t => t.stop());
-          return;
+      const stream = getBrowserAIStream();
+
+      if (!stream || !videoEl) {
+        // Only a never-attached camera is an error worth showing. Once it has
+        // worked, a momentarily absent stream just means the AI is restarting.
+        if (!isReadyRef.current) {
+          if (getBrowserAIStatus() === 'error') {
+            setError('Camera unavailable');
+            return;
+          }
+          if (Date.now() > deadline) {
+            setError('Camera did not start');
+            return;
+          }
         }
-
-        localStreamRef.current = stream;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-
-        if (!cancelled) {
-          setIsReady(true);
-          setError(null);
-        }
-      } catch {
-        if (!cancelled) setError('Camera permission denied');
+        timer = setTimeout(attach, ATTACH_POLL_MS);
+        return;
       }
+
+      if (videoEl.srcObject !== stream) {
+        videoEl.srcObject = stream;
+        videoEl.play().catch(() => {});
+      }
+      setError(null);
+      setIsReady(true);
+      isReadyRef.current = true;
+      timer = setTimeout(attach, ATTACH_POLL_MS);
     };
 
-    startDisplayCamera();
+    attach();
 
     return () => {
       cancelled = true;
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(t => t.stop());
-        localStreamRef.current = null;
-      }
+      if (timer) clearTimeout(timer);
+      // Detach only — browserAI owns this stream and is still scoring with it.
+      // Stopping the tracks here would kill AI tracking every time the panel
+      // unmounts (it does: CafeView drops it whenever a popup opens).
+      if (videoEl) videoEl.srcObject = null;
     };
   }, [showCamera]);
 
@@ -61,17 +90,21 @@ export default function AttentionCamera() {
   return (
     // 👇 ใส่ nodeRef={draggableRef} ตรงนี้
     <Draggable bounds="parent" nodeRef={draggableRef}>
-      {/* 👇 และใส่ ref={draggableRef} ตรงนี้ให้มันเชื่อมกัน */}
       <aside ref={draggableRef} className="absolute bottom-3 left-3 z-50 w-64 min-w-[200px] resize overflow-auto cursor-move rounded-lg border border-border/50 bg-black/60 shadow-lg pb-1">
         <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel pointer-events-none">
           AI Camera <span className="text-emerald-400">(Browser)</span>
         </p>
 
         <div className="relative pointer-events-none">
+          {/* No fixed aspect box: the video lays out at the stream's own aspect
+              ratio, so its rendered size matches its intrinsic size exactly and
+              the absolutely-positioned canvas maps 1:1 onto it. An aspect-video
+              + object-cover wrapper cropped a 4:3 stream and knocked every
+              phone box out of alignment with the face underneath. */}
           <video
             ref={videoRef}
             autoPlay playsInline muted
-            className="w-full aspect-video object-cover"
+            className="block w-full h-auto"
             style={{ transform: 'scaleX(-1)', display: isReady ? 'block' : 'none' }}
           />
 

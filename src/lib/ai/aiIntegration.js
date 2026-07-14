@@ -132,6 +132,10 @@ export async function startBrowserTracking() {
         if (status === 'active') setConnectionStatus('live', 'Browser AI');
         else if (status === 'error') setConnectionStatus('error', detail);
         else if (status === 'loading') setConnectionStatus('connecting', detail);
+        // Still live — face and gaze tracking are fine — but part of the
+        // pipeline (phone detection) failed to load, so carry the reason
+        // instead of reporting a clean 'Browser AI'.
+        else if (status === 'degraded') setConnectionStatus('live', detail);
       },
     });
     browserAIActive = true;
