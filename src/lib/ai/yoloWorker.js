@@ -18,7 +18,7 @@ const CONF_THRESHOLD = 0.40;
 
 async function initModel() {
   try {
-    session = await ort.InferenceSession.create(self.location.origin + '/models/yolov8n.onnx', {
+    session = await ort.InferenceSession.create(self.location.origin + '/models/yolo26n.onnx', {
       executionProviders: ['wasm']
     });
     postMessage({ type: 'status', status: 'ready' });
