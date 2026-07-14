@@ -3,6 +3,7 @@ import * as ort from 'onnxruntime-web';
 // บังคับให้โหลด WASM จาก CDN ป้องกันปัญหาตอน Deploy ลง Vercel
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
 
+// ONNX inference session, initialised once on 'init' message
 let session = null;
 const PHONE_CLASS_INDEX = 67; // Class 67 คือ โทรศัพท์ใน COCO
 
