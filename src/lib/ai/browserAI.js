@@ -57,6 +57,31 @@ export function setBrowserAIScoreFrozen(frozen) {
 }
 
 let latestPhones = []; // รับข้อมูลจาก Worker
+// Soft candidate: a shape-approved phone box the model scored just under the
+// threshold (the in-use pose lives here). No detection alone — confirmPhone
+// promotes it only when it persists across consecutive frames. Drawn dashed
+// amber so the player can see the "almost" state.
+let latestSoft = null;
+// The best phone-class detection a worker-side filter rejected this frame
+// ({conf, reason}) — drawn as a dashed near-miss readout so "phone stopped
+// being detected" is diagnosable from the overlay instead of invisible.
+let latestRejected = null;
+
+// Debug-panel toggle: shade the parts of the frame the phone detector cannot
+// see. The detector runs on the CENTER-CROPPED square of the camera (full
+// resolution beats full coverage — see runProcessFrame), so the outer strips
+// of a 4:3 frame are a genuine blind zone; without this view, testing near
+// the edges looks like "detection is broken". Off by default; survives
+// session stop on purpose — it belongs to the debug tool, not to a session.
+let debugShowDetectionZone = false;
+
+export function setDetectionZoneVisible(visible) {
+  debugShowDetectionZone = !!visible;
+}
+
+export function isDetectionZoneVisible() {
+  return debugShowDetectionZone;
+}
 let latestWarning = '';
 let isUserFocusedGlobal = true;
 
@@ -72,12 +97,20 @@ let isUserFocusedGlobal = true;
 // different in the two modes — an earlier ms-based version of this had a 700ms
 // release that could never survive a single 800ms frame gap.
 //
-// Note this only defends against FLICKER. A false positive that sits still in
-// frame (headphones on the desk) is caught in yoloWorker, not here: YOLO26
-// decides the winning class itself, so a box the model calls `headphones` never
-// reaches us as a phone, and CONF_THRESHOLD screens what is left.
+// Note this only defends against FLICKER, not against a steady false positive.
+// If yolo26n mislabels a stationary prop (a watch, a milk carton) as `cell
+// phone` above CONF_THRESHOLD, it clears these frame streaks exactly like a real
+// phone would — the only screen for that is CONF_THRESHOLD in yoloWorker, and
+// only while the model stays low-confidence about the mistake.
 const PHONE_CONFIRM_FRAMES = 2;
 const PHONE_RELEASE_FRAMES = 2;
+// A phone actually being USED (tilted, foreshortened, thumb over it) scores
+// chronically just under the worker's hard threshold, so hard hits alone
+// rarely confirm it. Soft candidates — under-threshold but shape-approved —
+// confirm instead by PERSISTENCE: this many consecutive frames (~3.2s at the
+// 800ms cadence). Long enough that a prop misread for a frame or two never
+// triggers; short enough to catch real phone use, which lasts minutes.
+const PHONE_SOFT_CONFIRM_FRAMES = 4;
 // Streaks only advance on fresh results, so if results stop arriving entirely
 // (stalled inference, a wedged worker) a confirmed phone would otherwise never
 // clear: the score keeps draining and the 30s danger clock runs the session to
@@ -92,14 +125,16 @@ let phoneResultSeq = 0;    // bumped by the worker's onmessage
 let phoneSeenSeq = -1;     // last result this state machine consumed
 let phoneLastResultAt = 0; // when that result arrived
 let phoneHitStreak = 0;
+let phoneSoftStreak = 0;
 let phoneMissStreak = 0;
 let phoneConfirmed = false;
 
-function confirmPhone(rawHit, now) {
+function confirmPhone(rawHit, softHit, now) {
   // Nothing new to judge — the loop is re-reading the same latestPhones buffer.
   if (phoneSeenSeq === phoneResultSeq) {
     if (phoneConfirmed && phoneLastResultAt && now - phoneLastResultAt > PHONE_STALE_MS) {
       phoneHitStreak = 0;
+      phoneSoftStreak = 0;
       phoneMissStreak = 0;
       phoneConfirmed = false;
     }
@@ -108,14 +143,27 @@ function confirmPhone(rawHit, now) {
   phoneSeenSeq = phoneResultSeq;
 
   if (rawHit) {
+    // A hard hit advances BOTH streaks: a run like hard,soft,soft,hard is
+    // continuous phone evidence and must confirm via the soft path even
+    // though neither tier alone strings together its full count.
     phoneMissStreak = 0;
     phoneHitStreak += 1;
+    phoneSoftStreak += 1;
     if (phoneHitStreak >= PHONE_CONFIRM_FRAMES) phoneConfirmed = true;
+  } else if (softHit) {
+    // Supporting evidence: sustains an existing confirmation (in-use phones
+    // hover under the hard bar for minutes) and accumulates toward a soft
+    // confirmation — but deliberately does NOT reset the hard streak, so
+    // hard,soft,hard still confirms on the second hard hit.
+    phoneMissStreak = 0;
+    phoneSoftStreak += 1;
   } else {
     phoneHitStreak = 0;
+    phoneSoftStreak = 0;
     phoneMissStreak += 1;
     if (phoneMissStreak >= PHONE_RELEASE_FRAMES) phoneConfirmed = false;
   }
+  if (phoneSoftStreak >= PHONE_SOFT_CONFIRM_FRAMES) phoneConfirmed = true;
   return phoneConfirmed;
 }
 
@@ -189,6 +237,8 @@ function initYoloWorker() {
     }
     if (e.data.type === 'result') {
       latestPhones = e.data.phones;
+      latestSoft = e.data.soft ?? null;
+      latestRejected = e.data.rejected ?? null;
       phoneResultSeq += 1; // a genuinely new detection for confirmPhone to judge
       phoneLastResultAt = Date.now();
       isProcessingYolo = false; // reply received — send the next frame
@@ -235,7 +285,7 @@ function isUserPresent(faceResult) {
 
 function processDetections(faceResult, phones) {
   const now = Date.now();
-  const isPhoneDetected = confirmPhone(phones.length > 0, now);
+  const isPhoneDetected = confirmPhone(phones.length > 0, !!latestSoft, now);
 
   const hasFace = isUserPresent(faceResult);
   const isGazeFocused = hasFace ? checkGazeFocused(faceResult.faceBlendshapes) : true;
@@ -321,9 +371,30 @@ async function runProcessFrame() {
     const faceResult = faceLandmarker.detectForVideo(videoElement, now);
     if (isYoloReady && !isProcessingYolo && workerCanvasCtx) {
       isProcessingYolo = true;
-      workerCanvasCtx.drawImage(videoElement, 0, 0, 640, 640);
+      // CENTER-CROP the frame into the square tensor. Third iteration of this
+      // mapping, each fixing the last's failure — don't regress it:
+      //   1. stretch (0,0,640,640): distorted the image; the geometry gate
+      //      judged warped aspect ratios and rejected normal phone poses.
+      //   2. letterbox: fixed distortion but shrank the content ~25% to make
+      //      room for padding — small-object confidence collapsed (a held
+      //      phone read 38%, under the 0.45 threshold; live-diagnosed via the
+      //      near-miss readout).
+      //   3. center-crop (this): the middle square at full resolution — no
+      //      distortion, no padding, the phone as large as the tensor allows.
+      //      Cost: the outer ~12% on the left/right of a 4:3 frame is not seen
+      //      by the phone detector (face tracking reads the raw video and is
+      //      unaffected). A phone entering from the side edge triggers slightly
+      //      later; a phone in front of the player is what actually matters.
+      const vw = videoElement.videoWidth;
+      const vh = videoElement.videoHeight;
+      const side = Math.min(vw, vh);
+      const sx = (vw - side) / 2;
+      const sy = (vh - side) / 2;
+      workerCanvasCtx.drawImage(videoElement, sx, sy, side, side, 0, 0, 640, 640);
       const imageData = workerCanvasCtx.getImageData(0, 0, 640, 640);
-      yoloWorker.postMessage({ type: 'detect', payload: { imageData } });
+      // videoW/H let the worker undo the crop and return boxes as fractions
+      // of the REAL frame, so the overlay math stays unchanged.
+      yoloWorker.postMessage({ type: 'detect', payload: { imageData, videoW: vw, videoH: vh } });
     }
     const event = processDetections(faceResult, latestPhones);
     if (_onEvent) _onEvent(event);
@@ -398,6 +469,35 @@ function renderLoop() {
 
   ctx.clearRect(0, 0, width, height);
 
+  // --- โซนที่ AI มองเห็น (เปิดจาก Debug Panel) ---
+  // Canvas pixels equal video pixels here (the canvas is sized from the
+  // stream above), so the crop math from runProcessFrame maps 1:1. Drawn
+  // first so boxes and text stay on top. The centered crop is symmetric,
+  // which is also why the mirrored preview needs no special handling.
+  if (debugShowDetectionZone) {
+    const side = Math.min(width, height);
+    const bx = (width - side) / 2;  // blind strip width (left & right)
+    const by = (height - side) / 2; // blind strip height (top & bottom)
+    ctx.fillStyle = 'rgba(255, 70, 70, 0.14)';
+    if (bx > 0) {
+      ctx.fillRect(0, 0, bx, height);
+      ctx.fillRect(width - bx, 0, bx, height);
+    }
+    if (by > 0) {
+      ctx.fillRect(0, 0, width, by);
+      ctx.fillRect(0, height - by, width, by);
+    }
+    ctx.strokeStyle = 'rgba(255, 120, 120, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 5]);
+    ctx.strokeRect(bx, by, side, side);
+    ctx.setLineDash([]);
+    const zoneMsg = 'PHONE AI SEES INSIDE THIS BOX';
+    ctx.font = `bold 10px "Segoe UI", sans-serif`;
+    const zoneW = ctx.measureText(zoneMsg).width;
+    drawTextWithBg(ctx, zoneMsg, bx + (side - zoneW) / 2, by + 16, 'rgba(120,40,40,0.8)', '#ffd7d7', 10);
+  }
+
   // --- วาดข้อความ Focus Score ---
   drawTextWithBg(ctx, `Focus Score: ${Math.round(focusScore)}`, 10, 25, 'rgba(20,20,20,0.85)', '#fff');
 
@@ -445,6 +545,23 @@ function renderLoop() {
   drawTextWithBg(ctx, `Phone ${Math.round(box.conf * 100)}%`, mirroredX, realY - 10, 'rgba(200,0,0,0.85)', '#fff', 12);
 });
 
+  // --- กล่องเหลือง: เจอสิ่งที่น่าจะเป็นโทรศัพท์ กำลังรอยืนยัน ---
+  // The soft candidate — a shape-approved box just under the hard threshold.
+  // Dashed amber, "Phone? 41%": the player sees the AI tracking it while the
+  // persistence counter runs; four consecutive soft frames confirm.
+  if (latestPhones.length === 0 && latestSoft) {
+    const sW = latestSoft.w * width;
+    const sH = latestSoft.h * height;
+    const sX = width - latestSoft.x1 * width - sW; // mirrored like the red boxes
+    const sY = latestSoft.y1 * height;
+    ctx.strokeStyle = 'rgb(255, 190, 0)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 5]);
+    ctx.strokeRect(sX, sY, sW, sH);
+    ctx.setLineDash([]);
+    drawTextWithBg(ctx, `Phone? ${Math.round(latestSoft.conf * 100)}%`, sX, sY - 10, 'rgba(180,140,0,0.85)', '#fff', 12);
+  }
+
   // --- วาด Warning ใหญ่กลางจอ ---
   // While the game is paused, the warning slot always shows the pause
   // notice instead of live distraction warnings (no score is changing).
@@ -460,6 +577,17 @@ function renderLoop() {
     ctx.fillRect(0, cy - 25, width, 40);
     ctx.fillStyle = scoreFrozen ? 'rgb(130, 200, 255)' : 'rgb(255, 60, 60)';
     ctx.fillText(warningToShow, cx, cy);
+  }
+
+  // --- NEAR MISS: โมเดลเห็นบางอย่างคล้ายโทรศัพท์ แต่ฟิลเตอร์ปัดตก ---
+  // Shows WHICH filter rejected it and at what confidence ("aspect 1.12 @ 58%"),
+  // so a phone that "stopped detecting" can be diagnosed from the overlay:
+  //   conf   -> under CONF_THRESHOLD: raise the phone, improve light, or lower it
+  //   aspect -> the held angle squares the box: lower PHONE_MIN_ASPECT
+  //   area   -> too small in frame: phone too far away, or lower PHONE_MIN_AREA
+  if (latestRejected && latestPhones.length === 0) {
+    const msg = `NEAR MISS: ${latestRejected.reason} @ ${Math.round(latestRejected.conf * 100)}%`;
+    drawTextWithBg(ctx, msg, 10, height - 10, 'rgba(180,140,0,0.85)', '#fff', 11);
   }
 
   // --- แถบเตือนเมื่อ AI ตรวจจับโทรศัพท์ไม่ได้ ---
@@ -567,6 +695,8 @@ export function stopBrowserAI() {
   currentAttentionScore = ATTN_START;
   scoreFrozen = false;
   latestPhones = [];
+  latestSoft = null;
+  latestRejected = null;
   // The overlay reads these directly and starts drawing before the first
   // detection of the next session lands, so a warning left over from the last
   // one ("PUT YOUR PHONE AWAY!") would flash onto a camera showing an empty desk.
@@ -579,6 +709,7 @@ export function stopBrowserAI() {
   phoneSeenSeq = -1;
   phoneLastResultAt = 0;
   phoneHitStreak = 0;
+  phoneSoftStreak = 0;
   phoneMissStreak = 0;
   phoneConfirmed = false;
   // Reset the in-flight guard: if the session stopped while a frame was mid-

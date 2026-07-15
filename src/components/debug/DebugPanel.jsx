@@ -4,6 +4,7 @@ import { X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
+import { isDetectionZoneVisible, setDetectionZoneVisible } from '@/lib/ai/browserAI';
 
 const CHAOS_LEVELS = [
   { label: 'Calm',              score: 85, color: 'text-emerald-400' },
@@ -48,6 +49,13 @@ function NumInput({ label, statKey, value, dispatch }) {
 export default function DebugPanel({ onClose }) {
   const { state, dispatch } = useGame();
   const [collapsed, setCollapsed] = useState(false);
+  // Mirrors browserAI's module flag (the render loop reads that directly);
+  // this state only drives the checkbox UI.
+  const [showAiZone, setShowAiZone] = useState(isDetectionZoneVisible());
+  const toggleAiZone = () => {
+    setDetectionZoneVisible(!showAiZone);
+    setShowAiZone(!showAiZone);
+  };
 
   // Left column state
   const [coins,      setCoins]      = useState(String(state.coins));
@@ -261,6 +269,21 @@ export default function DebugPanel({ onClose }) {
                         className={`flex-1 ${inputCls}`} />
                       <Button size="sm" onClick={() => dispatch({ type: 'DEBUG_SET_DATE', payload: debugDate })} className="font-pixel text-[10px]">Set</Button>
                     </div>
+                  </div>
+
+                  {/* AI Camera */}
+                  <div className="space-y-2">
+                    <SectionLabel>AI Camera</SectionLabel>
+                    <button onClick={toggleAiZone}
+                      className="w-full rounded-lg border border-border/40 bg-black/20 px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center justify-between">
+                      <span className="font-pixel text-[10px] text-foreground">Show phone-detector zone</span>
+                      <span className={`font-pixel text-[10px] ${showAiZone ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                        {showAiZone ? 'ON' : 'OFF'}
+                      </span>
+                    </button>
+                    <p className="font-body text-[10px] text-muted-foreground/60">
+                      Shades the camera edges the phone detector can't see (it runs on the center square).
+                    </p>
                   </div>
 
                 </div>
