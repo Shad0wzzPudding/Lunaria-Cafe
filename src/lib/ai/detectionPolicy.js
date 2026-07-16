@@ -71,9 +71,9 @@ export const POLICY_V2 = {
   softConf: 0.20,   // wide amber band holds the whole in-use pose range
                     // (0.25 -> 0.20: raise the chance a weakly-scored phone
                     // counts; persistence + shape gate still screen props)
-  nearMissConf: 0.05, // (0.12 -> 0.08 -> 0.05: diagnostics see fainter
-                      // signals; this floor only gates the NEAR MISS text,
-                      // never what counts)
+  nearMissConf: 0.12, // Back to the original 0.12 after a 0.08 -> 0.05
+                      // excursion — the lower floors only added chatter.
+                      // This gates the NEAR MISS text only, never what counts.
   bypassConf: 0.60, // (0.80 -> 0.60, V2 ONLY — V1 keeps 0.80.) Equal to
                     // hardConf, so in V2 every detection above the red bar is
                     // trusted outright and the shape gate only screens the
