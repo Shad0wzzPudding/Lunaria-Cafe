@@ -68,8 +68,10 @@ export const POLICY_V1 = {
 export const POLICY_V2 = {
   name: 'V2 — Easier detect, less sorting',
   hardConf: 0.60,   // red demands high certainty (it punishes in ~1.6s)
-  softConf: 0.25,   // wide amber band holds the whole in-use pose range
-  nearMissConf: 0.12,
+  softConf: 0.20,   // wide amber band holds the whole in-use pose range
+                    // (0.25 -> 0.20: raise the chance a weakly-scored phone
+                    // counts; persistence + shape gate still screen props)
+  nearMissConf: 0.08, // (0.12 -> 0.08: diagnostics see fainter signals)
   bypassConf: 0.80, // camera-corner sneak: trust the model outright
   minArea: 0.02,    // fraction of the frame; below = watch, not a held phone
   minAspect: 1.2,   // loose on purpose — axis-aligned boxes square out under hand tilt
