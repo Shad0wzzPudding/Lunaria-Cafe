@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getAIConfig } from '@/lib/ai/aiIntegration';
+import { getAIConfig, onConnectionStatus } from '@/lib/ai/aiIntegration';
 import { subscribeBrowserAIStream } from '@/lib/ai/browserAI';
 import Draggable from 'react-draggable';
 
@@ -28,6 +28,12 @@ export default function AttentionCamera() {
   const draggableRef = useRef(null);
 
   const [stream, setStream] = useState(null);
+  // True while the AI failed to START (denied permission, model-load error).
+  // The panel-shows-only-when-live design is silent about WHY there's no
+  // panel, and the other surfaces don't cover it mid-session: the HUD
+  // collapses 'error' into an icon and settings is unreachable during focus.
+  // So the panel slot itself says it.
+  const [aiFailed, setAiFailed] = useState(false);
 
   const showCamera = aiMode === 'browser';
 
@@ -41,6 +47,11 @@ export default function AttentionCamera() {
   }, [showCamera]);
 
   useEffect(() => {
+    if (!showCamera) return;
+    return onConnectionStatus(({ status }) => setAiFailed(status === 'error'));
+  }, [showCamera]);
+
+  useEffect(() => {
     const el = videoRef.current;
     if (!el || !stream) return;
     el.srcObject = stream;
@@ -51,8 +62,24 @@ export default function AttentionCamera() {
     return () => { el.srcObject = null; }; // detach only — browserAI owns the stream
   }, [stream]);
 
-  // Not in browser mode, or the AI isn't live yet: no panel at all.
-  if (!showCamera || !stream) return null;
+  if (!showCamera) return null;
+
+  // Startup failed: a persistent card in the slot the camera would occupy —
+  // the one place the player actually looks for it.
+  if (!stream && aiFailed) {
+    return (
+      <aside className="absolute bottom-3 left-3 z-50 w-64 rounded-lg border border-red-500/50 bg-black/70 shadow-lg p-3">
+        <p className="text-[10px] font-pixel text-red-400">Camera unavailable</p>
+        <p className="mt-1 text-[10px] font-body text-muted-foreground">
+          The AI camera could not start. Check the browser's camera permission,
+          then end and restart the focus session.
+        </p>
+      </aside>
+    );
+  }
+
+  // Loading (or not in a session yet): no panel at all — it appears when live.
+  if (!stream) return null;
 
   return (
     // 👇 nodeRef + ref เชื่อม Draggable กับ DOM node

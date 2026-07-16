@@ -95,6 +95,32 @@ export const POLICY_V2 = {
   releaseFrames: 2,     // empty frames to release a confirmation
 };
 
+// ── Coherence check ────────────────────────────────────────────────────────
+// The whole tier design assumes nearMiss < soft < hard <= bypass. That used
+// to live only in comments, and two of these relationships are load-bearing
+// in non-obvious ways: hard <= bypass is what scopes the shape gate — a
+// future tune that raises hardConf without bypassConf would create a band of
+// SHAPE-UNCHECKED soft candidates, silently reopening the watch false
+// positive the gate exists to prevent. Fail at module load, in dev, loudly —
+// not as mysteriously wrong detection in play. (Runs in both the worker and
+// the main thread; a worker-side throw surfaces via the offline banner.)
+for (const p of [POLICY_V1, POLICY_V2]) {
+  const ordered =
+    p.nearMissConf < p.softConf &&
+    p.softConf < p.hardConf &&
+    p.hardConf <= p.bypassConf;
+  const framesSane =
+    p.confirmFrames >= 1 && p.softConfirmFrames >= 1 && p.releaseFrames >= 1;
+  if (!ordered || !framesSane) {
+    throw new Error(
+      `Detection policy "${p.name}" is incoherent: requires ` +
+      `nearMissConf(${p.nearMissConf}) < softConf(${p.softConf}) < ` +
+      `hardConf(${p.hardConf}) <= bypassConf(${p.bypassConf}) and all ` +
+      `frame counts >= 1.`
+    );
+  }
+}
+
 // ── THE VERSION SWITCH ─────────────────────────────────────────────────────
 // One line. V2 chosen after live testing 2026-07-15.
 export const POLICY = POLICY_V2;

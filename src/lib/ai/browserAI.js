@@ -99,9 +99,10 @@ let isUserFocusedGlobal = true;
 //
 // Note this only defends against FLICKER, not against a steady false positive.
 // If yolo26n mislabels a stationary prop (a watch, a milk carton) as `cell
-// phone` above CONF_THRESHOLD, it clears these frame streaks exactly like a real
-// phone would — the only screen for that is CONF_THRESHOLD in yoloWorker, and
-// only while the model stays low-confidence about the mistake.
+// phone` above the counting floors, it clears these frame streaks exactly like
+// a real phone would — the only screens for that are the confidence bands and
+// shape gate in yoloWorker (see detectionPolicy.js), and only while the model
+// stays low-confidence about the mistake.
 // The frame counts live in detectionPolicy.js next to the confidence bands
 // they calibrate against — one policy, one file. Soft persistence exists
 // because a phone actually being USED (tilted, foreshortened, thumb over it)
@@ -216,6 +217,23 @@ function reportYoloError(message) {
   if (_onStatusChange) {
     _onStatusChange({ status: 'degraded', detail: `Phone detection offline — ${yoloError}` });
   }
+}
+
+// Shared by session stop AND failed startup — a failed start used to leave the
+// worker (with its loaded ONNX/WASM runtime) orphaned for the tab's life,
+// because the only stopBrowserAI caller is gated behind a flag that a failed
+// start never sets.
+function teardownYoloWorker() {
+  if (!yoloWorker) return;
+  // Detach the handlers BEFORE terminating: a message task already queued on
+  // the event loop can still fire after terminate(), and a late error would
+  // push a phantom 'degraded' status into a session that no longer exists.
+  yoloWorker.onmessage = null;
+  yoloWorker.onerror = null;
+  yoloWorker.terminate(); // ปิด Worker เมื่อหยุดใช้งาน
+  yoloWorker = null;
+  isYoloReady = false;
+  yoloError = null;
 }
 
 function initYoloWorker() {
@@ -669,10 +687,26 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
 
     return videoElement;
   } catch (err) {
-    // Release the camera if it was (or later gets) granted on this failed path.
+    // A failed start must leave NOTHING captured or running, whichever line
+    // failed. Null videoStream FIRST: the old guard compared the promised
+    // stream against videoStream and skipped release when the failure happened
+    // after the assignment (a play() rejection) — the stream compared equal to
+    // itself, the camera stayed captured with no release path, and the stale
+    // videoStream leaked into subscribeBrowserAIStream's catch-up callback.
+    // With videoStream nulled, the promise guard below is universally correct
+    // (stopping already-stopped tracks is a harmless no-op).
+    videoStream = null;
+    notifyStreamListeners(); // a panel holding the stale stream lets go
     streamPromise.then((s) => {
       if (s !== videoStream) s.getTracks().forEach((t) => t.stop());
     }).catch(() => {});
+    if (videoElement) {
+      videoElement.srcObject = null;
+      videoElement = null;
+    }
+    // And the worker: it was created (and told to load the model) before the
+    // failing awaits, and no other cleanup path is reachable from here.
+    teardownYoloWorker();
     setStatus('error', err.message);
     throw err;
   }
@@ -698,17 +732,7 @@ export function stopBrowserAI() {
     videoElement.srcObject = null;
     videoElement = null;
   }
-  if (yoloWorker) {
-    // Detach the handlers BEFORE terminating: a message task already queued on
-    // the event loop can still fire after terminate(), and a late error would
-    // push a phantom 'degraded' status into a session that no longer exists.
-    yoloWorker.onmessage = null;
-    yoloWorker.onerror = null;
-    yoloWorker.terminate(); // ปิด Worker เมื่อหยุดใช้งาน
-    yoloWorker = null;
-    isYoloReady = false;
-    yoloError = null;
-  }
+  teardownYoloWorker();
 
   _onEvent = null;
   focusScore = 0;
@@ -750,6 +774,12 @@ export function stopBrowserAI() {
 // again when a session's camera actually starts rolling, and again on stop.
 // This is what lets the panel exist exactly when the AI is live: no loading
 // placeholder to get stuck, no give-up deadline, no 200ms timer.
+//
+// KNOWN DUPLICATION (deliberate): this is the same subscribe pattern as
+// statusListeners/onConnectionStatus in aiIntegration.js — Set of callbacks,
+// replay-on-subscribe, unsubscribe closure. Two copies is below the bar for
+// an abstraction; if you're about to write a THIRD, stop and extract a shared
+// makeListenerChannel() helper instead, and fold both of these into it.
 const streamListeners = new Set();
 
 function notifyStreamListeners() {
@@ -760,10 +790,6 @@ export function subscribeBrowserAIStream(callback) {
   streamListeners.add(callback);
   callback(videoStream); // late subscribers catch up instantly
   return () => streamListeners.delete(callback);
-}
-
-export function getBrowserAIStream() {
-  return videoStream;
 }
 
 export function isBrowserAISupported() {

@@ -27,7 +27,12 @@ let simulatedScore = 85;
 let simulationInterval = null;
 let browserAIActive = false;
 let browserVideoElement = null;
-let connectionStatus = 'offline'; // offline | connecting | live | error
+// offline | connecting | live | degraded | error
+// 'degraded' = the session is running (face/gaze tracking scoring normally)
+// but phone detection is dead — the one state where the game looks healthy
+// while its anti-phone check is off. Consumers that branch on 'live' must
+// decide what degraded means for them.
+let connectionStatus = 'offline';
 
 // aiMode: 'simulation' | 'browser'
 function loadConfig() {
@@ -59,6 +64,12 @@ function setConnectionStatus(status, detail = '') {
   statusListeners.forEach((cb) => cb({ status, detail }));
 }
 
+// KNOWN DUPLICATION (deliberate): same subscribe pattern as streamListeners/
+// subscribeBrowserAIStream in browserAI.js. Two copies is fine; a THIRD means
+// it's time to extract a shared makeListenerChannel() helper and fold all of
+// them into it. (Also note: this one replays with an empty detail string on
+// subscribe — a subscriber mounting mid-error gets the status but not the
+// reason. Fix that in the shared helper if it ever matters.)
 export function onConnectionStatus(callback) {
   statusListeners.add(callback);
   callback({ status: connectionStatus, detail: '' });
@@ -132,10 +143,12 @@ export async function startBrowserTracking() {
         if (status === 'active') setConnectionStatus('live', 'Browser AI');
         else if (status === 'error') setConnectionStatus('error', detail);
         else if (status === 'loading') setConnectionStatus('connecting', detail);
-        // Still live — face and gaze tracking are fine — but part of the
-        // pipeline (phone detection) failed to load, so carry the reason
-        // instead of reporting a clean 'Browser AI'.
-        else if (status === 'degraded') setConnectionStatus('live', detail);
+        // Session still running — face and gaze tracking are fine — but phone
+        // detection is dead. Passed through as its own value, NOT collapsed to
+        // 'live': collapsing meant no consumer could render the difference,
+        // and 'live' silently stopped meaning "fully working". The recovery
+        // push ({status:'active'}) clears this back to 'live'.
+        else if (status === 'degraded') setConnectionStatus('degraded', detail);
       },
     });
     browserAIActive = true;

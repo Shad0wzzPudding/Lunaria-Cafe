@@ -88,9 +88,16 @@ export default function CafeHUD() {
         iconColor={chaos.color}
         title="Focus score from your session / AI camera"
       />
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground">
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground"
+        title={aiStatus === 'degraded' ? 'Phone detection offline — face tracking still running' : undefined}
+      >
         {aiStatus === 'live' || aiStatus === 'connecting' ? (
           <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+        ) : aiStatus === 'degraded' ? (
+          // Amber, not green: the session runs but phone detection is dead —
+          // the backup signal for when the camera panel's banner is off-screen.
+          <Wifi className="w-3.5 h-3.5 text-amber-400" />
         ) : (
           <WifiOff className="w-3.5 h-3.5" />
         )}

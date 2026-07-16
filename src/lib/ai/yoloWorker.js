@@ -14,7 +14,7 @@ const PHONE_CLASS_ID = 67; // Class 67 คือ โทรศัพท์ใน 
 
 // All tuning lives in detectionPolicy.js (single source shared with the main
 // thread — the confidence bands here and the persistence windows there are
-// one calibration). Local names kept for readability.
+// one calibration).
 //
 // Why these bands exist at all: YOLO26 runs end-to-end — it picks the winning
 // class itself, so when yolo26n is wrong about a phone-ish prop (a watch, a
@@ -23,14 +23,16 @@ const PHONE_CLASS_ID = 67; // Class 67 คือ โทรศัพท์ใน 
 // argmax scan is impossible with this output). Confidence and shape are the
 // only screens we have, and a confidently-wrong prop (>= bypassConf) is
 // unfixable by filtering — that's the cue for a vocabulary-aware model.
+// Same names as detectionPolicy.js on purpose — one vocabulary, so grepping a
+// field name from either file finds both the tuning and its use.
 const {
-  hardConf: CONF_THRESHOLD,      // above: red box (shape-gated), counts in ~1.6s
-  softConf: SOFT_CONF_FLOOR,     // above: amber "Phone?" (shape-gated), counts via persistence
-  nearMissConf: NEAR_MISS_FLOOR, // above: diagnostics only; below: noise
-  bypassConf: GEOMETRY_BYPASS_CONF, // above: trust the model, any shape
-  minArea: PHONE_MIN_AREA,
-  minAspect: PHONE_MIN_ASPECT,
-  maxAspect: PHONE_MAX_ASPECT,
+  hardConf,     // above: red box (shape-gated), counts in ~1.6s
+  softConf,     // above: amber "Phone?" (shape-gated), counts via persistence
+  nearMissConf, // above: diagnostics only; below: noise
+  bypassConf,   // above: trust the model, any shape
+  minArea,
+  minAspect,
+  maxAspect,
 } = POLICY;
 
 // Geometry gate — a second screen for props the model mislabels as a phone:
@@ -141,7 +143,7 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
     // Cheap tests first: most of the 300 rows are padding with conf 0.
     const conf = data[o + 4];
     if (Math.round(data[o + 5]) !== PHONE_CLASS_ID) continue;
-    if (conf < NEAR_MISS_FLOOR) continue;
+    if (conf < nearMissConf) continue;
 
     // Undo the crop: tensor px -> real-frame px. Corners can sit slightly
     // outside the tensor (the model happily returns x1 = -4) — clamp to the
@@ -157,13 +159,13 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
     // Shape gate, judged in real-frame pixels where aspect and area are true.
     // Evaluated for BOTH counting tiers — a soft candidate that skipped the
     // shape check would let the watch back in through the lower door.
-    if (GEOMETRY_GATE_ENABLED && conf < GEOMETRY_BYPASS_CONF) {
+    if (GEOMETRY_GATE_ENABLED && conf < bypassConf) {
       const aspect = Math.max(wpx, hpx) / Math.min(wpx, hpx);
-      if ((wpx * hpx) / (videoW * videoH) < PHONE_MIN_AREA) {
+      if ((wpx * hpx) / (videoW * videoH) < minArea) {
         noteRejection(conf, 'area', ((wpx * hpx) / (videoW * videoH)).toFixed(3));
         continue;
       }
-      if (aspect < PHONE_MIN_ASPECT || aspect > PHONE_MAX_ASPECT) {
+      if (aspect < minAspect || aspect > maxAspect) {
         noteRejection(conf, 'aspect', aspect.toFixed(2));
         continue;
       }
@@ -172,9 +174,9 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
     // Normalised 0.0-1.0 fractions of the real frame, so the overlay can just
     // multiply by the on-screen video size (unchanged contract).
     const box = { x1: x1px / videoW, y1: y1px / videoH, w: wpx / videoW, h: hpx / videoH, conf };
-    if (conf > CONF_THRESHOLD) {
+    if (conf > hardConf) {
       if (!best || conf > best.conf) best = box;
-    } else if (conf >= SOFT_CONF_FLOOR) {
+    } else if (conf >= softConf) {
       if (!soft || conf > soft.conf) soft = box;
     } else {
       noteRejection(conf, 'conf');
