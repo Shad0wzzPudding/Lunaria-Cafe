@@ -72,7 +72,15 @@ export const POLICY_V2 = {
                     // (0.25 -> 0.20: raise the chance a weakly-scored phone
                     // counts; persistence + shape gate still screen props)
   nearMissConf: 0.08, // (0.12 -> 0.08: diagnostics see fainter signals)
-  bypassConf: 0.80, // camera-corner sneak: trust the model outright
+  bypassConf: 0.60, // (0.80 -> 0.60, V2 ONLY — V1 keeps 0.80.) Equal to
+                    // hardConf, so in V2 every detection above the red bar is
+                    // trusted outright and the shape gate only screens the
+                    // amber band: live testing showed real phones (tilted or
+                    // far) being shape-rejected at 60-70%. The trade: a prop
+                    // the model CONFIDENTLY misreads above 60% — a watch
+                    // rated as a phone — now counts too; if that shows up,
+                    // raise this back toward 0.70-0.80 or move to a model
+                    // whose vocabulary includes the prop.
   minArea: 0.02,    // fraction of the frame; below = watch, not a held phone
   minAspect: 1.2,   // loose on purpose — axis-aligned boxes square out under hand tilt
   maxAspect: 3.2,   // beyond this it's a sliver/edge, not a phone
