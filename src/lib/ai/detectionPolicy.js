@@ -77,9 +77,11 @@ export const POLICY_V2 = {
   minAspect: 1.2,   // loose on purpose — axis-aligned boxes square out under hand tilt
   maxAspect: 3.2,   // beyond this it's a sliver/edge, not a phone
   confirmFrames: 2,     // hard hits to confirm (~1.6s at the 800ms cadence)
-  softConfirmFrames: 4, // soft frames to confirm (~3.2s) — persistence is the
-                        // discriminator: real phone use lasts minutes, misread
-                        // props flicker
+  softConfirmFrames: 3, // soft frames to confirm (~2.4s). Was 4 (~3.2s);
+                        // 3 keeps one extra frame of flicker protection over
+                        // the hard path — a two-frame misread of a prop still
+                        // costs nothing, while a real in-use phone confirms
+                        // noticeably faster than the original 4.
   releaseFrames: 2,     // empty frames to release a confirmation
 };
 
