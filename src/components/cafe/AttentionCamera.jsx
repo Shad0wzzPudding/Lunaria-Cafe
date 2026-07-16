@@ -1,94 +1,61 @@
 import { useEffect, useRef, useState } from 'react';
 import { getAIConfig } from '@/lib/ai/aiIntegration';
-import { getBrowserAIStream, getBrowserAIStatus } from '@/lib/ai/browserAI';
+import { subscribeBrowserAIStream } from '@/lib/ai/browserAI';
 import Draggable from 'react-draggable';
 
-// How long to wait for browserAI to hand over its stream before giving up.
-// Model load + camera permission can take a while on a cold start.
-const ATTACH_TIMEOUT_MS = 30000;
-const ATTACH_POLL_MS = 200;
-
+/**
+ * The AI camera preview panel.
+ *
+ * Appears ONLY while the AI is actually live: it subscribes to browserAI's
+ * camera stream and renders nothing until the models are loaded and the
+ * camera is rolling — then pops in fully working. This replaces the old
+ * "Loading..." placeholder + 200ms poll + 30s give-up deadline, all three of
+ * which had failure modes (a slow model download left the panel stuck on an
+ * error forever; a ready-flag that never reset suppressed error UI for the
+ * rest of the mount). There is no loading state to get stuck in: the panel's
+ * existence IS the ready signal. Load/error status still surfaces through
+ * the HUD and settings via the connection-status channel.
+ *
+ * The stream is browserAI's own (never a second getUserMedia — two streams
+ * meant the pixels the player watched were not the pixels the model judged).
+ * This panel only borrows it: cleanup detaches, never stops tracks.
+ */
 export default function AttentionCamera() {
   const { aiMode } = getAIConfig();
   const videoRef = useRef(null);
 
-  // 👇 เพิ่ม nodeRef ตรงนี้เพื่อแก้ปัญหา findDOMNode ของ React 18
+  // 👇 nodeRef เพื่อแก้ปัญหา findDOMNode ของ React 18
   const draggableRef = useRef(null);
 
-  const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState(null);
-  // Mirrors isReady for the poll loop, which is a closure created once per
-  // effect run and would otherwise capture isReady's stale first value.
-  const isReadyRef = useRef(false);
+  const [stream, setStream] = useState(null);
 
   const showCamera = aiMode === 'browser';
 
+  // Push-based: fires immediately with the current stream (covers mounting
+  // after the AI already started, e.g. closing a popup mid-session), again
+  // when a session's camera starts rolling — however long the model download
+  // took — and with null on stop, which unrenders the panel.
   useEffect(() => {
     if (!showCamera) return;
-
-    let cancelled = false;
-    let timer = null;
-    const deadline = Date.now() + ATTACH_TIMEOUT_MS;
-    const videoEl = videoRef.current; // always mounted while showCamera
-
-    // Show the stream browserAI already opened. This panel used to call
-    // getUserMedia itself, which lit up a second camera stream at a different
-    // resolution — so the preview under the overlay was not the video the model
-    // actually scored, and #ai-canvas (sized from the model's video) drew its
-    // phone boxes against the wrong dimensions. One stream, one set of pixels.
-    // Keep polling for the lifetime of the panel rather than stopping at the
-    // first successful attach: stopBrowserAI() stops the tracks and opens a
-    // fresh stream on the next session, and a one-shot attach would leave this
-    // <video> holding the dead one — a frozen preview that never recovers. The
-    // poll is a getter and an identity compare; it re-attaches on a swap.
-    const attach = () => {
-      if (cancelled) return;
-
-      const stream = getBrowserAIStream();
-
-      if (!stream || !videoEl) {
-        // Only a never-attached camera is an error worth showing. Once it has
-        // worked, a momentarily absent stream just means the AI is restarting.
-        if (!isReadyRef.current) {
-          if (getBrowserAIStatus() === 'error') {
-            setError('Camera unavailable');
-            return;
-          }
-          if (Date.now() > deadline) {
-            setError('Camera did not start');
-            return;
-          }
-        }
-        timer = setTimeout(attach, ATTACH_POLL_MS);
-        return;
-      }
-
-      if (videoEl.srcObject !== stream) {
-        videoEl.srcObject = stream;
-        videoEl.play().catch(() => {});
-      }
-      setError(null);
-      setIsReady(true);
-      isReadyRef.current = true;
-      timer = setTimeout(attach, ATTACH_POLL_MS);
-    };
-
-    attach();
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      // Detach only — browserAI owns this stream and is still scoring with it.
-      // Stopping the tracks here would kill AI tracking every time the panel
-      // unmounts (it does: CafeView drops it whenever a popup opens).
-      if (videoEl) videoEl.srcObject = null;
-    };
+    return subscribeBrowserAIStream(setStream);
   }, [showCamera]);
 
-  if (!showCamera) return null;
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !stream) return;
+    el.srcObject = stream;
+    // Autoplay of a muted playsinline video is reliable; a rejection here is
+    // a transient AbortError from a rapid stream swap — the next subscription
+    // callback re-runs this effect, so log rather than surface.
+    el.play().catch((err) => console.warn('[AttentionCamera] preview play failed:', err.message));
+    return () => { el.srcObject = null; }; // detach only — browserAI owns the stream
+  }, [stream]);
+
+  // Not in browser mode, or the AI isn't live yet: no panel at all.
+  if (!showCamera || !stream) return null;
 
   return (
-    // 👇 ใส่ nodeRef={draggableRef} ตรงนี้
+    // 👇 nodeRef + ref เชื่อม Draggable กับ DOM node
     <Draggable bounds="parent" nodeRef={draggableRef}>
       <aside ref={draggableRef} className="absolute bottom-3 left-3 z-50 w-64 min-w-[200px] resize overflow-auto cursor-move rounded-lg border border-border/50 bg-black/60 shadow-lg pb-1">
         <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel pointer-events-none">
@@ -97,15 +64,15 @@ export default function AttentionCamera() {
 
         <div className="relative pointer-events-none">
           {/* No fixed aspect box: the video lays out at the stream's own aspect
-              ratio, so its rendered size matches its intrinsic size exactly and
-              the absolutely-positioned canvas maps 1:1 onto it. An aspect-video
-              + object-cover wrapper cropped a 4:3 stream and knocked every
-              phone box out of alignment with the face underneath. */}
+              ratio, so its rendered size matches its intrinsic size and the
+              absolutely-positioned canvas maps 1:1 onto it. An aspect-video +
+              object-cover wrapper crops the stream and knocks every overlay
+              box out of alignment. */}
           <video
             ref={videoRef}
             autoPlay playsInline muted
             className="block w-full h-auto"
-            style={{ transform: 'scaleX(-1)', display: isReady ? 'block' : 'none' }}
+            style={{ transform: 'scaleX(-1)' }}
           />
 
           <canvas
@@ -113,15 +80,6 @@ export default function AttentionCamera() {
             className="absolute top-0 left-0 w-full h-full pointer-events-none"
           />
         </div>
-
-        {!isReady && (
-          <div className="flex aspect-video items-center justify-center bg-black/80 pointer-events-none">
-            {error
-              ? <span className="text-[10px] text-red-400 text-center px-2">{error}</span>
-              : <span className="text-[10px] text-muted-foreground">Loading...</span>
-            }
-          </div>
-        )}
       </aside>
     </Draggable>
   );

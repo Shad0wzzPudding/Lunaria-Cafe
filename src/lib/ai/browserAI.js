@@ -4,6 +4,7 @@
  */
 
 import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
+import { POLICY, cropRect, TENSOR_SIZE } from './detectionPolicy.js';
 
 let faceLandmarker = null;
 let videoStream = null;
@@ -56,16 +57,15 @@ export function setBrowserAIScoreFrozen(frozen) {
   if (!frozen) lastScoreTick = Date.now();
 }
 
-let latestPhones = []; // รับข้อมูลจาก Worker
-// Soft candidate: a shape-approved phone box the model scored just under the
-// threshold (the in-use pose lives here). No detection alone — confirmPhone
-// promotes it only when it persists across consecutive frames. Drawn dashed
-// amber so the player can see the "almost" state.
-let latestSoft = null;
-// The best phone-class detection a worker-side filter rejected this frame
-// ({conf, reason}) — drawn as a dashed near-miss readout so "phone stopped
-// being detected" is diagnosable from the overlay instead of invisible.
-let latestRejected = null;
+// The worker's verdict for the latest frame — ONE tagged value, so the tiers
+// are mutually exclusive by construction (they used to be three parallel
+// nullable variables coordinated by comments):
+//   { tier: 'hard',     box }           red box; counts on its own
+//   { tier: 'soft',     box }           amber "Phone?" box (the in-use pose
+//                                       lives here); counts via persistence
+//   { tier: 'rejected', conf, reason }  near-miss diagnostics; never counts
+//   { tier: null }                      nothing phone-like this frame
+let latestDetection = { tier: null };
 
 // Debug-panel toggle: shade the parts of the frame the phone detector cannot
 // see. The detector runs on the CENTER-CROPPED square of the camera (full
@@ -102,15 +102,15 @@ let isUserFocusedGlobal = true;
 // phone` above CONF_THRESHOLD, it clears these frame streaks exactly like a real
 // phone would — the only screen for that is CONF_THRESHOLD in yoloWorker, and
 // only while the model stays low-confidence about the mistake.
-const PHONE_CONFIRM_FRAMES = 2;
-const PHONE_RELEASE_FRAMES = 2;
-// A phone actually being USED (tilted, foreshortened, thumb over it) scores
-// chronically just under the worker's hard threshold, so hard hits alone
-// rarely confirm it. Soft candidates — under-threshold but shape-approved —
-// confirm instead by PERSISTENCE: this many consecutive frames (~3.2s at the
-// 800ms cadence). Long enough that a prop misread for a frame or two never
-// triggers; short enough to catch real phone use, which lasts minutes.
-const PHONE_SOFT_CONFIRM_FRAMES = 4;
+// The frame counts live in detectionPolicy.js next to the confidence bands
+// they calibrate against — one policy, one file. Soft persistence exists
+// because a phone actually being USED (tilted, foreshortened, thumb over it)
+// scores chronically under the hard threshold; ~3.2s of consecutive soft
+// frames confirm it, long enough that a prop misread for a frame or two
+// never triggers.
+const PHONE_CONFIRM_FRAMES = POLICY.confirmFrames;
+const PHONE_RELEASE_FRAMES = POLICY.releaseFrames;
+const PHONE_SOFT_CONFIRM_FRAMES = POLICY.softConfirmFrames;
 // Streaks only advance on fresh results, so if results stop arriving entirely
 // (stalled inference, a wedged worker) a confirmed phone would otherwise never
 // clear: the score keeps draining and the 30s danger clock runs the session to
@@ -119,8 +119,9 @@ const PHONE_SOFT_CONFIRM_FRAMES = 4;
 // is still holding a phone — give them the benefit of the doubt.
 const PHONE_STALE_MS = 5000;
 // Detections are only fresh when the worker replies; the loop re-reads the same
-// latestPhones buffer in between. Counting those repeats would let ONE inference
-// confirm a phone all by itself, so the streaks only advance on a new result.
+// latestDetection value in between. Counting those repeats would let ONE
+// inference confirm a phone all by itself, so the streaks only advance on a
+// new result.
 let phoneResultSeq = 0;    // bumped by the worker's onmessage
 let phoneSeenSeq = -1;     // last result this state machine consumed
 let phoneLastResultAt = 0; // when that result arrived
@@ -130,7 +131,7 @@ let phoneMissStreak = 0;
 let phoneConfirmed = false;
 
 function confirmPhone(rawHit, softHit, now) {
-  // Nothing new to judge — the loop is re-reading the same latestPhones buffer.
+  // Nothing new to judge — the loop is re-reading the same latestDetection.
   if (phoneSeenSeq === phoneResultSeq) {
     if (phoneConfirmed && phoneLastResultAt && now - phoneLastResultAt > PHONE_STALE_MS) {
       phoneHitStreak = 0;
@@ -177,7 +178,11 @@ function setStatus(status, detail = '') {
 }
 
 export function getBrowserAIStatus() {
-  return _status;
+  // Poll-readers get the same picture push-subscribers do: a session that is
+  // running but has lost phone detection reports 'degraded', not a clean
+  // 'active'. _status itself stays 'active' internally — it gates the render
+  // loop and the visibility handler, which must keep running while degraded.
+  return _status === 'active' && yoloError ? 'degraded' : _status;
 }
 
 // โหลด MediaPipe
@@ -226,7 +231,15 @@ function initYoloWorker() {
   yoloWorker.onmessage = (e) => {
     if (e.data.type === 'status' && e.data.status === 'ready') {
       isYoloReady = true;
-      yoloError = null;
+      if (yoloError) {
+        // RECOVERY must be announced, not just recorded: reportYoloError pushed
+        // 'degraded' to the app-wide status (settings shows its detail text
+        // verbatim), so clearing yoloError silently would fix the on-camera
+        // banner while settings kept saying "Phone detection offline" for the
+        // rest of the session.
+        yoloError = null;
+        if (_onStatusChange) _onStatusChange({ status: 'active', detail: 'Browser AI running' });
+      }
     }
     if (e.data.type === 'status' && e.data.status === 'error') {
       // Deliberately does NOT clear isYoloReady. If the model failed to load it
@@ -236,9 +249,7 @@ function initYoloWorker() {
       reportYoloError(e.data.error);
     }
     if (e.data.type === 'result') {
-      latestPhones = e.data.phones;
-      latestSoft = e.data.soft ?? null;
-      latestRejected = e.data.rejected ?? null;
+      latestDetection = e.data.detection ?? { tier: null };
       phoneResultSeq += 1; // a genuinely new detection for confirmPhone to judge
       phoneLastResultAt = Date.now();
       isProcessingYolo = false; // reply received — send the next frame
@@ -283,9 +294,9 @@ function isUserPresent(faceResult) {
   return !!(faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0);
 }
 
-function processDetections(faceResult, phones) {
+function processDetections(faceResult, detection) {
   const now = Date.now();
-  const isPhoneDetected = confirmPhone(phones.length > 0, !!latestSoft, now);
+  const isPhoneDetected = confirmPhone(detection.tier === 'hard', detection.tier === 'soft', now);
 
   const hasFace = isUserPresent(faceResult);
   const isGazeFocused = hasFace ? checkGazeFocused(faceResult.faceBlendshapes) : true;
@@ -359,7 +370,8 @@ function processDetections(faceResult, phones) {
     timestamp: now,
     warning_message: warningMessage,
     tracker_score: focusScore,
-    phones: latestPhones,
+    // External event shape unchanged: hard detections as a box array.
+    phones: detection.tier === 'hard' ? [detection.box] : [],
     source: 'browser',
   };
 }
@@ -387,16 +399,14 @@ async function runProcessFrame() {
       //      later; a phone in front of the player is what actually matters.
       const vw = videoElement.videoWidth;
       const vh = videoElement.videoHeight;
-      const side = Math.min(vw, vh);
-      const sx = (vw - side) / 2;
-      const sy = (vh - side) / 2;
-      workerCanvasCtx.drawImage(videoElement, sx, sy, side, side, 0, 0, 640, 640);
-      const imageData = workerCanvasCtx.getImageData(0, 0, 640, 640);
+      const crop = cropRect(vw, vh); // the ONE mapping — shared with the worker's unmap
+      workerCanvasCtx.drawImage(videoElement, crop.x, crop.y, crop.side, crop.side, 0, 0, TENSOR_SIZE, TENSOR_SIZE);
+      const imageData = workerCanvasCtx.getImageData(0, 0, TENSOR_SIZE, TENSOR_SIZE);
       // videoW/H let the worker undo the crop and return boxes as fractions
       // of the REAL frame, so the overlay math stays unchanged.
       yoloWorker.postMessage({ type: 'detect', payload: { imageData, videoW: vw, videoH: vh } });
     }
-    const event = processDetections(faceResult, latestPhones);
+    const event = processDetections(faceResult, latestDetection);
     if (_onEvent) _onEvent(event);
   } catch (err) {
     console.warn('[BrowserAI] Frame processing error:', err.message);
@@ -447,6 +457,23 @@ function drawTextWithBg(ctx, text, x, y, bgRgba, textRgba, fontSize = 14) {
   ctx.fillText(text, x, y);
 }
 
+// The preview <video> is CSS-mirrored (scaleX(-1)); the canvas is not, so a
+// box must flip its X to land on what the player sees. ONE copy of the mirror
+// math, shared by the red (hard) and amber (soft) boxes — two hand-synced
+// copies of this formula is how boxes end up on opposite sides of the frame.
+function drawDetectionBox(ctx, box, width, height, { color, bg, label, dashed }) {
+  const w = box.w * width;
+  const h = box.h * height;
+  const x = width - box.x1 * width - w; // horizontal flip
+  const y = box.y1 * height;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = dashed ? 2 : 3;
+  if (dashed) ctx.setLineDash([8, 5]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+  drawTextWithBg(ctx, label, x, y - 10, bg, '#fff', 12);
+}
+
 function renderLoop() {
   // 1. ดึง Canvas ตัวปัจจุบันที่อยู่บนหน้าจอจริงๆ (หาใหม่ทุกเฟรม)
   const currentCanvas = document.getElementById('ai-canvas');
@@ -475,27 +502,26 @@ function renderLoop() {
   // first so boxes and text stay on top. The centered crop is symmetric,
   // which is also why the mirrored preview needs no special handling.
   if (debugShowDetectionZone) {
-    const side = Math.min(width, height);
-    const bx = (width - side) / 2;  // blind strip width (left & right)
-    const by = (height - side) / 2; // blind strip height (top & bottom)
+    // Same cropRect the pipeline actually uses — the zone can't lie.
+    const crop = cropRect(width, height);
     ctx.fillStyle = 'rgba(255, 70, 70, 0.14)';
-    if (bx > 0) {
-      ctx.fillRect(0, 0, bx, height);
-      ctx.fillRect(width - bx, 0, bx, height);
+    if (crop.x > 0) {
+      ctx.fillRect(0, 0, crop.x, height);
+      ctx.fillRect(width - crop.x, 0, crop.x, height);
     }
-    if (by > 0) {
-      ctx.fillRect(0, 0, width, by);
-      ctx.fillRect(0, height - by, width, by);
+    if (crop.y > 0) {
+      ctx.fillRect(0, 0, width, crop.y);
+      ctx.fillRect(0, height - crop.y, width, crop.y);
     }
     ctx.strokeStyle = 'rgba(255, 120, 120, 0.7)';
     ctx.lineWidth = 1;
     ctx.setLineDash([6, 5]);
-    ctx.strokeRect(bx, by, side, side);
+    ctx.strokeRect(crop.x, crop.y, crop.side, crop.side);
     ctx.setLineDash([]);
     const zoneMsg = 'PHONE AI SEES INSIDE THIS BOX';
     ctx.font = `bold 10px "Segoe UI", sans-serif`;
     const zoneW = ctx.measureText(zoneMsg).width;
-    drawTextWithBg(ctx, zoneMsg, bx + (side - zoneW) / 2, by + 16, 'rgba(120,40,40,0.8)', '#ffd7d7', 10);
+    drawTextWithBg(ctx, zoneMsg, crop.x + (crop.side - zoneW) / 2, crop.y + 16, 'rgba(120,40,40,0.8)', '#ffd7d7', 10);
   }
 
   // --- วาดข้อความ Focus Score ---
@@ -523,43 +549,29 @@ function renderLoop() {
   const badgeWidth = ctx.measureText(badgeText).width;
   drawTextWithBg(ctx, badgeText, width - badgeWidth - 20, 25, badgeColor, '#fff');
 
-  // --- วาดกรอบแดงโทรศัพท์ ---
-// ใน browserAI.js -> ฟังก์ชัน renderLoop
-  latestPhones.forEach(box => {
-  // 1. คำนวณความกว้างและพิกัดดิบก่อน
-  const realW = box.w * width; // Box width (pixel)
-  const realH = box.h * height; // Box height (pixel)
-  const rawX = box.x1 * width; // Left edge from un-mirrored AI (pixel)
-  const realY = box.y1 * height; // Top edge from AI (pixel - แกนนี้ถูกอยู่แล้ว)
-
-  // 2. 👇 วิชามาร "พลิกด้านซ้ายขวา (Horizontal Flip)"
-  // พิกัดด้านซ้ายใหม่ (mirroredX) = (ความกว้าง Canvas ทั้งหมด) - (พิกัดด้านซ้ายดิบ) - (ความกว้างของกล่อง)
-  const mirroredX = width - rawX - realW;
-
-  // 3. วาดกล่องแดงด้วยพิกัดใหม่ (mirroredX)
-  ctx.strokeStyle = 'rgb(255, 0, 0)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(mirroredX, realY, realW, realH);
-  
-  // 4. วาดข้อความให้ตรงกับพิกัด mirroredX ด้วยครับ
-  drawTextWithBg(ctx, `Phone ${Math.round(box.conf * 100)}%`, mirroredX, realY - 10, 'rgba(200,0,0,0.85)', '#fff', 12);
-});
-
-  // --- กล่องเหลือง: เจอสิ่งที่น่าจะเป็นโทรศัพท์ กำลังรอยืนยัน ---
-  // The soft candidate — a shape-approved box just under the hard threshold.
-  // Dashed amber, "Phone? 41%": the player sees the AI tracking it while the
-  // persistence counter runs; four consecutive soft frames confirm.
-  if (latestPhones.length === 0 && latestSoft) {
-    const sW = latestSoft.w * width;
-    const sH = latestSoft.h * height;
-    const sX = width - latestSoft.x1 * width - sW; // mirrored like the red boxes
-    const sY = latestSoft.y1 * height;
-    ctx.strokeStyle = 'rgb(255, 190, 0)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 5]);
-    ctx.strokeRect(sX, sY, sW, sH);
-    ctx.setLineDash([]);
-    drawTextWithBg(ctx, `Phone? ${Math.round(latestSoft.conf * 100)}%`, sX, sY - 10, 'rgba(180,140,0,0.85)', '#fff', 12);
+  // --- กรอบตรวจจับ: แดง = นับแล้ว, เหลือง = รอยืนยัน, ข้อความ = ปัดตก ---
+  // ONE tagged detection per frame (latestDetection), so the tiers cannot
+  // draw over each other by construction — no cross-guards needed.
+  if (latestDetection.tier === 'hard') {
+    drawDetectionBox(ctx, latestDetection.box, width, height, {
+      color: 'rgb(255, 0, 0)', bg: 'rgba(200,0,0,0.85)', dashed: false,
+      label: `Phone ${Math.round(latestDetection.box.conf * 100)}%`,
+    });
+  } else if (latestDetection.tier === 'soft') {
+    // Shape-approved but under the hard bar — the in-use pose lives here. The
+    // player sees the AI tracking it while the persistence counter runs.
+    drawDetectionBox(ctx, latestDetection.box, width, height, {
+      color: 'rgb(255, 190, 0)', bg: 'rgba(180,140,0,0.85)', dashed: true,
+      label: `Phone? ${Math.round(latestDetection.box.conf * 100)}%`,
+    });
+  } else if (latestDetection.tier === 'rejected') {
+    // NEAR MISS: which filter rejected it and at what confidence, so a phone
+    // that "stopped detecting" is diagnosable from the overlay:
+    //   conf   -> under the soft floor: raise the phone, improve light
+    //   aspect -> the held angle squares the box: lower minAspect
+    //   area   -> too small in frame: phone too far away, or lower minArea
+    const msg = `NEAR MISS: ${latestDetection.reason} @ ${Math.round(latestDetection.conf * 100)}%`;
+    drawTextWithBg(ctx, msg, 10, height - 10, 'rgba(180,140,0,0.85)', '#fff', 11);
   }
 
   // --- วาด Warning ใหญ่กลางจอ ---
@@ -577,17 +589,6 @@ function renderLoop() {
     ctx.fillRect(0, cy - 25, width, 40);
     ctx.fillStyle = scoreFrozen ? 'rgb(130, 200, 255)' : 'rgb(255, 60, 60)';
     ctx.fillText(warningToShow, cx, cy);
-  }
-
-  // --- NEAR MISS: โมเดลเห็นบางอย่างคล้ายโทรศัพท์ แต่ฟิลเตอร์ปัดตก ---
-  // Shows WHICH filter rejected it and at what confidence ("aspect 1.12 @ 58%"),
-  // so a phone that "stopped detecting" can be diagnosed from the overlay:
-  //   conf   -> under CONF_THRESHOLD: raise the phone, improve light, or lower it
-  //   aspect -> the held angle squares the box: lower PHONE_MIN_ASPECT
-  //   area   -> too small in frame: phone too far away, or lower PHONE_MIN_AREA
-  if (latestRejected && latestPhones.length === 0) {
-    const msg = `NEAR MISS: ${latestRejected.reason} @ ${Math.round(latestRejected.conf * 100)}%`;
-    drawTextWithBg(ctx, msg, 10, height - 10, 'rgba(180,140,0,0.85)', '#fff', 11);
   }
 
   // --- แถบเตือนเมื่อ AI ตรวจจับโทรศัพท์ไม่ได้ ---
@@ -619,12 +620,17 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
 
   setStatus('loading', 'Loading AI models...');
 
+  // Kick both loads off in parallel, but keep a handle on the stream promise:
+  // Promise.all abandons its siblings on first rejection, so if the landmarker
+  // fails while getUserMedia later succeeds, the granted stream would leak —
+  // camera light on, no session, no way to stop it.
+  const streamPromise = getWebcamStream();
   try {
     initYoloWorker(); // เริ่ม YOLO
 
     const [, stream] = await Promise.all([
       loadFaceLandmarker(),
-      getWebcamStream(),
+      streamPromise,
     ]);
 
     videoStream = stream;
@@ -642,8 +648,8 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
 
     // สร้าง Offscreen Canvas ลับไว้ส่งให้ Worker
     const hiddenCanvas = document.createElement('canvas');
-    hiddenCanvas.width = 640;
-    hiddenCanvas.height = 640;
+    hiddenCanvas.width = TENSOR_SIZE;
+    hiddenCanvas.height = TENSOR_SIZE;
     workerCanvasCtx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
 
     focusScore = 0;
@@ -657,8 +663,16 @@ export async function startBrowserAI({ onEvent, onStatusChange, video } = {}) {
     animFrameId = requestAnimationFrame(processFrame);
     renderFrameId = requestAnimationFrame(renderLoop);
 
+    // The camera is genuinely rolling — tell subscribers (the AttentionCamera
+    // panel appears at exactly this moment, however long the models took).
+    notifyStreamListeners();
+
     return videoElement;
   } catch (err) {
+    // Release the camera if it was (or later gets) granted on this failed path.
+    streamPromise.then((s) => {
+      if (s !== videoStream) s.getTracks().forEach((t) => t.stop());
+    }).catch(() => {});
     setStatus('error', err.message);
     throw err;
   }
@@ -678,12 +692,18 @@ export function stopBrowserAI() {
   if (videoStream) {
     videoStream.getTracks().forEach((t) => t.stop());
     videoStream = null;
+    notifyStreamListeners(); // the panel hides itself the moment the stream dies
   }
   if (videoElement) {
     videoElement.srcObject = null;
     videoElement = null;
   }
   if (yoloWorker) {
+    // Detach the handlers BEFORE terminating: a message task already queued on
+    // the event loop can still fire after terminate(), and a late error would
+    // push a phantom 'degraded' status into a session that no longer exists.
+    yoloWorker.onmessage = null;
+    yoloWorker.onerror = null;
     yoloWorker.terminate(); // ปิด Worker เมื่อหยุดใช้งาน
     yoloWorker = null;
     isYoloReady = false;
@@ -694,9 +714,7 @@ export function stopBrowserAI() {
   focusScore = 0;
   currentAttentionScore = ATTN_START;
   scoreFrozen = false;
-  latestPhones = [];
-  latestSoft = null;
-  latestRejected = null;
+  latestDetection = { tier: null };
   // The overlay reads these directly and starts drawing before the first
   // detection of the next session lands, so a warning left over from the last
   // one ("PUT YOUR PHONE AWAY!") would flash onto a camera showing an empty desk.
@@ -718,12 +736,32 @@ export function stopBrowserAI() {
   isProcessingYolo = false;
   lastProcessTime = 0;
   setStatus('idle');
+  // Cleared AFTER the 'idle' notification so subscribers hear the teardown —
+  // and so nothing later (a stray async callback) can talk to a session that
+  // has ended. Set fresh by the next startBrowserAI.
+  _onStatusChange = null;
 }
 
-// The one live camera stream. AttentionCamera reuses this for its preview
-// rather than calling getUserMedia a second time: two streams meant the pixels
-// the player watched were not the pixels the model judged, and the overlay's
-// box coordinates were scaled against the wrong video's dimensions.
+// ── The one live camera stream ─────────────────────────────────────────────
+// AttentionCamera reuses this for its preview rather than calling getUserMedia
+// a second time: two streams meant the pixels the player watched were not the
+// pixels the model judged. Consumers SUBSCRIBE rather than poll — the callback
+// fires immediately with the current stream (null when the camera is down),
+// again when a session's camera actually starts rolling, and again on stop.
+// This is what lets the panel exist exactly when the AI is live: no loading
+// placeholder to get stuck, no give-up deadline, no 200ms timer.
+const streamListeners = new Set();
+
+function notifyStreamListeners() {
+  streamListeners.forEach((cb) => cb(videoStream));
+}
+
+export function subscribeBrowserAIStream(callback) {
+  streamListeners.add(callback);
+  callback(videoStream); // late subscribers catch up instantly
+  return () => streamListeners.delete(callback);
+}
+
 export function getBrowserAIStream() {
   return videoStream;
 }
