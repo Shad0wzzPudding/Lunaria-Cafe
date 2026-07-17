@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette, Mail } from 'lucide-react';
 import ThemePicker from '@/components/settings/ThemePicker';
 import {
   setAIConfig,
@@ -137,6 +137,7 @@ export default function GameSettings() {
               <ToggleSetting icon={BookOpen}      label="Journal Open"     checked={audio.sfxJournalOpen}       onCheckedChange={(v) => setAudio({ sfxJournalOpen: v })} />
               <ToggleSetting icon={BookOpen}      label="Journal Close"    checked={audio.sfxJournalClose}      onCheckedChange={(v) => setAudio({ sfxJournalClose: v })} />
               <ToggleSetting icon={AlertTriangle} label="Phone Warning"    checked={audio.sfxPhoneWarning}      onCheckedChange={(v) => setAudio({ sfxPhoneWarning: v })} />
+              <ToggleSetting icon={Mail}          label="License Letter"   checked={audio.sfxLetterOpen ?? true} onCheckedChange={(v) => setAudio({ sfxLetterOpen: v })} />
             </div>
           )}
         </section>

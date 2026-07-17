@@ -17,6 +17,7 @@ import MyClassrooms from '@/pages/MyClassrooms'
 import LeaderboardPage from '@/pages/LeaderboardPage'
 import { LiveRoundProvider } from '@/lib/liveRound/LiveRoundProvider'
 import GameSettings from '@/pages/GameSettings'
+import Help from '@/pages/Help'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
 import DebugPanel from '@/components/debug/DebugPanel'
@@ -145,6 +146,7 @@ function GameRouter() {
       {phase === 'classrooms' && <MyClassrooms />}
       {phase === 'leaderboard' && <LeaderboardPage />}
       {phase === 'settings' && <GameSettings />}
+      {phase === 'help'     && <Help />}
 
       {debugOpen && <DebugPanel onClose={() => setDebugOpen(false)} />}
     </>

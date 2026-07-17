@@ -6,7 +6,9 @@ import { Play, BarChart3, Settings, BookOpen, Users, Radio } from 'lucide-react'
 import { motion } from 'framer-motion';
 
 export default function MainMenu() {
-  const { dispatch, logout } = useGame();
+  const { state, dispatch, logout } = useGame();
+  // Old saves lack the key: undefined -> bubble shows, same as a fresh game.
+  const letterUnread = !state.settings?.welcomeLetterOpened;
   const { user, profile, isGuest, chooseRole } = useAuth();
   const { currentRound } = useLiveRound();
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
@@ -44,6 +46,60 @@ export default function MainMenu() {
           Log out
         </button>
       </motion.div>
+
+      {/* Help button — bottom-right, out of the menu column's way */}
+      <motion.button
+        type="button"
+        onClick={() => dispatch({ type: 'SET_PHASE', payload: 'help' })}
+        className="absolute bottom-6 right-6 z-20 w-14 h-14 select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
+        title="Info, credits & tutorial"
+        aria-label="Info, credits & tutorial"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2, delay: 0.5 }}
+      >
+        <img
+          src="/assets/button/help.png"
+          alt=""
+          className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+          draggable={false}
+        />
+      </motion.button>
+
+      {/* "You've got mail" bubble — pinned above the ? button until the
+          player opens the license letter (see LicenseEnvelope.openLetter);
+          no dismiss, it simply stops existing once the letter is read.
+          Same pixel speech-bubble language as SessionSummary. */}
+      {letterUnread && (
+        <motion.div
+          className="absolute bottom-[5.5rem] right-6 z-20 pointer-events-none select-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, y: [0, -5, 0] }}
+          transition={{
+            opacity: { duration: 0.8, delay: 1.4 },
+            y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', delay: 1.4 },
+          }}
+        >
+          <div
+            className="relative font-pixel text-[11px] leading-snug"
+            style={{
+              background: '#fef9f0',
+              color: '#2a2040',
+              border: '4px solid #2a2040',
+              padding: '8px 12px',
+              imageRendering: 'pixelated',
+            }}
+          >
+            A welcome letter is waiting for you &lt;3
+            {/* Pixel tail — steps down toward the ? button */}
+            <div style={{ position: 'absolute', bottom: '-12px', right: '14px' }}>
+              <div style={{ position: 'absolute', bottom: '4px', right: 0, width: '16px', height: '4px', background: '#2a2040' }} />
+              <div style={{ position: 'absolute', bottom: '8px', right: '4px', width: '8px', height: '4px', background: '#fef9f0' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: '4px', width: '8px', height: '4px', background: '#2a2040' }} />
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Menu content — anchored to bottom-left */}
       <motion.div

@@ -417,9 +417,9 @@ export default function CafeCanvas({ frozen = false }) {
   }, [state.cafe.furniture]);
 
   useEffect(() => {
-    const day = new Image(); day.src = '/C_Daylight.png';
+    const day = new Image(); day.src = '/assets/background/C_Daylight.png';
     day.onload = () => { bgImages.current.day = buildMaskedBg(day); };
-    const night = new Image(); night.src = '/C_Nightfall.png';
+    const night = new Image(); night.src = '/assets/background/C_Nightfall.png';
     night.onload = () => { bgImages.current.night = buildMaskedBg(night); };
   }, []);
 

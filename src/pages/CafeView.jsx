@@ -49,7 +49,7 @@ const NOTIF_SUPPORTED = typeof Notification !== 'undefined';
 const IS_MOBILE_OR_TABLET = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   || (IS_MAC && navigator.maxTouchPoints > 1);
 
-const JOURNAL_BUTTON_ART = '/assets/journal-button.png';
+const JOURNAL_BUTTON_ART = '/assets/button/journal-button.png';
 
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
@@ -1022,7 +1022,7 @@ export default function CafeView() {
         className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto"
         style={(isImmersive && !isZenMode && !popupOpen)
           ? {
-              backgroundImage: `url(${timeOfDay === 'day' ? '/C_BG_Daylight.png' : '/C_BG_Nightfall.png'})`,
+              backgroundImage: `url(${timeOfDay === 'day' ? '/assets/background/C_BG_Daylight.png' : '/assets/background/C_BG_Nightfall.png'})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center center',
             }
@@ -1041,7 +1041,7 @@ export default function CafeView() {
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(${timeOfDay === 'day' ? '/C_BG_Daylight.png' : '/C_BG_Nightfall.png'})`,
+              backgroundImage: `url(${timeOfDay === 'day' ? '/assets/background/C_BG_Daylight.png' : '/assets/background/C_BG_Nightfall.png'})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center center',
               filter: 'blur(6px)',
