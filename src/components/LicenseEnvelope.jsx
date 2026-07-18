@@ -257,7 +257,7 @@ function StarterPackReveal({ audio, onDone }) {
         <div className="flex items-end gap-12 mt-[3vh]">
           <RewardCard
             img="/assets/Potion_green.png"
-            alt="Focus boost tickets"
+            alt="Focus boost potions"
             label="×3 Focus Boosts"
             glow="radial-gradient(circle, rgba(110,231,183,0.55), transparent 70%)"
             delay={0.55}

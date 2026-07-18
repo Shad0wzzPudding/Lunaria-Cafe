@@ -64,7 +64,7 @@ export default function FocusModePrompt({ onSelect }) {
             <p className="font-body text-xs text-muted-foreground leading-snug">
               <span className="font-pixel text-[11px]" style={{ color: '#6ee7b7' }}>Focus boost ready!</span>
               <br />
-              A ticket is spent when the session starts — {BOOST_LABEL} for the {BOOST_WINDOW_LABEL}. {tickets} left.
+              A boost potion is used when the session starts — {BOOST_LABEL} for the {BOOST_WINDOW_LABEL}. {tickets} left.
             </p>
           </div>
         )}

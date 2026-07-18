@@ -60,10 +60,10 @@ export default function ExitSessionPrompt({
             style={{ background: 'rgba(245,158,11,0.10)', boxShadow: '0 0 0 1px rgba(245,158,11,0.35)' }}
           >
             <p className="font-pixel text-[11px]" style={{ color: '#fbbf24' }}>
-              🎟️ A focus boost is active
+              🧪 A focus boost is active
             </p>
             <p className="font-body text-xs text-muted-foreground mt-1">
-              The ticket was spent when this session started and won't be refunded if you end now.
+              The boost potion was used when this session started and won't be refunded if you end now.
             </p>
           </div>
         )}

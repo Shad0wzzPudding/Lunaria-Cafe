@@ -186,7 +186,7 @@ export function LiveRoundProvider({ children }) {
           const spentTicket = await beginParticipation(round);
           toast.success(`Joined ${round.classroom_name}'s live session!`, {
             description: spentTicket
-              ? `A focus boost ticket was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL}.`
+              ? `A boost potion was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL}.`
               : undefined,
           });
         } catch (err) {
@@ -294,8 +294,8 @@ export function LiveRoundProvider({ children }) {
         description: !hasTickets
           ? undefined
           : roundAllowsBoosts
-            ? `Joining will use a focus boost ticket (${BOOST_LABEL}, ${BOOST_WINDOW_LABEL}).`
-            : 'Boosts are disabled for this session — no ticket will be used.',
+            ? `Joining will use a boost potion (${BOOST_LABEL}, ${BOOST_WINDOW_LABEL}).`
+            : 'Boosts are disabled for this session — no boost potion will be used.',
         action: { label: 'Join', onClick: () => join(round) },
       });
     }

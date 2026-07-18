@@ -271,8 +271,8 @@ export default function SessionSummary() {
                     <p className="font-body text-[11px] text-emerald-200 leading-snug">
                       A focus boost was brewing — {BOOST_LABEL} for the {BOOST_WINDOW_LABEL}. 🧪
                       {ticketsLeft > 0
-                        ? ` ${ticketsLeft} ticket${ticketsLeft === 1 ? '' : 's'} left.`
-                        : ' That was your last ticket!'}
+                        ? ` ${ticketsLeft} boost potion${ticketsLeft === 1 ? '' : 's'} left.`
+                        : ' That was your last boost potion!'}
                     </p>
                   </div>
                 )}

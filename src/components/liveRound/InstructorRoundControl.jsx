@@ -174,7 +174,7 @@ export default function InstructorRoundControl({ roomId }) {
             <button
               type="button"
               onClick={() => setAllowBoosts((v) => !v)}
-              title="Whether students' focus boosts (×1.15 score tickets) apply in this session"
+              title="Whether students' focus boost potions (×1.15 score) apply in this session"
               className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
                 allowBoosts
                   ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
