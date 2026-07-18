@@ -168,8 +168,12 @@ export function gameReducer(state, action) {
       // `resuming` (live rounds): re-entering a round already joined — e.g.
       // reloading mid-round — must not charge a second ticket for the same
       // participation. The original spend already happened and persisted.
+      // `boostsAllowed` (live rounds): the instructor's per-session toggle —
+      // when off, joining neither spends a ticket nor applies the ×1.15.
       const tickets  = state.boosts?.focusTickets ?? 0;
-      const useBoost = tickets > 0 && !(action.payload?.resuming ?? false);
+      const useBoost = tickets > 0
+        && !(action.payload?.resuming ?? false)
+        && (action.payload?.boostsAllowed ?? true);
       return {
         ...state,
         focus: {

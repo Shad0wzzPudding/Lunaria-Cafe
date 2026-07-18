@@ -142,12 +142,15 @@ export function LiveRoundProvider({ children }) {
       // rejoin), not a fresh join — the resuming flag stops START_FOCUS from
       // charging a second focus-boost ticket for the same participation.
       const resuming = !!existing;
+      // Instructor's per-session toggle; rows/RPCs from before the toggle
+      // existed have no column → treated as allowed (pre-toggle behavior).
+      const boostsAllowed = round.allow_boosts ?? true;
       const endsAtMs = round.ends_at ? new Date(round.ends_at).getTime() : null;
       const remaining = endsAtMs ? Math.round((endsAtMs - Date.now()) / 1000) : null;
       let spentTicket = false;
       if (remaining === null || remaining > 0) {
         spentTicket =
-          !resuming && num(stateRef.current.boosts?.focusTickets) > 0;
+          !resuming && boostsAllowed && num(stateRef.current.boosts?.focusTickets) > 0;
         if (!stateRef.current.settings?.focusViewMode) {
           dispatch({ type: 'SET_FOCUS_VIEW_MODE', payload: 'game' });
         }
@@ -159,6 +162,7 @@ export function LiveRoundProvider({ children }) {
             roundControlled: true,
             endsAt: endsAtMs,
             resuming,
+            boostsAllowed,
           },
         });
       }
@@ -280,13 +284,17 @@ export function LiveRoundProvider({ children }) {
     for (const round of activeRounds) {
       if (round.joined || toastedRef.current.has(round.round_id)) continue;
       toastedRef.current.add(round.round_id);
+      // The spend is irreversible, so it's announced BEFORE the click —
+      // unless the instructor disabled boosts for this session.
+      const hasTickets = num(stateRef.current.boosts?.focusTickets) > 0;
+      const roundAllowsBoosts = round.allow_boosts ?? true;
       toast(`${round.classroom_name} started a live session!`, {
         duration: 10000,
-        // The spend is irreversible, so it's announced BEFORE the click.
-        description:
-          num(stateRef.current.boosts?.focusTickets) > 0
+        description: !hasTickets
+          ? undefined
+          : roundAllowsBoosts
             ? 'Joining will use a focus boost ticket (×1.15 score in your cafe).'
-            : undefined,
+            : 'Boosts are disabled for this session — no ticket will be used.',
         action: { label: 'Join', onClick: () => join(round) },
       });
     }

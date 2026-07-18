@@ -17,7 +17,7 @@ function formatClock(seconds) {
 async function fetchActiveRound(roomId) {
   const { data, error } = await supabase
     .from('class_rounds')
-    .select('id, started_at, duration_seconds, ends_at')
+    .select('id, started_at, duration_seconds, ends_at, allow_boosts')
     .eq('classroom_id', roomId)
     .eq('status', 'active')
     .maybeSingle();
@@ -31,6 +31,9 @@ export default function InstructorRoundControl({ roomId }) {
   const queryKey = ['class-round', roomId];
   const [timed, setTimed] = useState(true);
   const [minutes, setMinutes] = useState(25);
+  // Whether students' focus boosts (ticket ×1.15 and future modifiers)
+  // apply during this session. Decided at start; shown while live.
+  const [allowBoosts, setAllowBoosts] = useState(true);
   const [now, setNow] = useState(() => Date.now());
 
   const { data: round, isLoading } = useQuery({
@@ -84,6 +87,7 @@ export default function InstructorRoundControl({ roomId }) {
       const { error } = await supabase.rpc('start_round', {
         _classroom_id: roomId,
         _duration_seconds: durationSeconds,
+        _allow_boosts: allowBoosts,
       });
       if (error) throw error;
     },
@@ -112,6 +116,14 @@ export default function InstructorRoundControl({ roomId }) {
               {round.ends_at
                 ? `${formatClock(Math.min(elapsedSec, totalSec))} / ${formatClock(totalSec)}`
                 : formatClock(elapsedSec)}
+            </span>
+          )}
+          {round && round.allow_boosts === false && (
+            <span
+              className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600"
+              title="Students' focus boosts don't apply in this session"
+            >
+              boosts off
             </span>
           )}
         </div>
@@ -146,6 +158,20 @@ export default function InstructorRoundControl({ roomId }) {
                 Open
               </button>
             </div>
+            {/* Per-session boost policy — spending is irreversible for the
+                student, so the choice is locked in at start. */}
+            <button
+              type="button"
+              onClick={() => setAllowBoosts((v) => !v)}
+              title="Whether students' focus boosts (×1.15 score tickets) apply in this session"
+              className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                allowBoosts
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
+                  : 'border-border/40 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Boosts {allowBoosts ? 'on' : 'off'}
+            </button>
             {timed && (
               <div className="flex items-center gap-1">
                 <input
