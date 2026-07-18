@@ -148,9 +148,9 @@ const CREDITS_SECTIONS = [
     title: 'Development',
     list: [
       ['Design & development', 'Thanita Thitakan, Sawastachod Siriphatum, and Pisitpong Srisuthangkul'],
+      ["Advisor", "Dr. Punyanuch Borwarnginn"],
       ['Built with', 'React, Vite, Tailwind CSS, Framer Motion, Supabase'],
       ['Attention AI', 'YOLO26 via ONNX Runtime Web + MediaPipe — running fully on-device'],
-      ["Advisor", "Dr. Punyanuch Borwarnginn"],
     ],
   },
   {
