@@ -24,7 +24,7 @@ export default function BoostTimer() {
   if (!boostActive || !inSession || remaining <= 0) return null;
 
   return (
-    <div className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-1.5 -translate-x-1/2 select-none">
+    <div className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-6 -translate-x-1/2 select-none">
       <div className="relative flex items-center justify-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.55)]">
         <img
           src="/assets/Potion_green.png"
