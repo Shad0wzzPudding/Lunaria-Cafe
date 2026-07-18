@@ -18,4 +18,10 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Build/tool config files run in Node, not the browser — give them Node
+    // globals so __dirname and friends aren't flagged as undefined.
+    files: ['*.config.{js,mjs}'],
+    languageOptions: { globals: globals.node },
+  },
 ])
