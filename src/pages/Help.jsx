@@ -140,8 +140,6 @@ const INFO_SECTIONS = [
 
 /* -------------------------------- Credits ------------------------------- */
 
-// TODO(credits): fill in the real attribution lines below — art and
-// music/ambience sources are placeholders until the author provides them.
 const CREDITS_SECTIONS = [
   {
     emoji: '💻',
@@ -165,8 +163,8 @@ const CREDITS_SECTIONS = [
     emoji: '🎶',
     title: 'Music & Sound',
     list: [
-      ['Background music', 'Mixkit, via Mixkit.co'],
-      ['Ambience & sound effects', 'Pixabay, via Pixabay.com'],
+      ['Background music', 'FreeToUse, via freetouse.com'],
+      ['Ambience & sound effects', 'Mixkit, via Mixkit.co'],
     ],
   },
   {
