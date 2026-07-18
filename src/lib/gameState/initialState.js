@@ -38,6 +38,11 @@ export const initialState = {
   },
   attention: {
     score: 70,
+    // Honest twin of `score`: what the camera actually measured, without the
+    // focus-boost multiplier. Competitive surfaces (round avg_focus, the
+    // classroom leaderboard's lastFocusScore) read this one; everything the
+    // player experiences (chaos, coins, rep gate, HUD) reads `score`.
+    rawScore: 70,
     chaosLevel: 0,
     phoneDetected: false,
     userPresent: true,

@@ -3,6 +3,7 @@ import Draggable from 'react-draggable';
 import { Trophy, Crown, GripVertical } from 'lucide-react';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { useAuth } from '@/auth/useAuth';
+import { useGame } from '@/lib/gameState/useGame';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
 import { rankByMode, formatRoundValue } from '@/lib/leaderboard/scoring';
 
@@ -38,6 +39,8 @@ function Row({ entry, isMe }) {
 export default function RoundOverlay() {
   const { currentRound } = useLiveRound();
   const { user } = useAuth();
+  const { state } = useGame();
+  const boostActive = (state.focus.boostActive ?? false) && state.focus.roundControlled;
   const { entries } = useRoundParticipants(currentRound?.round_id);
   // react-draggable needs a nodeRef under React 19 (findDOMNode is gone).
   const nodeRef = useRef(null);
@@ -62,6 +65,16 @@ export default function RoundOverlay() {
             {currentRound.classroom_name}
           </span>
         </div>
+
+        {/* The board shows RAW scores; the boost only pampers the cafe. */}
+        {boostActive && (
+          <div className="mb-1.5 flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1">
+            <img src="/assets/Potion_green.png" alt="" className="h-4 w-auto select-none" draggable={false} />
+            <span className="text-[9px] leading-snug text-emerald-200">
+              Focus boost ×1.15 — cafe only, board shows real focus
+            </span>
+          </div>
+        )}
 
         {ranked.length === 0 ? (
           <p className="px-2 py-2 text-[10px] text-white/60">Waiting for players…</p>

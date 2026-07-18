@@ -138,9 +138,16 @@ export function LiveRoundProvider({ children }) {
       // session for the REMAINING time (timed) or open-ended, wherever they
       // were in the app. A timed round already past its end just shows the
       // board (no focus to start).
+      // An existing participants row means this is a RESUME (reload/auto-
+      // rejoin), not a fresh join — the resuming flag stops START_FOCUS from
+      // charging a second focus-boost ticket for the same participation.
+      const resuming = !!existing;
       const endsAtMs = round.ends_at ? new Date(round.ends_at).getTime() : null;
       const remaining = endsAtMs ? Math.round((endsAtMs - Date.now()) / 1000) : null;
+      let spentTicket = false;
       if (remaining === null || remaining > 0) {
+        spentTicket =
+          !resuming && num(stateRef.current.boosts?.focusTickets) > 0;
         if (!stateRef.current.settings?.focusViewMode) {
           dispatch({ type: 'SET_FOCUS_VIEW_MODE', payload: 'game' });
         }
@@ -151,9 +158,11 @@ export function LiveRoundProvider({ children }) {
             durationSeconds: remaining ?? OPEN_ENDED_SECONDS,
             roundControlled: true,
             endsAt: endsAtMs,
+            resuming,
           },
         });
       }
+      return spentTicket;
     },
     [userId, refreshActive, dispatch],
   );
@@ -169,8 +178,12 @@ export function LiveRoundProvider({ children }) {
       }
       const go = async () => {
         try {
-          await beginParticipation(round);
-          toast.success(`Joined ${round.classroom_name}'s live session!`);
+          const spentTicket = await beginParticipation(round);
+          toast.success(`Joined ${round.classroom_name}'s live session!`, {
+            description: spentTicket
+              ? 'A focus boost ticket was used — score ×1.15 for this session (your cafe only, not the board).'
+              : undefined,
+          });
         } catch (err) {
           toast.error(err.message || 'Could not join the session.');
         }
@@ -269,6 +282,11 @@ export function LiveRoundProvider({ children }) {
       toastedRef.current.add(round.round_id);
       toast(`${round.classroom_name} started a live session!`, {
         duration: 10000,
+        // The spend is irreversible, so it's announced BEFORE the click.
+        description:
+          num(stateRef.current.boosts?.focusTickets) > 0
+            ? 'Joining will use a focus boost ticket (×1.15 score in your cafe).'
+            : undefined,
         action: { label: 'Join', onClick: () => join(round) },
       });
     }
@@ -291,7 +309,9 @@ export function LiveRoundProvider({ children }) {
       // sessionRep or later coin-spend can't corrupt the frozen board row.
       if (!st.focus?.roundControlled) return;
       if (st.focus?.status === 'active') {
-        avgRef.current.sum += num(st.attention?.score);
+        // Raw (boost-free) score — the shared board must reflect real focus,
+        // not a purchased multiplier.
+        avgRef.current.sum += num(st.attention?.rawScore ?? st.attention?.score);
         avgRef.current.count += 1;
       }
       const focus =

@@ -165,8 +165,11 @@ export function gameReducer(state, action) {
       // and nowhere is it ever handed back — finish, fail, or exit, it's gone.
       // The no-refund rule is by construction: no reducer path increments
       // focusTickets except the one-time starter pack claim.
+      // `resuming` (live rounds): re-entering a round already joined — e.g.
+      // reloading mid-round — must not charge a second ticket for the same
+      // participation. The original spend already happened and persisted.
       const tickets  = state.boosts?.focusTickets ?? 0;
-      const useBoost = tickets > 0;
+      const useBoost = tickets > 0 && !(action.payload?.resuming ?? false);
       return {
         ...state,
         focus: {
@@ -258,7 +261,8 @@ export function gameReducer(state, action) {
           totalSessions:   state.stats.totalSessions  + (sessionMins > 0 ? 1 : 0),
           periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
           // Even a manual/failed end reflects how focused the member just was.
-          ...(sessionMins > 0 ? { lastFocusScore: Math.round(state.attention.score) } : {}),
+          // Raw (boost-free) — this feeds the classroom leaderboard.
+          ...(sessionMins > 0 ? { lastFocusScore: Math.round(state.attention.rawScore ?? state.attention.score) } : {}),
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },
@@ -345,7 +349,8 @@ export function gameReducer(state, action) {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
           periodSessions:  state.stats.periodSessions + 1,
-          lastFocusScore:  Math.round(state.attention.score),
+          // Raw (boost-free) — this feeds the classroom leaderboard.
+          lastFocusScore:  Math.round(state.attention.rawScore ?? state.attention.score),
           currentStreak:   newStreak,
           bestStreak:      Math.max(state.stats.bestStreak, newStreak),
           lapsedStreak:    0,
@@ -373,6 +378,11 @@ export function gameReducer(state, action) {
         ? Math.min(100, incoming * BOOST_MULTIPLIER)
         : incoming;
       const score     = locked ? state.attention.score : (boosted ?? state.attention.score);
+      // Boost-free twin of `score` — competitive reporting reads this so a
+      // bought boost can't outrank classmates at equal real focus.
+      const rawScore  = locked
+        ? (state.attention.rawScore ?? state.attention.score)
+        : (incoming ?? state.attention.rawScore ?? state.attention.score);
       const chaos     = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const now       = Date.now();
@@ -499,6 +509,7 @@ export function gameReducer(state, action) {
         attention: {
           ...state.attention,
           score,
+          rawScore,
           sessionDistractions: state.attention.sessionDistractions + newDistractions,
           absenceCounted,
           chaosLevel:     chaos.level,
