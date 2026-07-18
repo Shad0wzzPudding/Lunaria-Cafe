@@ -147,7 +147,7 @@ const CREDITS_SECTIONS = [
     emoji: '💻',
     title: 'Development',
     list: [
-      ['Design & development', 'Inazumi Ikari (Shad0wzzPudding)'],
+      ['Design & development', 'Thanita Thitakan, Sawastachod Siriphatum, and Pisitpong Srisuthangkul'],
       ['Built with', 'React, Vite, Tailwind CSS, Framer Motion, Supabase'],
       ['Attention AI', 'YOLO26 via ONNX Runtime Web + MediaPipe — running fully on-device'],
     ],
@@ -156,7 +156,7 @@ const CREDITS_SECTIONS = [
     emoji: '🎨',
     title: 'Art',
     list: [
-      ['Pixel art & illustrations', '— to be credited —'],
+      ['Pixel art & illustrations', 'ChatGPT + DALL·E, by OpenAI'],
       ['Font', 'Silkscreen, by Jason Kottke (Google Fonts)'],
     ],
   },
@@ -164,8 +164,8 @@ const CREDITS_SECTIONS = [
     emoji: '🎶',
     title: 'Music & Sound',
     list: [
-      ['Background music', '— to be credited —'],
-      ['Ambience & sound effects', '— to be credited —'],
+      ['Background music', 'Mixkit, via Mixkit.co'],
+      ['Ambience & sound effects', 'Pixabay, via Pixabay.com'],
     ],
   },
   {
