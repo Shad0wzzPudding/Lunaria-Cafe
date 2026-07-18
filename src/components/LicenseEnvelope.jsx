@@ -280,21 +280,34 @@ function StarterPackReveal({ audio, onDone }) {
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="absolute bottom-0 left-1/2 h-[46vh] w-auto select-none pointer-events-none"
+        className="absolute bottom-[5vh] left-1/2 h-[46vh] w-auto select-none pointer-events-none"
         style={{ x: '-50%' }}
         initial={{ y: '105%' }}
         animate={{ y: ['105%', '-4%', '2%', 0] }}
         transition={{ duration: 0.85, times: [0, 0.55, 0.8, 1], ease: 'easeOut', delay: 0.15 }}
       />
 
-      <motion.p
-        className="absolute bottom-5 left-1/2 -translate-x-1/2 font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none whitespace-nowrap"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0.3, 1, 0.3] }}
-        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 1.6 }}
+      {/* Glass pill stays steady; only the text inside pulses. */}
+      <motion.div
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full px-5 py-2.5 pointer-events-none select-none whitespace-nowrap"
+        style={{
+          background: 'linear-gradient(135deg, rgba(125,95,222,0.40), rgba(125,95,222,0.16))',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 0 0 1px rgba(167,139,250,0.35), inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 16px rgba(0,0,0,0.35)',
+        }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 1.4 }}
       >
-        — press anywhere to continue —
-      </motion.p>
+        <motion.span
+          className="font-pixel text-[11px] text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]"
+          animate={{ opacity: [0.45, 1, 0.45] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 1.6 }}
+        >
+          — press anywhere to continue —
+        </motion.span>
+      </motion.div>
     </motion.div>
   );
 }
