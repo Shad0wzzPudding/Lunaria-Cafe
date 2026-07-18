@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
-import { getChaosStage, getConnectionStatus } from '@/lib/ai/aiIntegration';
+import { getChaosStage, getConnectionStatus, formatFocusScore } from '@/lib/ai/aiIntegration';
 import { Coins, Heart, Users, Sparkles, Wifi, WifiOff } from 'lucide-react';
 
 function StatPill({ icon: Icon, value, colorClass, iconColor, title }) {
@@ -25,9 +25,7 @@ export default function CafeHUD() {
     return () => clearTimeout(t);
   }, [state.ui.coinFloat, dispatch]);
   const chaos = getChaosStage(state.attention.score);
-  // Focus score shown to 2 decimals, TRUNCATED (never rounded up or down):
-  // trunc drops the 3rd decimal, toFixed(2) then pads trailing zeros.
-  const scoreDisplay = (Math.trunc((state.attention.score ?? 0) * 100) / 100).toFixed(2);
+  const scoreDisplay = formatFocusScore(state.attention.score ?? 0);
   // In a teacher-controlled live session, show the reputation earned THIS
   // session (starts at 0) instead of lifetime reputation.
   const inRound = state.focus.roundControlled;

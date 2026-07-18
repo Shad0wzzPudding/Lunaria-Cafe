@@ -42,7 +42,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Coins, Heart, Users, Sparkles } from 'lucide-react';
-import { getAIConfig, getChaosStage } from '@/lib/ai/aiIntegration';
+import { getAIConfig, getChaosStage, formatFocusScore } from '@/lib/ai/aiIntegration';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -101,7 +101,7 @@ export default function CafeStatusOverlay({ state, onClose }) {
     { icon: Coins,    value: state.coins ?? 0,                                                      color: '#f0c674' },
     { icon: Heart,    value: `${state.reputation ?? 0}%`,                                           color: '#f0a0b8' },
     { icon: Users,    value: `${state.cafe.currentCustomers ?? 0}/${state.cafe.maxCustomers ?? 8}`, color: '#9ec8e8' },
-    { icon: Sparkles, value: state.attention.score ?? 100,                                          color: chaos.color },
+    { icon: Sparkles, value: formatFocusScore(state.attention.score ?? 100),                         color: chaos.color },
   ];
 
   return (

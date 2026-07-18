@@ -210,6 +210,16 @@ export function getChaosStage(score) {
 }
 
 /**
+ * Focus score for display: truncated to 2 decimals (never rounded up or down),
+ * padded to N.NN. trunc drops the 3rd decimal, toFixed(2) pads trailing zeros.
+ * Callers pass an already-resolved number (each keeps its own null fallback).
+ */
+export function formatFocusScore(score) {
+  const n = Number(score);
+  return (Math.trunc((Number.isFinite(n) ? n : 0) * 100) / 100).toFixed(2);
+}
+
+/**
  * Chaos gauge fill fraction (0..1) from the focus score, mapped so each stage
  * boundary lands on a gauge tick — matching the 3-segment art:
  *   entering stage 1 (score < 70) → 1/3 (first tick)

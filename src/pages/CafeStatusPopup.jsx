@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, Heart, Users, Sparkles } from 'lucide-react';
-import { getChaosStage, getAIConfig, chaosGaugeFill } from '@/lib/ai/aiIntegration';
+import { getChaosStage, getAIConfig, chaosGaugeFill, formatFocusScore } from '@/lib/ai/aiIntegration';
 import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 
 function formatElapsed(seconds) {
@@ -121,7 +121,7 @@ export default function CafeStatusPopup() {
         { icon: Coins,    value: data.coins ?? 0,                                   color: '#f0c674' },
         { icon: Heart,    value: `${data.reputation ?? 0}%`,                        color: '#f0a0b8' },
         { icon: Users,    value: `${data.customers ?? 0}/${data.maxCustomers ?? 8}`,color: '#9ec8e8' },
-        { icon: Sparkles, value: data.attentionScore ?? 100,                        color: chaos.color },
+        { icon: Sparkles, value: formatFocusScore(data.attentionScore ?? 100),       color: chaos.color },
       ]
     : [];
 
@@ -166,7 +166,7 @@ export default function CafeStatusPopup() {
                 </div>
                 <div className="rounded px-2 py-0.5 text-[11px] font-bold text-white"
                   style={{ background: 'rgba(20,20,20,0.85)', fontFamily: '"Segoe UI", sans-serif' }}>
-                  FS: {data.attentionScore ?? 100}
+                  FS: {formatFocusScore(data.attentionScore ?? 100)}
                 </div>
               </div>
 
