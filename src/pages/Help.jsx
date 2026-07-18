@@ -226,14 +226,11 @@ export default function Help() {
   const [showLicense, setShowLicense] = useState(false);
   const { sections, outro } = TAB_CONTENT[tab];
 
-  // Glows until pressed once, then never again (persisted with the save).
-  const letterButtonUnpressed = !state.settings?.readLetterPressed;
-  const openLicense = () => {
-    if (letterButtonUnpressed) {
-      dispatch({ type: 'SET_SETTINGS', payload: { readLetterPressed: true } });
-    }
-    setShowLicense(true);
-  };
+  // One lifecycle for every signpost (glow, Lulys, the menu bubble): they all
+  // retire when the envelope is actually OPENED, not when a button is merely
+  // pressed — a press-based glow died on the first "pressed but closed
+  // without reading" playtest, before its job was done.
+  const letterUnread = !state.settings?.welcomeLetterOpened;
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,13 +272,12 @@ export default function Help() {
           bubble once the envelope is opened (welcomeLetterOpened). Wide
           screens only: the centered content column owns the middle on
           smaller ones and she'd overlap it. */}
-      {!state.settings?.welcomeLetterOpened && (
-        <motion.img
-          src="/assets/Character/lulys_pointingdown_side_right_transparent.png"
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          className="hidden lg:block fixed right-6 top-[16vh] h-[40vh] w-auto z-10 pointer-events-none select-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+      {letterUnread && (
+        <motion.div
+          className="hidden lg:block fixed top-[16vh] z-10 pointer-events-none select-none"
+          // 3vw past the old right-6 anchor — a slight tuck toward the right
+          // edge. One dial: smaller vw = further into the page.
+          style={{ right: 'calc(1.5rem - 3vw)' }}
           initial={{ opacity: 0, x: 48 }}
           animate={{ opacity: 1, x: 0, y: [0, -6, 0] }}
           transition={{
@@ -289,7 +285,36 @@ export default function Help() {
             x: { duration: 0.7, delay: 0.4, ease: 'easeOut' },
             y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', delay: 1.1 },
           }}
-        />
+        >
+          {/* Speech bubble — left of her head, pixel tail pointing at her.
+              Same visual language as the menu bubble / SessionSummary. */}
+          <div
+            className="absolute right-[82%] top-[38%] z-10 w-max whitespace-nowrap font-pixel text-[11px] leading-snug"
+            style={{
+              background: '#fef9f0',
+              color: '#2a2040',
+              border: '4px solid #2a2040',
+              padding: '8px 12px',
+              imageRendering: 'pixelated',
+            }}
+          >
+            There&apos;s a surprise for you below ✨
+            {/* Pixel tail — steps right toward Lulys */}
+            <div style={{ position: 'absolute', right: '-11px', top: '50%', transform: 'translateY(-50%)' }}>
+              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: '4px', height: '22px', background: '#2a2040' }} />
+              <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '4px', height: '14px', background: '#2a2040' }} />
+              <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '4px', height: '7px', background: '#fef9f0', marginTop: '4px' }} />
+            </div>
+          </div>
+
+          <img
+            src="/assets/Character/lulys_pointingdown_side_right_transparent.png"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="h-[40vh] w-auto drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+          />
+        </motion.div>
       )}
 
       <AnimatePresence mode="wait">
@@ -324,20 +349,20 @@ export default function Help() {
                   wrapper so the Button's own hover/active styles stay intact. */}
               <motion.span
                 className="inline-flex rounded-md"
-                animate={letterButtonUnpressed ? {
+                animate={letterUnread ? {
                   boxShadow: [
                     '0 0 5px 1px rgba(255, 214, 130, 0.25)',
                     '0 0 16px 5px rgba(255, 214, 130, 0.65)',
                     '0 0 5px 1px rgba(255, 214, 130, 0.25)',
                   ],
                 } : { boxShadow: '0 0 0px 0px rgba(255, 214, 130, 0)' }}
-                transition={letterButtonUnpressed
+                transition={letterUnread
                   ? { repeat: Infinity, duration: 2.4, ease: 'easeInOut' }
                   : { duration: 0.4 }}
               >
                 <Button
                   variant="secondary"
-                  onClick={openLicense}
+                  onClick={() => setShowLicense(true)}
                   className="font-pixel text-xs gap-2"
                 >
                   💌 Read the letter

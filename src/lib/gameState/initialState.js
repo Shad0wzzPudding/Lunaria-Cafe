@@ -147,15 +147,14 @@ export const initialState = {
     owned: [],
   },
   settings: {
-    // False until the player opens the license envelope on the Help page;
-    // the main menu shows a "you've got mail" bubble on the ? button until
-    // then. Old saves lack the key — undefined is treated as not-yet-opened.
+    // False until the player opens the license envelope on the Help page.
+    // Drives ALL the first-time letter signposts — the menu's mail bubble,
+    // the "Read the letter" button glow, and Lulys on the Help page — which
+    // retire together the moment the envelope is opened. (A press-based
+    // lifecycle for the glow was tried and cut: pressing without reading
+    // killed the signpost before its job was done.) Old saves lack the key —
+    // undefined is treated as not-yet-opened.
     welcomeLetterOpened: false,
-    // False until the "Read the letter" button on the Help page is pressed —
-    // drives its pulsing highlight. Deliberately separate from
-    // welcomeLetterOpened: the glow clears on first press of the button, the
-    // menu bubble only when the envelope itself is actually opened.
-    readLetterPressed: false,
     focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
     performanceMode: false,
     aiMode: 'browser',

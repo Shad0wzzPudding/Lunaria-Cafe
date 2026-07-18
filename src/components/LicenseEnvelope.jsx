@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
@@ -13,18 +13,36 @@ const LETTER_FONT = "'Inter Variable', system-ui, sans-serif";
 const PIXEL_CORNERS = (s) =>
   `polygon(0 ${s}, ${s} ${s}, ${s} 0, calc(100% - ${s}) 0, calc(100% - ${s}) ${s}, 100% ${s}, 100% calc(100% - ${s}), calc(100% - ${s}) calc(100% - ${s}), calc(100% - ${s}) 100%, ${s} 100%, ${s} calc(100% - ${s}), 0 calc(100% - ${s}))`;
 
-// TODO(nsc): team name still undecided — replace when the team settles on one.
-const TEAM_NAME    = '(team name — still working on it :])';
 const ADVISOR_NAME = '"Dr. Punyanuch Borwarnginn"';
 const PROJECT_NAME = '"Lunaria Cafe"';
 
-// The filled-in fields (team, campus, advisor, project) render in a faint
+// The three developers, each signing in their own ink — muted "pen on cream
+// paper" shades, not UI-bright colors, so they sit inside the letter's world.
+const TEAM_MEMBERS = [
+  { name: 'Thanita Thitakan',        color: '#4a8b57' }, // greenish
+  { name: 'Sawastachod Siriphatum',  color: '#1f7f8c' }, // cyan
+  { name: 'Pisitpong Srisuthangkul', color: '#c1701f' }, // orangish
+];
+
+const TeamNames = () => (
+  <>
+    {TEAM_MEMBERS.map((m, i) => (
+      <Fragment key={m.name}>
+        {/* separators stay in the letter's print color, outside the ink spans */}
+        {i > 0 && (i === TEAM_MEMBERS.length - 1 ? ', and ' : ', ')}
+        <span style={{ color: m.color }}>{m.name}</span>
+      </Fragment>
+    ))}
+  </>
+);
+
+// The remaining filled-in fields (campus, advisor, project) render in a faint
 // purplish ink against the letter's brown print — like a form completed by hand.
 const INK_COLOR = '#6b5a9c';
 const Ink = ({ children }) => <span style={{ color: INK_COLOR }}>{children}</span>;
 
 const LICENSE_PARAGRAPHS = [
-  <>This software is a work developed by <Ink>{TEAM_NAME}</Ink> from <Ink>Mahidol University Salaya Campus</Ink> under the provision of <Ink>{ADVISOR_NAME}</Ink> under <Ink>{PROJECT_NAME}</Ink>, which has been supported by the National Science and Technology Development Agency (NSTDA), in order to encourage pupils and students to learn and practice their skills in developing software.</>,
+  <>This software is a work developed by <TeamNames /> from <Ink>Mahidol University Salaya Campus</Ink> under the provision of <Ink>{ADVISOR_NAME}</Ink> under <Ink>{PROJECT_NAME}</Ink>, which has been supported by the National Science and Technology Development Agency (NSTDA), in order to encourage pupils and students to learn and practice their skills in developing software.</>,
   <>Therefore, the intellectual property of this software shall belong to the developer and the developer gives NSTDA a permission to distribute this software as an &quot;as is&quot; and non-modified software for a temporary and non-exclusive use without remuneration to anyone for his or her own purpose or academic purpose, which are not commercial purposes.</>,
   <>In this connection, NSTDA shall not be responsible to the user for taking care, maintaining, training, or developing the efficiency of this software. Moreover, NSTDA shall not be liable for any error, software efficiency and damages in connection with or arising out of the use of the software.</>,
 ];
