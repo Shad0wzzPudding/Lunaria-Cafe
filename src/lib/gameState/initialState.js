@@ -28,6 +28,13 @@ export const initialState = {
     roundControlled: false, // true while a teacher's live round drives this session
     endsAt: null,           // wall-clock ms when a timed round ends (null = open-ended)
     sessionRep: 0,          // reputation earned THIS live session (held out of lifetime)
+    boostActive: false,     // a focus-boost ticket was spent on THIS session (×1.15 score)
+  },
+  boosts: {
+    // Starter pack: granted once for opening the welcome letter. The letter
+    // stays re-openable, so idempotence lives here — not in the envelope UI.
+    starterPackClaimed: false,
+    focusTickets: 0, // ×1.15 attention-score tickets; consumed at session START, never refunded
   },
   attention: {
     score: 70,

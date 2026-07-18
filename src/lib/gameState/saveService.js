@@ -72,6 +72,10 @@ export function serializeGameState(state) {
     pets: {
       owned: state.pets?.owned ?? [],
     },
+    boosts: {
+      starterPackClaimed: Boolean(state.boosts?.starterPackClaimed),
+      focusTickets: normalizeNonNegativeNumber(state.boosts?.focusTickets, 0),
+    },
   };
 }
 
@@ -155,6 +159,10 @@ export function mergeLoadedSave(loaded, initialState) {
     },
     audio: { ...initialState.audio, ...loaded.audio },
     settings: { ...initialState.settings, ...loaded.settings },
+    boosts: {
+      starterPackClaimed: Boolean(loaded.boosts?.starterPackClaimed),
+      focusTickets: normalizeNonNegativeNumber(loaded.boosts?.focusTickets, 0),
+    },
     journal: normalizeJournal(loaded.journal, initialState.journal),
     stats: {
       ...initialState.stats,

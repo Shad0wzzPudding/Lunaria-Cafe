@@ -174,6 +174,10 @@ export default function LicenseEnvelope({ onClose }) {
     // with the save). Deliberately on OPENING the envelope, not on visiting
     // the Help page — the bubble's promise is the letter itself.
     dispatch({ type: 'SET_SETTINGS', payload: { welcomeLetterOpened: true } });
+    // Starter pack rides on the same moment: the reducer makes the grant
+    // idempotent, so re-opens (and pre-feature saves re-reading the letter)
+    // are safe to dispatch unconditionally.
+    dispatch({ type: 'CLAIM_STARTER_PACK' });
     setOpened(true);
   };
 

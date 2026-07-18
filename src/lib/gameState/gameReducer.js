@@ -881,6 +881,24 @@ export function gameReducer(state, action) {
     case 'SET_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.payload } };
 
+    // ── Boosts ───────────────────────────────────────────────────────────────
+
+    case 'CLAIM_STARTER_PACK': {
+      // The welcome letter is re-openable, so this fires on every open —
+      // idempotence lives here, not in the envelope UI. Old saves lack the
+      // boosts slice entirely (?? guards).
+      if (state.boosts?.starterPackClaimed) return state;
+      return {
+        ...state,
+        coins: state.coins + 500,
+        boosts: {
+          ...state.boosts,
+          starterPackClaimed: true,
+          focusTickets: 3,
+        },
+      };
+    }
+
     // ── Meta ─────────────────────────────────────────────────────────────────
 
     case 'HYDRATE':
