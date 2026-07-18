@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
 import { LiveRoundContext } from './liveRoundContext';
+import { BOOST_LABEL, BOOST_WINDOW_LABEL } from '@/lib/gameState/constants';
 
 const REPORT_INTERVAL = 5000; // ms — throttle live progress writes
 const OPEN_ENDED_SECONDS = 24 * 3600; // focus.duration for an untimed round
@@ -185,7 +186,7 @@ export function LiveRoundProvider({ children }) {
           const spentTicket = await beginParticipation(round);
           toast.success(`Joined ${round.classroom_name}'s live session!`, {
             description: spentTicket
-              ? 'A focus boost ticket was used — score ×1.15 for this session (your cafe only, not the board).'
+              ? `A focus boost ticket was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL} (your cafe only, not the board).`
               : undefined,
           });
         } catch (err) {
@@ -293,7 +294,7 @@ export function LiveRoundProvider({ children }) {
         description: !hasTickets
           ? undefined
           : roundAllowsBoosts
-            ? 'Joining will use a focus boost ticket (×1.15 score in your cafe).'
+            ? `Joining will use a focus boost ticket (${BOOST_LABEL}, ${BOOST_WINDOW_LABEL}, in your cafe).`
             : 'Boosts are disabled for this session — no ticket will be used.',
         action: { label: 'Join', onClick: () => join(round) },
       });

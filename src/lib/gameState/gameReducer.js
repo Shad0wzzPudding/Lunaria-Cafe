@@ -2,7 +2,7 @@ import { getChaosStage, generateChaosEvent } from '@/lib/ai/aiIntegration';
 import { pushPopup } from '@/lib/gameState/feedbackHelpers';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
-import { WARNING_DURATION_MS, CLEAR_CONDITION_MS } from './constants';
+import { WARNING_DURATION_MS, CLEAR_CONDITION_MS, BOOST_MULTIPLIER, BOOST_WINDOW_SECONDS, BOOST_MAX_GAIN_DELTA } from './constants';
 import { initialState } from './initialState';
 import { calcSessionMins, calcNewStreak, getDateString, getWeekStart, periodRolloverPatch } from './gameHelpers';
 
@@ -15,9 +15,6 @@ const ABSENCE_DISTRACTION_GRACE_MS = 5000;
 // "back" — a one-frame detection blip doesn't end the absence.
 const PRESENCE_RETURN_GRACE_MS = 3000;
 const EMPTY_PHONES = [];
-// Focus-boost ticket effect: fresh camera scores are multiplied by this
-// (capped at 100) for the whole boosted session.
-const BOOST_MULTIPLIER = 1.15;
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -190,7 +187,10 @@ export function gameReducer(state, action) {
           boostActive: useBoost,
         },
         ...(useBoost ? { boosts: { ...state.boosts, focusTickets: tickets - 1 } } : {}),
-        attention: { ...state.attention, chaosEvents: [], sessionDistractions: 0, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
+        // score/rawScore reset to the engine's starting point so the boost's
+        // gain-delta math starts from a shared baseline (browserAI opens at
+        // ATTN_START = 70 = initialState.attention.score).
+        attention: { ...state.attention, score: initialState.attention.score, rawScore: initialState.attention.rawScore, chaosEvents: [], sessionDistractions: 0, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
       };
     }
 
@@ -374,19 +374,32 @@ export function gameReducer(state, action) {
       if (state.focus.status === 'paused') return state;
 
       const locked    = state.attention.debugAttentionLock;
-      // The boost multiplies only a FRESH incoming score. Never the
-      // `?? state.attention.score` fallback — that value may already be
-      // boosted, and re-multiplying it would compound event over event.
       const incoming  = action.payload.attention_score;
-      const boosted   = incoming != null && state.focus.boostActive
-        ? Math.min(100, incoming * BOOST_MULTIPLIER)
-        : incoming;
-      const score     = locked ? state.attention.score : (boosted ?? state.attention.score);
+      const prevScore = state.attention.score;
+      const prevRaw   = state.attention.rawScore ?? state.attention.score;
       // Boost-free twin of `score` — competitive reporting reads this so a
       // bought boost can't outrank classmates at equal real focus.
-      const rawScore  = locked
-        ? (state.attention.rawScore ?? state.attention.score)
-        : (incoming ?? state.attention.rawScore ?? state.attention.score);
+      const rawScore  = locked ? prevRaw : (incoming ?? prevRaw);
+      // The boost amplifies score GAINS (the per-event climb), never drops,
+      // and only inside the first BOOST_WINDOW_SECONDS of the session
+      // (elapsed-based → pause-proof). Deltas above BOOST_MAX_GAIN_DELTA are
+      // engine resyncs (session start, mode switch), not earned focus, and
+      // pass through unamplified. After the window (or without a boost with
+      // no earned gap) the score simply follows the engine.
+      const boostLive = state.focus.boostActive && state.focus.elapsed < BOOST_WINDOW_SECONDS;
+      let score;
+      if (locked || incoming == null) {
+        score = prevScore;
+      } else if (boostLive) {
+        const delta     = incoming - prevRaw;
+        const amplified = delta > 0 && delta <= BOOST_MAX_GAIN_DELTA ? delta * BOOST_MULTIPLIER : delta;
+        score = Math.max(0, Math.min(100, prevScore + amplified));
+      } else if (state.focus.boostActive) {
+        // Window over: the earned gap is kept, the score moves with raw deltas.
+        score = Math.max(0, Math.min(100, prevScore + (incoming - prevRaw)));
+      } else {
+        score = incoming;
+      }
       const chaos     = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const now       = Date.now();

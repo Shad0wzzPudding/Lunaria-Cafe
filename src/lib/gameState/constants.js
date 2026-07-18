@@ -2,6 +2,20 @@ export const WARNING_DURATION_MS = 30_000; // 30 seconds
 export const CLEAR_CONDITION_MS  = 2_000;  // 2 seconds of continuous good behaviour
 export const AUTO_SAVE_INTERVAL  = 30_000; // 30 seconds
 
+// ── Focus-boost ticket (starter pack) ─────────────────────────────
+// A boosted session amplifies score GAINS (never drops) by this factor…
+export const BOOST_MULTIPLIER = 1.15;
+// …for this long from session start (elapsed-based, so pausing doesn't
+// eat the window)…
+export const BOOST_WINDOW_SECONDS = 600; // 10 minutes
+// …and only continuous gains count: per-event deltas above this bound
+// are engine resyncs (session start, mode switch, debug unlock), not
+// earned focus, and pass through unamplified.
+export const BOOST_MAX_GAIN_DELTA = 5;
+// UI copy derives from these — keep the numbers here, not in strings.
+export const BOOST_LABEL = `×${BOOST_MULTIPLIER} focus gain`;
+export const BOOST_WINDOW_LABEL = `first ${BOOST_WINDOW_SECONDS / 60} minutes`;
+
 export const INITIAL_FURNITURE = [
   { id: 'built-counter1',           type: 'bar_counter1',       x: 204.23, y: 159.72, w: 160, h: 70 },
   { id: 'built-counter2',           type: 'bar_counter2',       x: 36.68,  y: 158.73, w: 160, h: 70 },

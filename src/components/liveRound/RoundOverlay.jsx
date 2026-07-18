@@ -4,6 +4,7 @@ import { Trophy, Crown, GripVertical } from 'lucide-react';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { useAuth } from '@/auth/useAuth';
 import { useGame } from '@/lib/gameState/useGame';
+import { BOOST_LABEL, BOOST_WINDOW_SECONDS } from '@/lib/gameState/constants';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
 import { rankByMode, formatRoundValue } from '@/lib/leaderboard/scoring';
 
@@ -40,7 +41,11 @@ export default function RoundOverlay() {
   const { currentRound } = useLiveRound();
   const { user } = useAuth();
   const { state } = useGame();
-  const boostActive = (state.focus.boostActive ?? false) && state.focus.roundControlled;
+  // Badge only while the boost is actually amplifying (inside its window).
+  const boostActive =
+    (state.focus.boostActive ?? false) &&
+    state.focus.roundControlled &&
+    state.focus.elapsed < BOOST_WINDOW_SECONDS;
   const { entries } = useRoundParticipants(currentRound?.round_id);
   // react-draggable needs a nodeRef under React 19 (findDOMNode is gone).
   const nodeRef = useRef(null);
@@ -71,7 +76,7 @@ export default function RoundOverlay() {
           <div className="mb-1.5 flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1">
             <img src="/assets/Potion_green.png" alt="" className="h-4 w-auto select-none" draggable={false} />
             <span className="text-[9px] leading-snug text-emerald-200">
-              Focus boost ×1.15 — cafe only, board shows real focus
+              Boost: {BOOST_LABEL} — cafe only, board shows real focus
             </span>
           </div>
         )}

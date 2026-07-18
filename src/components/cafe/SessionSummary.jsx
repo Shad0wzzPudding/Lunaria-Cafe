@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Coins, Heart, Sparkles, AlertTriangle, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFocusPanelStyle, getThemeHex, tintTowardTheme } from '@/lib/theme/themeDeriver';
+import { BOOST_LABEL, BOOST_WINDOW_LABEL } from '@/lib/gameState/constants';
 
 // Semantic variant colors for up / no-change / down. In Immersive mode they're
 // tinted toward the active theme hue; otherwise they use their plain values.
@@ -268,7 +269,7 @@ export default function SessionSummary() {
                 {s.boostUsed && (
                   <div className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2">
                     <p className="font-body text-[11px] text-emerald-200 leading-snug">
-                      A focus boost was brewing — your score ran at ×1.15 this session. 🧪
+                      A focus boost was brewing — {BOOST_LABEL} for the {BOOST_WINDOW_LABEL}. 🧪
                       {ticketsLeft > 0
                         ? ` ${ticketsLeft} ticket${ticketsLeft === 1 ? '' : 's'} left.`
                         : ' That was your last ticket!'}

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Gamepad2, Sparkles } from 'lucide-react';
 import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 import { useGame } from '@/lib/gameState/useGame';
+import { BOOST_LABEL, BOOST_WINDOW_LABEL } from '@/lib/gameState/constants';
 
 const MODES = [
   {
@@ -63,7 +64,7 @@ export default function FocusModePrompt({ onSelect }) {
             <p className="font-body text-xs text-muted-foreground leading-snug">
               <span className="font-pixel text-[11px]" style={{ color: '#6ee7b7' }}>Focus boost ready!</span>
               <br />
-              A ticket is spent when the session starts — your score runs at ×1.15. {tickets} left.
+              A ticket is spent when the session starts — {BOOST_LABEL} for the {BOOST_WINDOW_LABEL}. {tickets} left.
             </p>
           </div>
         )}
