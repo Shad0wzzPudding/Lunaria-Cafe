@@ -4,7 +4,14 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 
-export default function ExitSessionPrompt({ onConfirm, onCancel, boostActive = false }) {
+export default function ExitSessionPrompt({
+  onConfirm,
+  onCancel,
+  boostActive = false,
+  title = 'Leave the cafe?',
+  message = "Your focus session will end and you won't earn a streak for it.",
+  confirmLabel = 'Exit',
+}) {
   // Escape cancels (keeps focusing), matching the backdrop-click behavior.
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
@@ -40,9 +47,9 @@ export default function ExitSessionPrompt({ onConfirm, onCancel, boostActive = f
           </div>
         </div>
 
-        <h2 className="font-display text-lg text-foreground mb-1">Leave the cafe?</h2>
+        <h2 className="font-display text-lg text-foreground mb-1">{title}</h2>
         <p className="font-body text-sm text-muted-foreground mb-6">
-          Your focus session will end and you won't earn a streak for it.
+          {message}
         </p>
 
         {/* A ticket is spent at session start and never refunded — leaving
@@ -56,7 +63,7 @@ export default function ExitSessionPrompt({ onConfirm, onCancel, boostActive = f
               🎟️ A focus boost is active
             </p>
             <p className="font-body text-xs text-muted-foreground mt-1">
-              The ticket was spent when this session started and won't be refunded if you leave.
+              The ticket was spent when this session started and won't be refunded if you end now.
             </p>
           </div>
         )}
@@ -66,7 +73,7 @@ export default function ExitSessionPrompt({ onConfirm, onCancel, boostActive = f
             Keep focusing
           </Button>
           <Button variant="destructive" className="flex-1 font-pixel text-xs" onClick={onConfirm}>
-            Exit
+            {confirmLabel}
           </Button>
         </div>
       </motion.div>

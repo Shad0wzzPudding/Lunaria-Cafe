@@ -425,11 +425,13 @@ export default function CafeView() {
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
   const [showModePrompt, setShowModePrompt] = useState(false);
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
-  // Adjust-during-render: if the session ends underneath the exit dialog
+  // Confirm dialog before ending a session — 'menu' (back arrow → abandon to
+  // the menu) or 'stop' (Stop Focus → end + show summary). null = closed.
+  const [exitIntent, setExitIntent] = useState(null);
+  // Adjust-during-render: if the session ends underneath the dialog
   // (e.g. an auto-fail), drop the flag so the prompt can't strand over the
   // summary or resurface on the next session.
-  if (showExitConfirm && !isFocusing) setShowExitConfirm(false);
+  if (exitIntent && !isFocusing) setExitIntent(null);
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupClosing, setPopupClosing] = useState(false);
   // The "still going" nudge has its own cooldown; danger bypasses cooldowns;
@@ -969,7 +971,7 @@ export default function CafeView() {
             size="icon"
             onClick={() => {
               // Mid-session, confirm first — leaving forfeits the streak.
-              if (isFocusing) setShowExitConfirm(true);
+              if (isFocusing) setExitIntent('menu');
               else exitToMenu();
             }}
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -1310,7 +1312,7 @@ export default function CafeView() {
                       variant="destructive"
                       size="sm"
                       className="gap-2 font-pixel text-xs"
-                      onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
+                      onClick={() => setExitIntent('stop')}
                     >
                       <Square className="w-3.5 h-3.5" />
                       Stop Focus
@@ -1324,11 +1326,23 @@ export default function CafeView() {
       </footer>
       <AnimatePresence>{showModePrompt && <FocusModePrompt onSelect={handleModeSelect} />}</AnimatePresence>
       <AnimatePresence>
-        {showExitConfirm && (
+        {exitIntent && (
           <ExitSessionPrompt
             boostActive={state.focus.boostActive ?? false}
-            onCancel={() => setShowExitConfirm(false)}
-            onConfirm={() => { setShowExitConfirm(false); exitToMenu(); }}
+            {...(exitIntent === 'stop'
+              ? { title: 'End your focus session?', confirmLabel: 'Stop Focus' }
+              : {})}
+            onCancel={() => setExitIntent(null)}
+            onConfirm={() => {
+              const intent = exitIntent;
+              setExitIntent(null);
+              if (intent === 'stop') {
+                Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone);
+                dispatch({ type: 'END_FOCUS' });
+              } else {
+                exitToMenu();
+              }
+            }}
           />
         )}
       </AnimatePresence>
