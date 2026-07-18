@@ -71,12 +71,12 @@ export default function RoundOverlay() {
           </span>
         </div>
 
-        {/* The board shows RAW scores; the boost only pampers the cafe. */}
+        {/* Boost counts on this board (instructor can disable it per session). */}
         {boostActive && (
           <div className="mb-1.5 flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1">
             <img src="/assets/Potion_green.png" alt="" className="h-4 w-auto select-none" draggable={false} />
             <span className="text-[9px] leading-snug text-emerald-200">
-              Boost: {BOOST_LABEL} — cafe only, board shows real focus
+              Focus boost active — {BOOST_LABEL}
             </span>
           </div>
         )}

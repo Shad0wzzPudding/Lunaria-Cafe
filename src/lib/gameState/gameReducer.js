@@ -265,8 +265,8 @@ export function gameReducer(state, action) {
           totalSessions:   state.stats.totalSessions  + (sessionMins > 0 ? 1 : 0),
           periodSessions:  state.stats.periodSessions + (sessionMins > 0 ? 1 : 0),
           // Even a manual/failed end reflects how focused the member just was.
-          // Raw (boost-free) — this feeds the classroom leaderboard.
-          ...(sessionMins > 0 ? { lastFocusScore: Math.round(state.attention.rawScore ?? state.attention.score) } : {}),
+          // Boosted score — the classroom leaderboard credits the boost.
+          ...(sessionMins > 0 ? { lastFocusScore: Math.round(state.attention.score) } : {}),
         },
         npcs: { ...state.npcs, customers: [] },
         cafe: { ...state.cafe, currentCustomers: 0 },
@@ -353,8 +353,8 @@ export function gameReducer(state, action) {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
           periodSessions:  state.stats.periodSessions + 1,
-          // Raw (boost-free) — this feeds the classroom leaderboard.
-          lastFocusScore:  Math.round(state.attention.rawScore ?? state.attention.score),
+          // Boosted score — the classroom leaderboard credits the boost.
+          lastFocusScore:  Math.round(state.attention.score),
           currentStreak:   newStreak,
           bestStreak:      Math.max(state.stats.bestStreak, newStreak),
           lapsedStreak:    0,
@@ -377,8 +377,10 @@ export function gameReducer(state, action) {
       const incoming  = action.payload.attention_score;
       const prevScore = state.attention.score;
       const prevRaw   = state.attention.rawScore ?? state.attention.score;
-      // Boost-free twin of `score` — competitive reporting reads this so a
-      // bought boost can't outrank classmates at equal real focus.
+      // rawScore tracks the engine's last unamplified reading — it is the
+      // baseline the per-event gain delta is measured against, so the boost
+      // amplifies real climb, not its own compounding. Internal only:
+      // competitive surfaces read the boosted `score` (the boost counts).
       const rawScore  = locked ? prevRaw : (incoming ?? prevRaw);
       // The boost amplifies score GAINS (the per-event climb), never drops,
       // and only inside the first BOOST_WINDOW_SECONDS of the session

@@ -186,7 +186,7 @@ export function LiveRoundProvider({ children }) {
           const spentTicket = await beginParticipation(round);
           toast.success(`Joined ${round.classroom_name}'s live session!`, {
             description: spentTicket
-              ? `A focus boost ticket was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL} (your cafe only, not the board).`
+              ? `A focus boost ticket was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL}.`
               : undefined,
           });
         } catch (err) {
@@ -294,7 +294,7 @@ export function LiveRoundProvider({ children }) {
         description: !hasTickets
           ? undefined
           : roundAllowsBoosts
-            ? `Joining will use a focus boost ticket (${BOOST_LABEL}, ${BOOST_WINDOW_LABEL}, in your cafe).`
+            ? `Joining will use a focus boost ticket (${BOOST_LABEL}, ${BOOST_WINDOW_LABEL}).`
             : 'Boosts are disabled for this session — no ticket will be used.',
         action: { label: 'Join', onClick: () => join(round) },
       });
@@ -318,9 +318,9 @@ export function LiveRoundProvider({ children }) {
       // sessionRep or later coin-spend can't corrupt the frozen board row.
       if (!st.focus?.roundControlled) return;
       if (st.focus?.status === 'active') {
-        // Raw (boost-free) score — the shared board must reflect real focus,
-        // not a purchased multiplier.
-        avgRef.current.sum += num(st.attention?.rawScore ?? st.attention?.score);
+        // Boosted score — the board credits the boost (the instructor can
+        // disable it per session), consistent with the rep gate and summary.
+        avgRef.current.sum += num(st.attention?.score);
         avgRef.current.count += 1;
       }
       const focus =
