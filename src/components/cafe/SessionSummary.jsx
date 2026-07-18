@@ -84,6 +84,8 @@ export default function SessionSummary() {
   // Streak is earned only when the timer runs out (endReason 'completed').
   // A manually stopped or failed session counts, but earns no streak.
   const noStreak = s ? s.endReason !== 'completed' : false;
+  // For the boost note: how many tickets remain AFTER this session spent one.
+  const ticketsLeft = state.boosts?.focusTickets ?? 0;
 
   // Semantic-color variants (Reputation + Streak) follow the theme in Immersive.
   const immersive = state.cafe?.bgMode === 'immersive';
@@ -257,12 +259,22 @@ export default function SessionSummary() {
             </motion.div>
 
             {/* After-session notes — beside the card, each in its own box */}
-            {(s.diligenceRep >= 1 || noStreak) && (
+            {(s.diligenceRep >= 1 || noStreak || s.boostUsed) && (
               <div
                 className="absolute left-full top-0 ml-3 w-56 space-y-2"
                 onClick={e => e.stopPropagation()}
               >
                 <h3 className="font-pixel text-xs text-white/90 px-1">After-Session notes~</h3>
+                {s.boostUsed && (
+                  <div className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-2">
+                    <p className="font-body text-[11px] text-emerald-200 leading-snug">
+                      A focus boost was brewing — your score ran at ×1.15 this session. 🧪
+                      {ticketsLeft > 0
+                        ? ` ${ticketsLeft} ticket${ticketsLeft === 1 ? '' : 's'} left.`
+                        : ' That was your last ticket!'}
+                    </p>
+                  </div>
+                )}
                 {s.diligenceRep >= 1 && (
                   <div className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2">
                     <p className="font-body text-[11px] text-rose-200 leading-snug">

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Gamepad2, Sparkles } from 'lucide-react';
 import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
+import { useGame } from '@/lib/gameState/useGame';
 
 const MODES = [
   {
@@ -24,6 +25,9 @@ const MODES = [
 ];
 
 export default function FocusModePrompt({ onSelect }) {
+  const { state } = useGame();
+  const tickets = state.boosts?.focusTickets ?? 0;
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -47,6 +51,22 @@ export default function FocusModePrompt({ onSelect }) {
           <h2 className="font-display text-xl text-foreground mb-1">How would you like to focus?</h2>
           <p className="font-body text-sm text-muted-foreground">Your choice will be remembered. You can switch anytime during a session.</p>
         </div>
+
+        {/* Spending happens at session start with no refund — the player
+            should know a ticket is about to go before picking a mode. */}
+        {tickets > 0 && (
+          <div
+            className="mb-5 flex items-center gap-3 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(110,231,183,0.08)', boxShadow: '0 0 0 1px rgba(110,231,183,0.3)' }}
+          >
+            <img src="/assets/Potion_green.png" alt="" className="h-9 w-auto select-none" draggable={false} />
+            <p className="font-body text-xs text-muted-foreground leading-snug">
+              <span className="font-pixel text-[11px]" style={{ color: '#6ee7b7' }}>Focus boost ready!</span>
+              <br />
+              A ticket is spent when the session starts — your score runs at ×1.15. {tickets} left.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           {MODES.map((mode) => (
