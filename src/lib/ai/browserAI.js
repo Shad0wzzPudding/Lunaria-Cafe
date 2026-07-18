@@ -67,13 +67,14 @@ export function setBrowserAIScoreFrozen(frozen) {
 //   { tier: null }                      nothing phone-like this frame
 let latestDetection = { tier: null };
 
-// Debug-panel toggle: shade the parts of the frame the phone detector cannot
-// see. The detector runs on the CENTER-CROPPED square of the camera (full
-// resolution beats full coverage — see runProcessFrame), so the outer strips
-// of a 4:3 frame are a genuine blind zone; without this view, testing near
-// the edges looks like "detection is broken". Off by default; survives
-// session stop on purpose — it belongs to the debug tool, not to a session.
-let debugShowDetectionZone = false;
+// Shade the parts of the frame the phone detector cannot see. The detector
+// runs on the CENTER-CROPPED square of the camera (full resolution beats
+// full coverage — see runProcessFrame), so the outer strips of a 4:3 frame
+// are a genuine blind zone; without this view, a phone near the edges looks
+// like "detection is broken". ON by default so players can see where
+// detection actually works; the debug tool can still toggle it off.
+// Survives session stop on purpose — it's a viewer preference, not session state.
+let debugShowDetectionZone = true;
 
 export function setDetectionZoneVisible(visible) {
   debugShowDetectionZone = !!visible;
