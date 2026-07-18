@@ -163,8 +163,9 @@ const CREDITS_SECTIONS = [
     emoji: '🎶',
     title: 'Music & Sound',
     list: [
-      ['Background music', 'FreeToUse, via freetouse.com'],
-      ['Ambience & sound effects', 'Mixkit, via Mixkit.co'],
+      ['Background music', 'Lukrembo - Daily, Lukrembo - Bread, and massobeats - thoughts, via freetouse.com'],
+      ['Ambience', 'Mixkit, via Mixkit.co'],
+      ['Sound effects', 'Pixabay, via Pixabay.com'],
     ],
   },
   {
