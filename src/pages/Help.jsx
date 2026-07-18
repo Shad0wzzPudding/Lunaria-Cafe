@@ -150,6 +150,7 @@ const CREDITS_SECTIONS = [
       ['Design & development', 'Thanita Thitakan, Sawastachod Siriphatum, and Pisitpong Srisuthangkul'],
       ['Built with', 'React, Vite, Tailwind CSS, Framer Motion, Supabase'],
       ['Attention AI', 'YOLO26 via ONNX Runtime Web + MediaPipe — running fully on-device'],
+      ["Advisor", "Dr. Punyanuch Borwarnginn"],
     ],
   },
   {
