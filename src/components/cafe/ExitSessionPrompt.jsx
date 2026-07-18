@@ -4,7 +4,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getFocusPanelStyle } from '@/lib/theme/themeDeriver';
 
-export default function ExitSessionPrompt({ onConfirm, onCancel }) {
+export default function ExitSessionPrompt({ onConfirm, onCancel, boostActive = false }) {
   // Escape cancels (keeps focusing), matching the backdrop-click behavior.
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
@@ -44,6 +44,22 @@ export default function ExitSessionPrompt({ onConfirm, onCancel }) {
         <p className="font-body text-sm text-muted-foreground mb-6">
           Your focus session will end and you won't earn a streak for it.
         </p>
+
+        {/* A ticket is spent at session start and never refunded — leaving
+            now forfeits it, so say so before the player commits. */}
+        {boostActive && (
+          <div
+            className="mb-6 rounded-lg px-3 py-2.5 text-left"
+            style={{ background: 'rgba(245,158,11,0.10)', boxShadow: '0 0 0 1px rgba(245,158,11,0.35)' }}
+          >
+            <p className="font-pixel text-[11px]" style={{ color: '#fbbf24' }}>
+              🎟️ A focus boost is active
+            </p>
+            <p className="font-body text-xs text-muted-foreground mt-1">
+              The ticket was spent when this session started and won't be refunded if you leave.
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1 font-pixel text-xs" onClick={onCancel}>

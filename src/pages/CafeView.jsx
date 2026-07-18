@@ -1321,6 +1321,7 @@ export default function CafeView() {
       <AnimatePresence>
         {showExitConfirm && (
           <ExitSessionPrompt
+            boostActive={state.focus.boostActive ?? false}
             onCancel={() => setShowExitConfirm(false)}
             onConfirm={() => { setShowExitConfirm(false); exitToMenu(); }}
           />
