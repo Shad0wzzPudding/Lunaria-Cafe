@@ -386,17 +386,27 @@ function BgModePanel({ state, dispatch, onClose }) {
   );
 }
 
-// Per-intent copy for the end-session confirm dialog. 'menu' uses the
-// prompt's own defaults ("Leave the cafe?" / "Exit").
-const EXIT_COPY = {
-  stop: { title: 'End your focus session?', confirmLabel: 'Stop Focus' },
-  leave: {
-    title: 'Leave the live session?',
-    message:
-      "You'll leave your class's live session and won't earn a streak for it. You can rejoin anytime from My Classrooms while it's still running.",
-    confirmLabel: 'Leave session',
-  },
-};
+// Message shown when leaving a LIVE session (the Leave button, or back-to-menu
+// mid-round) — the rejoin reassurance sits on its own line.
+const LEAVE_LIVE_MESSAGE = (
+  <>
+    You&apos;ll leave your class&apos;s live session and won&apos;t earn a streak for it.
+    <br />
+    <br />
+    You can rejoin anytime from My Classrooms while it&apos;s still running.
+  </>
+);
+
+// Copy for the end-session confirm dialog, per intent. Both round-leaving
+// paths — the Leave button ('leave') and back-to-menu while in a round
+// ('menu' + inRound) — carry the rejoin reassurance; solo back-to-menu keeps
+// the prompt's plain defaults ("Leave the cafe?" / "Exit").
+function exitPromptCopy(intent, inRound) {
+  if (intent === 'stop') return { title: 'End your focus session?', confirmLabel: 'Stop Focus' };
+  if (intent === 'leave') return { title: 'Leave the live session?', confirmLabel: 'Leave session', message: LEAVE_LIVE_MESSAGE };
+  if (inRound) return { title: 'Leave the live session?', message: LEAVE_LIVE_MESSAGE };
+  return {};
+}
 
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
@@ -1341,7 +1351,7 @@ export default function CafeView() {
         {exitIntent && (
           <ExitSessionPrompt
             boostActive={state.focus.boostActive ?? false}
-            {...(EXIT_COPY[exitIntent] ?? {})}
+            {...exitPromptCopy(exitIntent, state.focus.roundControlled)}
             onCancel={() => setExitIntent(null)}
             onConfirm={() => {
               const intent = exitIntent;
