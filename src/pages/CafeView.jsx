@@ -386,6 +386,18 @@ function BgModePanel({ state, dispatch, onClose }) {
   );
 }
 
+// Per-intent copy for the end-session confirm dialog. 'menu' uses the
+// prompt's own defaults ("Leave the cafe?" / "Exit").
+const EXIT_COPY = {
+  stop: { title: 'End your focus session?', confirmLabel: 'Stop Focus' },
+  leave: {
+    title: 'Leave the live session?',
+    message:
+      "You'll leave your class's live session and won't earn a streak for it. You can rejoin anytime from My Classrooms while it's still running.",
+    confirmLabel: 'Leave session',
+  },
+};
+
 export default function CafeView() {
   const { state, dispatch, processAIEvent } = useGame();
   const { currentRound, leave: leaveRound } = useLiveRound();
@@ -1301,7 +1313,7 @@ export default function CafeView() {
                       variant="destructive"
                       size="sm"
                       className="gap-2 font-pixel text-xs"
-                      onClick={() => leaveRound()}
+                      onClick={() => setExitIntent('leave')}
                       title="Leave the teacher's live session"
                     >
                       <Square className="w-3.5 h-3.5" />
@@ -1329,9 +1341,7 @@ export default function CafeView() {
         {exitIntent && (
           <ExitSessionPrompt
             boostActive={state.focus.boostActive ?? false}
-            {...(exitIntent === 'stop'
-              ? { title: 'End your focus session?', confirmLabel: 'Stop Focus' }
-              : {})}
+            {...(EXIT_COPY[exitIntent] ?? {})}
             onCancel={() => setExitIntent(null)}
             onConfirm={() => {
               const intent = exitIntent;
@@ -1339,6 +1349,8 @@ export default function CafeView() {
               if (intent === 'stop') {
                 Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone);
                 dispatch({ type: 'END_FOCUS' });
+              } else if (intent === 'leave') {
+                leaveRound();
               } else {
                 exitToMenu();
               }
