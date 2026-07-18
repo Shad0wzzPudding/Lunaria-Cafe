@@ -1,7 +1,8 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
+import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
 import { useGame } from '@/lib/gameState/useGame';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
@@ -162,9 +163,151 @@ function OpenLetter({ onClose }) {
   );
 }
 
+/* ---------------------------- Starter-pack reveal ---------------------------- */
+
+// Twinkles looping behind a reward. Fixed layout constants (not random per
+// render) so re-renders don't teleport the sparkles mid-loop.
+const SPARKLES = [
+  { left: '-12%', top: '8%',  size: 16, delay: 0.0, char: '✦' },
+  { left: '88%',  top: '2%',  size: 12, delay: 0.5, char: '✧' },
+  { left: '100%', top: '55%', size: 15, delay: 0.9, char: '✦' },
+  { left: '-6%',  top: '70%', size: 11, delay: 1.3, char: '✧' },
+  { left: '45%',  top: '-14%', size: 13, delay: 0.7, char: '✦' },
+  { left: '20%',  top: '96%', size: 10, delay: 1.6, char: '✧' },
+];
+
+function RewardCard({ img, alt, label, glow, delay, floatDelay }) {
+  return (
+    <motion.div
+      className="relative flex flex-col items-center"
+      initial={{ opacity: 0, scale: 0.3, y: 24 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 15, delay }}
+    >
+      {/* Pulsing glow behind the item */}
+      <motion.div
+        aria-hidden="true"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
+        style={{ width: '9rem', height: '9rem', background: glow }}
+        animate={{ opacity: [0.35, 0.7, 0.35], scale: [0.9, 1.1, 0.9] }}
+        transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut', delay: floatDelay }}
+      />
+      {/* Looping sparkles */}
+      {SPARKLES.map((s) => (
+        <motion.span
+          key={`${s.left}-${s.top}`}
+          aria-hidden="true"
+          className="absolute select-none"
+          style={{ left: s.left, top: s.top, fontSize: s.size, color: '#fde68a', textShadow: '0 0 6px rgba(253,230,138,0.9)' }}
+          animate={{ opacity: [0, 1, 0], scale: [0.4, 1, 0.4], rotate: [0, 45, 90] }}
+          transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut', delay: floatDelay + s.delay }}
+        >
+          {s.char}
+        </motion.span>
+      ))}
+      {/* The item itself, gently bobbing */}
+      <motion.img
+        src={img}
+        alt={alt}
+        draggable={false}
+        className="relative h-32 w-auto select-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+        animate={{ y: [0, -7, 0] }}
+        transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut', delay: floatDelay }}
+      />
+      <p className="relative mt-2 font-pixel text-sm text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+        {label}
+      </p>
+    </motion.div>
+  );
+}
+
+function StarterPackReveal({ audio, onDone }) {
+  // One chime as the rewards pop in — reuses the coin-chime toggle since
+  // this IS a coin grant.
+  useEffect(() => {
+    if (audio.sfxCoinChime) playCoinChime(audio.sfxVolume, audio.masterVolume);
+  }, [audio.sfxCoinChime, audio.sfxVolume, audio.masterVolume]);
+
+  return (
+    <motion.div
+      className="absolute inset-0 z-10 cursor-pointer overflow-hidden"
+      onClick={onDone}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Headline + rewards, floating above Lulys */}
+      <div className="absolute left-1/2 top-[10vh] -translate-x-1/2 flex flex-col items-center">
+        <motion.h2
+          className="font-pixel text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] mb-1"
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+        >
+          Starter pack received!
+        </motion.h2>
+        <motion.p
+          className="font-pixel text-[11px] text-white/85 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)] mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.45 }}
+        >
+          A little something from the cafe~
+        </motion.p>
+        <div className="flex items-end gap-12">
+          <RewardCard
+            img="/assets/Potion_green.png"
+            alt="Focus boost tickets"
+            label="×3 Focus Boosts"
+            glow="radial-gradient(circle, rgba(110,231,183,0.55), transparent 70%)"
+            delay={0.55}
+            floatDelay={0.2}
+          />
+          <RewardCard
+            img="/assets/coins.png"
+            alt="Coins"
+            label="+500 Coins"
+            glow="radial-gradient(circle, rgba(251,191,36,0.55), transparent 70%)"
+            delay={0.75}
+            floatDelay={0.8}
+          />
+        </div>
+      </div>
+
+      {/* Lulys springs up from the bottom edge, arms raised */}
+      <motion.img
+        src="/assets/Character/lulys_jump_footer.png"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="absolute bottom-0 left-1/2 h-[46vh] w-auto select-none pointer-events-none"
+        style={{ x: '-50%' }}
+        initial={{ y: '105%' }}
+        animate={{ y: ['105%', '-4%', '2%', 0] }}
+        transition={{ duration: 0.85, times: [0, 0.55, 0.8, 1], ease: 'easeOut', delay: 0.15 }}
+      />
+
+      <motion.p
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none whitespace-nowrap"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0.3, 1, 0.3] }}
+        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 1.6 }}
+      >
+        — press anywhere to continue —
+      </motion.p>
+    </motion.div>
+  );
+}
+
 export default function LicenseEnvelope({ onClose }) {
   const [opened, setOpened] = useState(false);
   const { state, dispatch } = useGame();
+
+  // 'pending' is decided at OPEN time (before the claim dispatch lands):
+  // only the open that actually granted the pack earns the reveal — re-reads
+  // close like any modal.
+  const [reveal, setReveal] = useState(false);
+  const [revealPending, setRevealPending] = useState(false);
 
   const openLetter = () => {
     // `?? true`: saves created before this toggle existed have no
@@ -177,8 +320,20 @@ export default function LicenseEnvelope({ onClose }) {
     // Starter pack rides on the same moment: the reducer makes the grant
     // idempotent, so re-opens (and pre-feature saves re-reading the letter)
     // are safe to dispatch unconditionally.
+    setRevealPending(!state.boosts?.starterPackClaimed);
     dispatch({ type: 'CLAIM_STARTER_PACK' });
     setOpened(true);
+  };
+
+  // Closing the letter detours through the reward reveal when this open
+  // was the claiming one; every other close leaves directly.
+  const requestClose = () => {
+    if (revealPending) {
+      setRevealPending(false);
+      setReveal(true);
+    } else {
+      onClose();
+    }
   };
 
   return (
@@ -188,28 +343,32 @@ export default function LicenseEnvelope({ onClose }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10">
-        <AnimatePresence mode="wait">
-          {opened
-            ? <OpenLetter key="letter" onClose={onClose} />
-            : <ClosedEnvelope key="envelope" onOpen={openLetter} />}
-        </AnimatePresence>
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={requestClose} />
+      {reveal ? (
+        <StarterPackReveal audio={state.audio} onDone={onClose} />
+      ) : (
+        <div className="relative z-10">
+          <AnimatePresence mode="wait">
+            {opened
+              ? <OpenLetter key="letter" onClose={requestClose} />
+              : <ClosedEnvelope key="envelope" onOpen={openLetter} />}
+          </AnimatePresence>
 
-        {/* Blinking close hint — only once the letter is open. pointer-events-
-            none so a click on the hint itself falls through to the backdrop
-            and closes the letter, exactly as the hint promises. */}
-        {opened && (
-          <motion.p
-            className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.6 }}
-          >
-            — press anywhere outside the letter to close it —
-          </motion.p>
-        )}
-      </div>
+          {/* Blinking close hint — only once the letter is open. pointer-events-
+              none so a click on the hint itself falls through to the backdrop
+              and closes the letter, exactly as the hint promises. */}
+          {opened && (
+            <motion.p
+              className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.6 }}
+            >
+              — press anywhere outside the letter to close it —
+            </motion.p>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
