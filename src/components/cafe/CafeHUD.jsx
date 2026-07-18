@@ -25,6 +25,9 @@ export default function CafeHUD() {
     return () => clearTimeout(t);
   }, [state.ui.coinFloat, dispatch]);
   const chaos = getChaosStage(state.attention.score);
+  // Focus score shown to 2 decimals, TRUNCATED (never rounded up or down):
+  // trunc drops the 3rd decimal, toFixed(2) then pads trailing zeros.
+  const scoreDisplay = (Math.trunc((state.attention.score ?? 0) * 100) / 100).toFixed(2);
   // In a teacher-controlled live session, show the reputation earned THIS
   // session (starts at 0) instead of lifetime reputation.
   const inRound = state.focus.roundControlled;
@@ -83,7 +86,7 @@ export default function CafeHUD() {
       />
       <StatPill
         icon={Sparkles}
-        value={state.attention.score}
+        value={scoreDisplay}
         colorClass="text-emerald-300"
         iconColor={chaos.color}
         title="Focus score from your session / AI camera"
