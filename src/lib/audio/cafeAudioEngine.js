@@ -7,9 +7,9 @@
  * source that is too quiet has to be fixed in the file, not here.
  */
 export const MUSIC_TRACKS = [
-  { id: 0, label: 'Track 1', src: '/assets/sounds/music_bg1.m4a', gain: 0.68 }, // -16.3 dB
-  { id: 1, label: 'Track 2', src: '/assets/sounds/music_bg2.m4a', gain: 1.0 },  // -19.6 dB — quietest, the reference
-  { id: 2, label: 'Track 3', src: '/assets/sounds/music_bg3.m4a', gain: 0.48 }, // -13.3 dB
+  { id: 0, label: 'Track 1', src: '/assets/sounds/music_bg1.m4a', gain: 0.54 }, // Lukrembo – Daily,    -14.3 dB
+  { id: 1, label: 'Track 2', src: '/assets/sounds/music_bg2.m4a', gain: 1.0 },  // Lukrembo – Bread,    -19.6 dB — quietest, the reference
+  { id: 2, label: 'Track 3', src: '/assets/sounds/music_bg3.m4a', gain: 0.59 }, // massobeats – thoughts, -15.1 dB
 ];
 
 const AMBIENCE = {
