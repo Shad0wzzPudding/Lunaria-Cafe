@@ -83,7 +83,7 @@ export default function CafeHUD() {
       />
       <StatPill
         icon={Sparkles}
-        value={state.attention.score.tofixed(2) ?? "0.00"}
+        value={state.attention.score}
         colorClass="text-emerald-300"
         iconColor={chaos.color}
         title="Focus score from your session / AI camera"
