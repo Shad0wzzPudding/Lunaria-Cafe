@@ -254,7 +254,7 @@ function StarterPackReveal({ audio, onDone }) {
         >
           A little something from the cafe~
         </motion.p>
-        <div className="flex items-end gap-12">
+        <div className="flex items-end gap-12 mt-[3vh]">
           <RewardCard
             img="/assets/Potion_green.png"
             alt="Focus boost tickets"
