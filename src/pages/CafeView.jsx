@@ -11,6 +11,7 @@ import {
 import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
+import BoostTimer from '@/components/cafe/BoostTimer';
 import ChaosEventLog from '@/components/cafe/ChaosEventLog';
 import ChaosGauge from '@/components/cafe/ChaosGauge';
 import ParticleOverlay from '@/components/cafe/ParticleOverlay';
@@ -1290,28 +1291,32 @@ export default function CafeView() {
                     Resume
                   </Button>
                 )}
-                {inRound ? (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="gap-2 font-pixel text-xs"
-                    onClick={() => leaveRound()}
-                    title="Leave the teacher's live session"
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    Leave session
-                  </Button>
-                ) : (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="gap-2 font-pixel text-xs"
-                    onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    Stop Focus
-                  </Button>
-                )}
+                {/* Boost-window countdown floats above this session button. */}
+                <div className="relative">
+                  <BoostTimer />
+                  {inRound ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-2 font-pixel text-xs"
+                      onClick={() => leaveRound()}
+                      title="Leave the teacher's live session"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      Leave session
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-2 font-pixel text-xs"
+                      onClick={() => { Sounds.sessionFinishDone(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSessionFinishDone); dispatch({ type: 'END_FOCUS' }); }}
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      Stop Focus
+                    </Button>
+                  )}
+                </div>
               </>
             )}
           </div>
