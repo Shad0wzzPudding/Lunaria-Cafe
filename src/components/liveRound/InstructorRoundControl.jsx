@@ -118,13 +118,24 @@ export default function InstructorRoundControl({ roomId }) {
                 : formatClock(elapsedSec)}
             </span>
           )}
-          {round && round.allow_boosts === false && (
-            <span
-              className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600"
-              title="Students' focus boosts don't apply in this session"
-            >
-              boosts off
-            </span>
+          {/* Boost policy chip, both states — pre-toggle rounds have no
+              column (undefined), which means allowed. */}
+          {round && (
+            round.allow_boosts === false ? (
+              <span
+                className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600"
+                title="Students' focus boosts don't apply in this session"
+              >
+                boosts off
+              </span>
+            ) : (
+              <span
+                className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-600"
+                title="Students' focus boosts apply in this session"
+              >
+                boosts on
+              </span>
+            )
           )}
         </div>
 
