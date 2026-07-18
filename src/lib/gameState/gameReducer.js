@@ -15,6 +15,9 @@ const ABSENCE_DISTRACTION_GRACE_MS = 5000;
 // "back" — a one-frame detection blip doesn't end the absence.
 const PRESENCE_RETURN_GRACE_MS = 3000;
 const EMPTY_PHONES = [];
+// Focus-boost ticket effect: fresh camera scores are multiplied by this
+// (capped at 100) for the whole boosted session.
+const BOOST_MULTIPLIER = 1.15;
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -157,7 +160,13 @@ export function gameReducer(state, action) {
 
     // ── Focus ────────────────────────────────────────────────────────────────
 
-    case 'START_FOCUS':
+    case 'START_FOCUS': {
+      // A focus-boost ticket is spent HERE, at the moment the session starts,
+      // and nowhere is it ever handed back — finish, fail, or exit, it's gone.
+      // The no-refund rule is by construction: no reducer path increments
+      // focusTickets except the one-time starter pack claim.
+      const tickets  = state.boosts?.focusTickets ?? 0;
+      const useBoost = tickets > 0;
       return {
         ...state,
         focus: {
@@ -171,9 +180,12 @@ export function gameReducer(state, action) {
           coinsAtStart: state.coins,
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
+          boostActive: useBoost,
         },
+        ...(useBoost ? { boosts: { ...state.boosts, focusTickets: tickets - 1 } } : {}),
         attention: { ...state.attention, chaosEvents: [], sessionDistractions: 0, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
       };
+    }
 
     case 'PAUSE_FOCUS':
       // Clear the danger clock and detection timers — otherwise a running
@@ -196,7 +208,9 @@ export function gameReducer(state, action) {
       return { ...state, focus: { ...state.focus, status: 'active' } };
 
     case 'RESET_FOCUS':
-      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null } };
+      // boostActive clears but the ticket stays spent — abandoning a session
+      // is one of the no-refund paths.
+      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, boostActive: false } };
 
     case 'END_FOCUS': {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
@@ -233,9 +247,10 @@ export function gameReducer(state, action) {
           // Streak never changes on a manual/failed end — before === after.
           streakBefore: state.stats.currentStreak,
           streakAfter:  state.stats.currentStreak,
+          boostUsed:    state.focus.boostActive ?? false,
           ...(isRoundEnd ? { diligenceRep: eDiligenceRep, sessionRep: eSessionRep } : {}),
         },
-        focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, sessionRep: 0 },
+        focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, sessionRep: 0, boostActive: false },
         stats: {
           ...state.stats,
           // Session counts toward totals, but streak fields are left untouched —
@@ -320,11 +335,12 @@ export function gameReducer(state, action) {
           endReason:       'completed',
           streakBefore:    state.stats.currentStreak,
           streakAfter:     newStreak,
+          boostUsed:       state.focus.boostActive ?? false,
           ...(state.focus.roundControlled
             ? { diligenceRep: cDiligenceRep, sessionRep: cSessionRep }
             : {}),
         },
-        focus: { ...state.focus, status: 'completed', roundControlled: false, endsAt: null, sessionRep: 0 },
+        focus: { ...state.focus, status: 'completed', roundControlled: false, endsAt: null, sessionRep: 0, boostActive: false },
         stats: {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
@@ -349,7 +365,14 @@ export function gameReducer(state, action) {
       if (state.focus.status === 'paused') return state;
 
       const locked    = state.attention.debugAttentionLock;
-      const score     = locked ? state.attention.score : (action.payload.attention_score ?? state.attention.score);
+      // The boost multiplies only a FRESH incoming score. Never the
+      // `?? state.attention.score` fallback — that value may already be
+      // boosted, and re-multiplying it would compound event over event.
+      const incoming  = action.payload.attention_score;
+      const boosted   = incoming != null && state.focus.boostActive
+        ? Math.min(100, incoming * BOOST_MULTIPLIER)
+        : incoming;
+      const score     = locked ? state.attention.score : (boosted ?? state.attention.score);
       const chaos     = getChaosStage(score);
       const prevLevel = state.attention.chaosLevel;
       const now       = Date.now();
