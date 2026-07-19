@@ -116,10 +116,9 @@ function applyAudio(audio, phase) {
   const amb = ensureAmbience();
   const music = ensureMusicEl();
 
-  // The cafe is the focal point (0.5); other screens sit a step quieter
-  // (0.25), so the cafe is ~2x louder than the menu/settings. Both are scaled
-  // down from the raw slider levels so nothing is ever jarringly loud.
-  const phaseMul = phase === 'management' || phase === 'focus' ? 0.5 : 0.25;
+  // The cafe plays at the full slider level (so maxing the sliders reaches
+  // full loudness); other screens sit quieter in the background at a quarter.
+  const phaseMul = phase === 'management' || phase === 'focus' ? 1 : 0.25;
   const master = audio.masterVolume * phaseMul;
 
   const ambVol = master * audio.ambienceVolume;
