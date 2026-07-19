@@ -9,6 +9,7 @@ const FILES = [
   'warning-sound.mp3',
   'debugtool_open.mp3',
   'letter_opening.mp3',
+  'slide_in.mp3',
 ];
 
 const cache = {};
@@ -59,4 +60,5 @@ export const Sounds = {
   phoneWarning:      (sfx, master, enabled) => play('warning-sound.mp3', sfx, master, enabled),
   debugToolOpen:     (sfx, master, enabled) => play('debugtool_open.mp3', sfx, master, enabled),
   letterOpen:        (sfx, master, enabled) => play('letter_opening.mp3', sfx, master, enabled),
+  slideIn:           (sfx, master, enabled) => play('slide_in.mp3', sfx, master, enabled),
 };

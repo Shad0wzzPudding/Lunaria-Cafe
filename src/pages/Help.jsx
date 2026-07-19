@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 import LicenseEnvelope from '@/components/LicenseEnvelope';
+import { Sounds } from '@/lib/sounds';
 
 const TABS = [
   { id: 'info', label: 'Info' },
@@ -231,6 +232,20 @@ export default function Help() {
   // pressed — a press-based glow died on the first "pressed but closed
   // without reading" playtest, before its job was done.
   const letterUnread = !state.settings?.welcomeLetterOpened;
+
+  // Whoosh as Lulys slides in from the right on her first appearance. Fires
+  // once per visit, only while she's actually shown (letter unread + lg
+  // screen, matching her `hidden lg:block`), delayed to meet her 0.4s slide.
+  const greetedRef = useRef(false);
+  useEffect(() => {
+    if (greetedRef.current || !letterUnread) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    greetedRef.current = true;
+    const id = setTimeout(() => {
+      Sounds.slideIn(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSlideIn ?? true);
+    }, 400);
+    return () => clearTimeout(id);
+  }, [letterUnread, state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSlideIn]);
 
   return (
     <div className="min-h-screen bg-background">

@@ -121,6 +121,7 @@ export const initialState = {
     sfxJournalClose: true,
     sfxPhoneWarning: true,
     sfxLetterOpen: true,
+    sfxSlideIn: true,
   },
   stats: {
     totalSessions: 0,

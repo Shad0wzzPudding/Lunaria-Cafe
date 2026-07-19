@@ -138,6 +138,7 @@ export default function GameSettings() {
               <ToggleSetting icon={BookOpen}      label="Journal Close"    checked={audio.sfxJournalClose}      onCheckedChange={(v) => setAudio({ sfxJournalClose: v })} />
               <ToggleSetting icon={AlertTriangle} label="Phone Warning"    checked={audio.sfxPhoneWarning}      onCheckedChange={(v) => setAudio({ sfxPhoneWarning: v })} />
               <ToggleSetting icon={Mail}          label="License Letter"   checked={audio.sfxLetterOpen ?? true} onCheckedChange={(v) => setAudio({ sfxLetterOpen: v })} />
+              <ToggleSetting icon={Sparkles}      label="Lulys Greeting"   checked={audio.sfxSlideIn ?? true}   onCheckedChange={(v) => setAudio({ sfxSlideIn: v })} />
             </div>
           )}
         </section>
