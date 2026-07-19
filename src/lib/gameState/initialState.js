@@ -103,8 +103,11 @@ export const initialState = {
   },
   audio: {
     masterVolume: 0.8,
-    musicVolume: 0.6,
-    ambienceVolume: 0.5,
+    // Music/ambience start low so the cafe is soft out of the box; the cafe
+    // plays at the full slider level (cafeAudioEngine phaseMul=1), so raising
+    // these toward 100% takes it up to full loudness.
+    musicVolume: 0.3,
+    ambienceVolume: 0.25,
     sfxVolume: 0.7,
     musicEnabled: true,
     musicTrack: 'shuffle', // 'shuffle' | 0 | 1 | 2 (index into MUSIC_TRACKS)
