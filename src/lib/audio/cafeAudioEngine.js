@@ -180,6 +180,18 @@ export function stopCafeAudio() {
   lastPhase = null;
 }
 
+// Unlock on the very first user gesture ANYWHERE — crucially the login /
+// "Play as Guest" click, which lands before useCafeAudio (inside the game
+// tree) has mounted. Without this, cafe audio needed a SECOND click after
+// login to start. Priming is silent (ambience loops sit at volume 0) and
+// idempotent (unlockCafeAudio returns early once unlocked); after login,
+// updateCafeAudio then plays for real.
+if (typeof window !== 'undefined') {
+  const unlockOnFirstGesture = () => { unlockCafeAudio(); };
+  window.addEventListener('pointerdown', unlockOnFirstGesture, { once: true });
+  window.addEventListener('keydown', unlockOnFirstGesture, { once: true });
+}
+
 export async function playCoinChime(sfxVolume = 0.7, masterVolume = 0.8) {
   try {
     const ctx = ensureSfxCtx();
