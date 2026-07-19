@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
-import { unlockCafeAudio, updateCafeAudio } from './cafeAudioEngine';
+import { unlockCafeAudio, updateCafeAudio, stopCafeAudio } from './cafeAudioEngine';
 
 export function useCafeAudio() {
   const { state } = useGame();
@@ -19,6 +19,11 @@ export function useCafeAudio() {
   useEffect(() => {
     updateCafeAudio(audio, state.phase);
   }, [audio, state.phase]);
+
+  // The engine's music/ambience are module singletons that outlive this hook.
+  // When the game tree unmounts (logout → back to the login page), stop them —
+  // otherwise the cafe keeps playing over the login screen.
+  useEffect(() => stopCafeAudio, []);
 }
 
 export { playCoinChime } from './cafeAudioEngine';

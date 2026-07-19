@@ -166,6 +166,20 @@ export async function unlockCafeAudio() {
   if (lastAudio) applyAudio(lastAudio, lastPhase);
 }
 
+/**
+ * Silence everything the cafe engine owns — music + all ambience loops.
+ * Called when the game tree unmounts (logout / leaving the authenticated
+ * app), since the elements are module singletons that outlive React and
+ * would otherwise keep playing on the login page. Clears the remembered
+ * (audio, phase) so a later gesture on the login page can't auto-resume.
+ */
+export function stopCafeAudio() {
+  if (musicEl) musicEl.pause();
+  if (ambience) Object.values(ambience).forEach((el) => el.pause());
+  lastAudio = null;
+  lastPhase = null;
+}
+
 export async function playCoinChime(sfxVolume = 0.7, masterVolume = 0.8) {
   try {
     const ctx = ensureSfxCtx();
