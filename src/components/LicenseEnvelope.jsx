@@ -2,7 +2,6 @@ import { Fragment, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
-import { playCoinChime } from '@/lib/audio/cafeAudioEngine';
 import { useGame } from '@/lib/gameState/useGame';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
@@ -222,11 +221,12 @@ function RewardCard({ img, alt, label, glow, delay, floatDelay }) {
 }
 
 function StarterPackReveal({ audio, onDone }) {
-  // One chime as the rewards pop in — reuses the coin-chime toggle since
-  // this IS a coin grant.
+  // The celebratory session-complete chime as the rewards pop in — a bigger
+  // moment than a coin ping. Gated on its own SFX toggle (`?? true` for saves
+  // predating the toggle).
   useEffect(() => {
-    if (audio.sfxCoinChime) playCoinChime(audio.sfxVolume, audio.masterVolume);
-  }, [audio.sfxCoinChime, audio.sfxVolume, audio.masterVolume]);
+    Sounds.sessionFinishDone(audio.sfxVolume, audio.masterVolume, audio.sfxSessionFinishDone ?? true);
+  }, [audio.sfxVolume, audio.masterVolume, audio.sfxSessionFinishDone]);
 
   return (
     <motion.div
