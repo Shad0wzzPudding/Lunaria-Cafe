@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette, Mail } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette, Mail, CloudRain, Flame, MessageSquare } from 'lucide-react';
 import ThemePicker from '@/components/settings/ThemePicker';
 import {
   setAIConfig,
@@ -109,8 +109,15 @@ export default function GameSettings() {
             <AudioSlider icon={Music} label="Music" value={audio.musicVolume} onChange={(v) => setAudio({ musicVolume: v })} />
             <AudioSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
             <AudioSlider icon={Volume2} label="SFX" value={audio.sfxVolume} onChange={(v) => setAudio({ sfxVolume: v })} />
-            <p className="text-xs text-muted-foreground pt-1 border-t border-border/30">
-              Music track and ambience (rain, fireplace, chatter) live in the Sound panel in the cafe.
+
+            <div className="pt-3 border-t border-border/30 space-y-1">
+              <ToggleSetting icon={Music}          label="Background Music" checked={audio.musicEnabled}      onCheckedChange={(v) => setAudio({ musicEnabled: v })} />
+              <ToggleSetting icon={CloudRain}      label="Rain"             checked={audio.rainEnabled}       onCheckedChange={(v) => setAudio({ rainEnabled: v })} />
+              <ToggleSetting icon={Flame}          label="Fireplace"        checked={audio.fireplaceEnabled}  onCheckedChange={(v) => setAudio({ fireplaceEnabled: v })} />
+              <ToggleSetting icon={MessageSquare}  label="Cafe Chatter"     checked={audio.chatterEnabled}    onCheckedChange={(v) => setAudio({ chatterEnabled: v })} />
+            </div>
+            <p className="text-xs text-muted-foreground pt-1">
+              These layers and the volume sliders also live in the Sound panel in the cafe, along with music-track selection.
             </p>
           </div>
         </section>
