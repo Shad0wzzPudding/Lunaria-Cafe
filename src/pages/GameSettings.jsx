@@ -110,11 +110,11 @@ export default function GameSettings() {
             <AudioSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
             <AudioSlider icon={Volume2} label="SFX" value={audio.sfxVolume} onChange={(v) => setAudio({ sfxVolume: v })} />
 
-            {/* Non-cafe screens duck audio to 25% (cafeAudioEngine phaseMul),
-                so what you hear while dragging here is ~4x quieter than the cafe. */}
+            {/* Non-cafe screens duck audio to 50% (cafeAudioEngine phaseMul),
+                so what you hear while dragging here is ~2x quieter than the cafe. */}
             <p className="flex items-start gap-1.5 text-xs text-amber-500/90 pt-1">
               <Volume2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>Audio previews at a lower volume on this screen — inside the cafe it plays about 4&times; louder. Set your levels with that in mind.</span>
+              <span>Audio previews at a lower volume on this screen — inside the cafe it plays about 2&times; louder. Set your levels with that in mind.</span>
             </p>
 
             <div className="pt-3 border-t border-border/30 space-y-1">

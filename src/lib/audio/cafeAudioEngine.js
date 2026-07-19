@@ -116,8 +116,9 @@ function applyAudio(audio, phase) {
   const amb = ensureAmbience();
   const music = ensureMusicEl();
 
-  // The cafe is the focal point — everything else runs quiet in the background.
-  const phaseMul = phase === 'management' || phase === 'focus' ? 1 : 0.25;
+  // The cafe is the focal point — everything else runs a bit quieter in the
+  // background (half volume, i.e. the cafe is ~2x louder).
+  const phaseMul = phase === 'management' || phase === 'focus' ? 1 : 0.5;
   const master = audio.masterVolume * phaseMul;
 
   const ambVol = master * audio.ambienceVolume;
