@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -10,6 +10,20 @@ import { MUSIC_TRACKS } from '@/lib/audio/cafeAudioEngine';
 // Card width (w-72). The drawer parks itself exactly this far left so only
 // the tab pokes out — keep the two in sync.
 const CARD_W = 288;
+
+const PAGES = [
+  { id: 'toggles', label: 'Toggles' },
+  { id: 'levels', label: 'Levels' },
+];
+
+// Horizontal page slide. `dir` is +1 going right→left (to Levels), -1 back.
+// With AnimatePresence mode="popLayout" only the active page is in flow, so
+// the panel height follows it and the inactive page never enters the tab order.
+const SLIDE_VARIANTS = {
+  enter:  (d) => ({ x: d > 0 ? '110%' : '-110%', opacity: 0 }),
+  center: { x: '0%', opacity: 1 },
+  exit:   (d) => ({ x: d > 0 ? '-110%' : '110%', opacity: 0 }),
+};
 
 function SoundToggle({ icon: Icon, label, checked, onCheckedChange }) {
   return (
@@ -44,11 +58,6 @@ function SoundSlider({ icon: Icon, label, value, onChange }) {
   );
 }
 
-const PAGES = [
-  { id: 'toggles', label: 'Toggles' },
-  { id: 'levels', label: 'Levels' },
-];
-
 /**
  * Sound drawer — slides out from the left edge of the cafe, with a speaker tab
  * riding on its right edge as the handle. Two pages you switch with the tabs:
@@ -60,13 +69,19 @@ export default function SoundPanel({ open, onOpenChange, muted }) {
   const { audio } = state;
   const rootRef = useRef(null);
   const [page, setPage] = useState('toggles');
+  const [dir, setDir] = useState(-1); // slide direction for the page transition
+
+  const goTo = (id) => {
+    setDir(id === 'levels' ? 1 : -1);
+    setPage(id);
+  };
 
   // Adjust-during-render (react.dev "storing information from previous
   // renders"): reopen on the first page rather than wherever it was left.
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
     setPrevOpen(open);
-    if (!open) setPage('toggles');
+    if (!open) { setPage('toggles'); setDir(-1); }
   }
 
   useEffect(() => {
@@ -111,7 +126,7 @@ export default function SoundPanel({ open, onOpenChange, muted }) {
               <button
                 key={pg.id}
                 type="button"
-                onClick={() => setPage(pg.id)}
+                onClick={() => goTo(pg.id)}
                 aria-pressed={page === pg.id}
                 className={`rounded-lg border px-2 py-1 font-pixel text-[10px] transition-colors ${
                   page === pg.id
@@ -124,72 +139,77 @@ export default function SoundPanel({ open, onOpenChange, muted }) {
             ))}
           </div>
 
-          <div className="overflow-hidden">
-            <motion.div
-              className="flex items-start"
-              style={{ width: '200%' }}
-              animate={{ x: page === 'toggles' ? '0%' : '-50%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            >
-              {/* Page 1 — Toggles. w-1/2 = half the 200%-wide track = one panel. */}
-              <div className="w-1/2 shrink-0 pr-1">
-                <SoundToggle
-                  icon={Music}
-                  label="Background Music"
-                  checked={audio.musicEnabled}
-                  onCheckedChange={(v) => setAudio({ musicEnabled: v })}
-                />
+          <div className="relative overflow-hidden">
+            <AnimatePresence initial={false} custom={dir} mode="popLayout">
+              <motion.div
+                key={page}
+                custom={dir}
+                variants={SLIDE_VARIANTS}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+              >
+                {page === 'toggles' ? (
+                  <div>
+                    <SoundToggle
+                      icon={Music}
+                      label="Background Music"
+                      checked={audio.musicEnabled}
+                      onCheckedChange={(v) => setAudio({ musicEnabled: v })}
+                    />
 
-                {audio.musicEnabled && (
-                  <div className="grid grid-cols-4 gap-1.5 mt-2 mb-1">
-                    {[{ id: 'shuffle', label: 'Shuffle' }, ...MUSIC_TRACKS].map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setAudio({ musicTrack: t.id })}
-                        className={`rounded-lg border px-1 py-1.5 font-pixel text-[10px] transition-colors ${
-                          audio.musicTrack === t.id
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border/40 bg-secondary/30 text-muted-foreground hover:border-primary/40'
-                        }`}
-                      >
-                        {t.id === 'shuffle' ? 'Shuffle' : t.label.replace('Track ', '')}
-                      </button>
-                    ))}
+                    {audio.musicEnabled && (
+                      <div className="grid grid-cols-4 gap-1.5 mt-2 mb-1">
+                        {[{ id: 'shuffle', label: 'Shuffle' }, ...MUSIC_TRACKS].map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setAudio({ musicTrack: t.id })}
+                            className={`rounded-lg border px-1 py-1.5 font-pixel text-[10px] transition-colors ${
+                              audio.musicTrack === t.id
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border/40 bg-secondary/30 text-muted-foreground hover:border-primary/40'
+                            }`}
+                          >
+                            {t.id === 'shuffle' ? 'Shuffle' : t.label.replace('Track ', '')}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 pt-3 border-t border-border/30">
+                      <div className="font-pixel text-[10px] text-muted-foreground mb-1">Ambience</div>
+                      <SoundToggle
+                        icon={CloudRain}
+                        label="Rain"
+                        checked={audio.rainEnabled}
+                        onCheckedChange={(v) => setAudio({ rainEnabled: v })}
+                      />
+                      <SoundToggle
+                        icon={Flame}
+                        label="Fireplace"
+                        checked={audio.fireplaceEnabled}
+                        onCheckedChange={(v) => setAudio({ fireplaceEnabled: v })}
+                      />
+                      <SoundToggle
+                        icon={MessageSquare}
+                        label="Cafe Chatter"
+                        checked={audio.chatterEnabled}
+                        onCheckedChange={(v) => setAudio({ chatterEnabled: v })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <SoundSlider icon={Volume2}  label="Master"   value={audio.masterVolume}   onChange={(v) => setAudio({ masterVolume: v })} />
+                    <SoundSlider icon={Music}    label="Music"    value={audio.musicVolume}    onChange={(v) => setAudio({ musicVolume: v })} />
+                    <SoundSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
+                    <SoundSlider icon={Volume2}  label="SFX"      value={audio.sfxVolume}      onChange={(v) => setAudio({ sfxVolume: v })} />
                   </div>
                 )}
-
-                <div className="mt-3 pt-3 border-t border-border/30">
-                  <div className="font-pixel text-[10px] text-muted-foreground mb-1">Ambience</div>
-                  <SoundToggle
-                    icon={CloudRain}
-                    label="Rain"
-                    checked={audio.rainEnabled}
-                    onCheckedChange={(v) => setAudio({ rainEnabled: v })}
-                  />
-                  <SoundToggle
-                    icon={Flame}
-                    label="Fireplace"
-                    checked={audio.fireplaceEnabled}
-                    onCheckedChange={(v) => setAudio({ fireplaceEnabled: v })}
-                  />
-                  <SoundToggle
-                    icon={MessageSquare}
-                    label="Cafe Chatter"
-                    checked={audio.chatterEnabled}
-                    onCheckedChange={(v) => setAudio({ chatterEnabled: v })}
-                  />
-                </div>
-              </div>
-
-              {/* Page 2 — Levels */}
-              <div className="w-1/2 shrink-0 pl-1">
-                <SoundSlider icon={Volume2} label="Master"   value={audio.masterVolume}   onChange={(v) => setAudio({ masterVolume: v })} />
-                <SoundSlider icon={Music}   label="Music"    value={audio.musicVolume}    onChange={(v) => setAudio({ musicVolume: v })} />
-                <SoundSlider icon={Sparkles} label="Ambience" value={audio.ambienceVolume} onChange={(v) => setAudio({ ambienceVolume: v })} />
-                <SoundSlider icon={Volume2} label="SFX"      value={audio.sfxVolume}      onChange={(v) => setAudio({ sfxVolume: v })} />
-              </div>
-            </motion.div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
