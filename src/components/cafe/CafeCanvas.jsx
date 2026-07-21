@@ -416,6 +416,27 @@ export default function CafeCanvas({ frozen = false }) {
     );
   }, [state.cafe.furniture]);
 
+  // HiDPI: size the backing store to physical pixels so the scene renders crisp
+  // on Retina/high-DPR displays instead of being stretched (and blurred) by the
+  // browser. The logical coordinate system stays CAFE_W×CAFE_H, so all draw calls
+  // and hit-testing below are unchanged. Cap DPR to bound the buffer size.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const applyDpr = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.round(CAFE_W * dpr);
+      canvas.height = Math.round(CAFE_H * dpr);
+      canvas.style.width = `${CAFE_W}px`;
+      canvas.style.height = `${CAFE_H}px`;
+    };
+    applyDpr();
+    // Re-apply if the window moves to a monitor with a different DPR.
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    mq.addEventListener?.('change', applyDpr);
+    return () => mq.removeEventListener?.('change', applyDpr);
+  }, []);
+
   useEffect(() => {
     const day = new Image(); day.src = '/assets/background/C_Daylight.png';
     day.onload = () => { bgImages.current.day = buildMaskedBg(day); };
@@ -450,6 +471,9 @@ export default function CafeCanvas({ frozen = false }) {
     lastDrawTimeRef.current = time;
 
     const ctx = canvas.getContext('2d');
+    // Map the logical CAFE_W×CAFE_H space onto the DPR-scaled backing store.
+    const dpr = canvas.width / CAFE_W;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, CAFE_W, CAFE_H);
 
     const bg = bgImages.current[s.cafe.timeOfDay ?? 'night'];
