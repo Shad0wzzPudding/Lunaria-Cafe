@@ -423,18 +423,26 @@ export default function CafeCanvas({ frozen = false }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    let mq;
+    const onChange = () => { applyDpr(); };
+    // A `resolution` query only tracks one DPR value, so after each change we
+    // re-subscribe against the new devicePixelRatio — otherwise a move across
+    // 3+ monitors with distinct DPRs could stop firing.
+    const subscribe = () => {
+      mq?.removeEventListener?.('change', onChange);
+      mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      mq.addEventListener?.('change', onChange);
+    };
     const applyDpr = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
       canvas.width = Math.round(CAFE_W * dpr);
       canvas.height = Math.round(CAFE_H * dpr);
       canvas.style.width = `${CAFE_W}px`;
       canvas.style.height = `${CAFE_H}px`;
+      subscribe();
     };
     applyDpr();
-    // Re-apply if the window moves to a monitor with a different DPR.
-    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    mq.addEventListener?.('change', applyDpr);
-    return () => mq.removeEventListener?.('change', applyDpr);
+    return () => mq?.removeEventListener?.('change', onChange);
   }, []);
 
   useEffect(() => {
