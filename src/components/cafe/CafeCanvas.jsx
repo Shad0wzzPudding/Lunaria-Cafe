@@ -419,7 +419,10 @@ export default function CafeCanvas({ frozen = false }) {
   // HiDPI: size the backing store to physical pixels so the scene renders crisp
   // on Retina/high-DPR displays instead of being stretched (and blurred) by the
   // browser. The logical coordinate system stays CAFE_W×CAFE_H, so all draw calls
-  // and hit-testing below are unchanged. Cap DPR to bound the buffer size.
+  // and hit-testing below are unchanged. Cap DPR to bound the buffer size — and
+  // cap it lower in performance mode, since backing pixels scale with the square
+  // of DPR and the whole scene is fully redrawn each frame.
+  const perfDprCap = state.settings.performanceMode ? 2 : 3;
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -434,7 +437,7 @@ export default function CafeCanvas({ frozen = false }) {
       mq.addEventListener?.('change', onChange);
     };
     const applyDpr = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = Math.min(window.devicePixelRatio || 1, perfDprCap);
       canvas.width = Math.round(CAFE_W * dpr);
       canvas.height = Math.round(CAFE_H * dpr);
       canvas.style.width = `${CAFE_W}px`;
@@ -443,7 +446,7 @@ export default function CafeCanvas({ frozen = false }) {
     };
     applyDpr();
     return () => mq?.removeEventListener?.('change', onChange);
-  }, []);
+  }, [perfDprCap]);
 
   useEffect(() => {
     const day = new Image(); day.src = '/assets/background/C_Daylight.png';
