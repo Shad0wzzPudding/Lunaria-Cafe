@@ -182,7 +182,7 @@ export default function MainMenu() {
           </div>
 
           <p className="font-body text-[11px] text-white/30">
-            Prototype v0.1 — Focus & Flourish
+            v.1 (First round) — Focus & Flourish
           </p>
         </motion.div>
       </motion.div>

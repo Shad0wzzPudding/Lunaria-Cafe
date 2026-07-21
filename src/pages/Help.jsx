@@ -133,7 +133,7 @@ const INFO_SECTIONS = [
     emoji: '🧪',
     title: 'Version',
     body: [
-      'Prototype v0.1 — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
+      'v.1 (First round) — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
     ],
     footer: 'Source on GitHub: Shad0wzzPudding/Lunaria-Cafe',
   },
