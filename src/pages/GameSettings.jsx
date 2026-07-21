@@ -13,6 +13,56 @@ import {
 import { useAuth } from '@/auth/useAuth';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 
+function DisplayNameEditor({ profile, onSave }) {
+  const current = profile?.display_name ?? '';
+  const [name, setName] = useState(current);
+  const [status, setStatus] = useState('idle'); // idle | saving | saved | error
+  const [error, setError] = useState('');
+
+  const trimmed = name.trim();
+  const unchanged = trimmed === current;
+  const canSave = trimmed.length > 0 && trimmed.length <= 24 && !unchanged && status !== 'saving';
+
+  const save = async () => {
+    setStatus('saving');
+    setError('');
+    const { error: err } = await onSave(trimmed);
+    if (err) {
+      setStatus('error');
+      setError(err.message || 'Could not save your name.');
+    } else {
+      setStatus('saved');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm text-foreground/80 font-body">Display name</label>
+      <div className="flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (status !== 'idle') setStatus('idle'); }}
+          maxLength={24}
+          placeholder="Your name"
+          className="flex-1 rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={save}
+          disabled={!canSave}
+          className={status === 'saved' ? 'gap-1 text-emerald-400' : undefined}
+        >
+          {status === 'saving' ? 'Saving…' : status === 'saved' ? (<><CheckCircle className="w-4 h-4" /> Saved</>) : 'Save'}
+        </Button>
+      </div>
+      {status === 'error' && <p className="text-sm text-amber-400">{error}</p>}
+      <p className="text-xs text-muted-foreground">Shown on your classroom leaderboards. Up to 24 characters.</p>
+    </div>
+  );
+}
+
 function AudioSlider({ icon: Icon, label, value, onChange }) {
   return (
     <div className="flex items-center gap-4">
@@ -49,7 +99,7 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
 
 export default function GameSettings() {
   const { state, dispatch, saveNow, saveError, logout } = useGame();
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, profile, updateDisplayName } = useAuth();
   const { audio } = state;
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
   const [justSaved, setJustSaved] = useState(false);
@@ -264,6 +314,9 @@ export default function GameSettings() {
                 Playing as <span className="text-foreground">Guest</span>
               </p>
             ) : null}
+            {!isGuest && profile?.is_student && (
+              <DisplayNameEditor profile={profile} onSave={updateDisplayName} />
+            )}
             {saveError && (
               <p className="text-sm text-amber-400">Save issue: {saveError}</p>
             )}

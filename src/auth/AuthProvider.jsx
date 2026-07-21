@@ -95,12 +95,25 @@ export function AuthProvider({ children }) {
 
   const signInAsGuest = () => setIsGuest(true);
 
+  // Rename the account. Routed through the update_display_name RPC, which
+  // enforces the student-only rule and only touches display_name (direct
+  // profile writes are no longer permitted). On success, patch the local
+  // profile so the new name shows immediately.
+  const updateDisplayName = async (name) => {
+    if (!supabase || !user) return { error: new Error('Not signed in') };
+    const { data, error } = await supabase.rpc('update_display_name', { new_name: name });
+    if (!error) {
+      setProfile((p) => (p && p.id === user.id ? { ...p, display_name: data } : p));
+    }
+    return { data, error };
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user, profile: freshProfile, loading, profileLoading, isGuest,
         activeRole, chooseRole,
-        signUp, signIn, signOut, signInAsGuest,
+        signUp, signIn, signOut, signInAsGuest, updateDisplayName,
       }}
     >
       {children}
