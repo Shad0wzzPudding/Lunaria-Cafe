@@ -144,14 +144,16 @@ export default function CafeLoadingScreen() {
         </div>
 
         {/* Animated coffee cup */}
-        <div className="relative w-20 h-20 flex items-center justify-center">
-          <motion.div
-            className="text-6xl select-none"
+        <div className="relative w-28 h-24 flex items-center justify-center">
+          <motion.img
+            src="/assets/UI/cup_coffee.png"
+            alt="Steaming coffee cup"
+            className="w-full h-full object-contain select-none pointer-events-none"
+            style={{ imageRendering: 'pixelated' }}
+            draggable={false}
             animate={{ rotate: [0, -8, 8, -4, 4, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            ☕
-          </motion.div>
+          />
 
           {/* Steam puffs */}
           {[0, 1, 2].map((i) => (
