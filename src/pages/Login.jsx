@@ -124,13 +124,13 @@ export default function Login() {
                   required
                 />
                 <p className="text-[10px] text-muted-foreground/70">
-                  Prototype: the code is <span className="font-semibold text-foreground/80">{INSTRUCTOR_SECRET_CODE}</span> (not case-sensitive)
+                  Test version: the code is <span className="font-semibold text-foreground/80">{INSTRUCTOR_SECRET_CODE}</span> (not case-sensitive)
                 </p>
               </div>
             )}
 
             <p className="text-[10px] text-amber-500/90">
-              Only for prototype: one email can be "Instructor" and "Student" at the same time!
+              Only in the test version: one email can be "Instructor" and "Student" at the same time!
             </p>
           </div>
         )}

@@ -1,7 +1,7 @@
 import { useAuth } from '@/auth/useAuth';
 import { GraduationCap, BookOpen } from 'lucide-react';
 
-// Shown after login when an account holds both roles (prototype allows it).
+// Shown after login when an account holds both roles (test version allows it).
 export default function RoleSelect() {
   const { user, chooseRole, signOut } = useAuth();
 
