@@ -51,19 +51,25 @@ export function cropRect(srcW, srcH) {
 // carton is genuinely phone-shaped and can only be screened by confidence —
 // or, ultimately, by a model whose vocabulary includes it.
 
-export const POLICY_V1 = {
-  name: 'V1 — More sorting, less detect',
-  hardConf: 0.45,
-  softConf: 0.30,
-  nearMissConf: 0.20,
-  bypassConf: 0.80,
-  minArea: 0.02,
-  minAspect: 1.2,
-  maxAspect: 3.2,
-  confirmFrames: 2,
-  softConfirmFrames: 4,
-  releaseFrames: 2,
-};
+// ── Removed: V1 — "More sorting, less detect" (harder to detect, more accurate).
+// Kept here for reference. It demanded more evidence (higher soft/near-miss
+// floors, a wider bypass) so it missed real phones more often but let fewer
+// props through. Superseded by V2 after live testing; V2 is the only shipping
+// policy now.
+//
+// export const POLICY_V1 = {
+//   name: 'V1 — More sorting, less detect',
+//   hardConf: 0.45,
+//   softConf: 0.30,
+//   nearMissConf: 0.20,
+//   bypassConf: 0.80,
+//   minArea: 0.02,
+//   minAspect: 1.2,
+//   maxAspect: 3.2,
+//   confirmFrames: 2,
+//   softConfirmFrames: 4,
+//   releaseFrames: 2,
+// };
 
 export const POLICY_V2 = {
   name: 'V2 — Easier detect, less sorting',
@@ -104,7 +110,7 @@ export const POLICY_V2 = {
 // positive the gate exists to prevent. Fail at module load, in dev, loudly —
 // not as mysteriously wrong detection in play. (Runs in both the worker and
 // the main thread; a worker-side throw surfaces via the offline banner.)
-for (const p of [POLICY_V1, POLICY_V2]) {
+for (const p of [POLICY_V2]) {
   const ordered =
     p.nearMissConf < p.softConf &&
     p.softConf < p.hardConf &&
