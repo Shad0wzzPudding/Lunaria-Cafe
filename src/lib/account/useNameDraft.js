@@ -25,6 +25,13 @@ export function useNameDraft(current, onSave) {
     if (status !== 'idle') setStatus('idle');
   };
 
+  // Surface an error through the same channel as a failed save (e.g. for a
+  // reset that the hook itself doesn't drive).
+  const fail = (message) => {
+    setStatus('error');
+    setError(message || 'Something went wrong.');
+  };
+
   // Resolves to { error } — null on success (or a no-op skip), the error object
   // on failure — so callers can decide whether to close/dismiss.
   const save = async () => {
@@ -42,5 +49,5 @@ export function useNameDraft(current, onSave) {
     return { error: null };
   };
 
-  return { name, onChange, status, error, canSave, save };
+  return { name, onChange, status, error, canSave, save, fail };
 }

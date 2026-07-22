@@ -18,12 +18,13 @@ function DisplayNameEditor({ profile, fallbackName, onSave, onReset }) {
   // Seed with the effective name shown elsewhere (leaderboards etc.) when no
   // display_name has been set yet, so the field matches what the user sees.
   const current = profile?.display_name || fallbackName;
-  const { name, onChange, status, error, canSave, save } = useNameDraft(current, onSave);
+  const { name, onChange, status, error, canSave, save, fail } = useNameDraft(current, onSave);
   const hasCustomName = Boolean(profile?.display_name);
 
   const resetToDefault = async () => {
     const { error: err } = await onReset();
-    if (!err) onChange(fallbackName); // reflect the default (email) in the field
+    if (err) fail(err.message || 'Could not reset your name.');
+    else onChange(fallbackName); // reflect the default (email) in the field
   };
 
   return (
