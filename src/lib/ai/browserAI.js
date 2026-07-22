@@ -132,6 +132,16 @@ let phoneSoftStreak = 0;
 let phoneMissStreak = 0;
 let phoneConfirmed = false;
 
+// A near-miss (rejected) that persists this long is promoted to a soft "Phone?"
+// — a "familiar object" the AI keeps almost-detecting, so it starts counting via
+// the normal soft persistence instead of being ignored forever.
+const NEAR_MISS_ESCALATE_MS = 3000;
+// Brief drop-outs shorter than this are bridged, so a flickering / intermittent
+// near-miss still accumulates toward the 3s instead of resetting on one gap.
+const NEAR_MISS_GRACE_MS = 2000;
+let nearMissStart = 0;
+let nearMissLastAt = 0;
+
 function confirmPhone(rawHit, softHit, now) {
   // Nothing new to judge — the loop is re-reading the same latestDetection.
   if (phoneSeenSeq === phoneResultSeq) {
@@ -268,7 +278,38 @@ function initYoloWorker() {
       reportYoloError(e.data.error);
     }
     if (e.data.type === 'result') {
-      latestDetection = e.data.detection ?? { tier: null };
+      const det = e.data.detection ?? { tier: null };
+      const now = Date.now();
+      if (det.tier === 'rejected') {
+        // Start the window, or restart it only after a lapse longer than the
+        // grace period — a brief flicker keeps the accumulated time.
+        if (nearMissStart === 0 || now - nearMissLastAt > NEAR_MISS_GRACE_MS) {
+          nearMissStart = now;
+        }
+        nearMissLastAt = now;
+      } else if (det.tier === null) {
+        // A gap frame: tolerate it during the grace period so an intermittent
+        // near-miss keeps accumulating; drop the window once the gap exceeds it.
+        if (nearMissStart !== 0 && now - nearMissLastAt > NEAR_MISS_GRACE_MS) {
+          nearMissStart = 0;
+        }
+      } else {
+        // A genuine hard/soft detection supersedes the near-miss window.
+        nearMissStart = 0;
+      }
+
+      // Once the window reaches the threshold, treat the near-miss AND any
+      // grace-bridged gap frames as a counting soft "Phone?" (familiar object),
+      // so confirmPhone's soft persistence keeps advancing across flickers and
+      // the phone warning fires the same as a real soft detection. Genuine
+      // hard/soft detections pass through unchanged.
+      const escalated =
+        nearMissStart !== 0 &&
+        now - nearMissStart >= NEAR_MISS_ESCALATE_MS &&
+        (det.tier === 'rejected' || det.tier === null);
+      latestDetection = escalated
+        ? { tier: 'soft', escalated: true, conf: det.conf, reason: det.reason }
+        : det;
       phoneResultSeq += 1; // a genuinely new detection for confirmPhone to judge
       phoneLastResultAt = Date.now();
       isProcessingYolo = false; // reply received — send the next frame
@@ -391,6 +432,16 @@ function processDetections(faceResult, detection) {
     tracker_score: focusScore,
     // External event shape unchanged: hard detections as a box array.
     phones: detection.tier === 'hard' ? [detection.box] : [],
+    // Tier diagnostics for the pop-out window, which can't read the module-local
+    // latestDetection the main camera draws from (soft "Phone?" box, near-miss
+    // text, and the escalated "familiar object" state).
+    detection: {
+      tier: detection.tier ?? null,
+      box: (detection.tier === 'soft' && detection.box) ? detection.box : null,
+      escalated: !!detection.escalated,
+      nearMissReason: detection.tier === 'rejected' ? detection.reason : null,
+      nearMissConf:   detection.tier === 'rejected' ? detection.conf   : null,
+    },
     source: 'browser',
   };
 }
@@ -576,7 +627,7 @@ function renderLoop() {
       color: 'rgb(255, 0, 0)', bg: 'rgba(200,0,0,0.85)', dashed: false,
       label: `Phone ${Math.round(latestDetection.box.conf * 100)}%`,
     });
-  } else if (latestDetection.tier === 'soft') {
+  } else if (latestDetection.tier === 'soft' && latestDetection.box) {
     // Shape-approved but under the hard bar — the in-use pose lives here. The
     // player sees the AI tracking it while the persistence counter runs.
     drawDetectionBox(ctx, latestDetection.box, width, height, {
@@ -591,6 +642,12 @@ function renderLoop() {
     //   area   -> too small in frame: phone too far away, or lower minArea
     const msg = `NEAR MISS: ${latestDetection.reason} @ ${Math.round(latestDetection.conf * 100)}%`;
     drawTextWithBg(ctx, msg, 10, height - 10, 'rgba(180,140,0,0.85)', '#fff', 11);
+  }
+
+  // A sustained near-miss promoted to a counting soft "Phone?" — box-less (the
+  // rejection carried no box), so it's surfaced as its own amber diagnostic.
+  if (latestDetection.escalated) {
+    drawTextWithBg(ctx, 'Familiar object detected', 10, height - 10, 'rgba(180,140,0,0.85)', '#fff', 11);
   }
 
   // --- วาด Warning ใหญ่กลางจอ ---
@@ -740,6 +797,8 @@ export function stopBrowserAI() {
   currentAttentionScore = ATTN_START;
   scoreFrozen = false;
   latestDetection = { tier: null };
+  nearMissStart = 0;
+  nearMissLastAt = 0;
   // The overlay reads these directly and starts drawing before the first
   // detection of the next session lands, so a warning left over from the last
   // one ("PUT YOUR PHONE AWAY!") would flash onto a camera showing an empty desk.

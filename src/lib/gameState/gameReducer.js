@@ -536,6 +536,7 @@ export function gameReducer(state, action) {
           userPresent:    action.payload.user_present    ?? state.attention.userPresent,
           warningMessage: action.payload.warning_message ?? '',
           phones:         action.payload.phones?.length ? action.payload.phones : EMPTY_PHONES,
+          detection:      action.payload.detection ?? null,
           source:         action.payload.source          ?? state.attention.source,
           chaosEvents:    nextEvents.slice(-10),
           phoneWarningStart,

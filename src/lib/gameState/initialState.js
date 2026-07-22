@@ -51,6 +51,7 @@ export const initialState = {
     absenceCounted: false,
     warningMessage: '',
     phones: [],
+    detection: null,
     source: 'offline',
     phoneWarningStart: null,
     phoneFreeSince: null,
