@@ -80,8 +80,7 @@ const CAFE_UPGRADES = [
   { icon: '🏰', name: 'Cafe Expansion',  desc: "Double your cafe's capacity.",      repReq: 90,  cost: 1500 },
 ];
 
-function CafeStatsPanel({ state, onClose }) {
-  const panelRef = useRef(null);
+function CafeStatsPanel({ state, onClose, anchorRef }) {
   const reputation = state.reputation ?? 0;
   const currentTier = getCurrentTier(reputation);
   const tierIdx = REPUTATION_TIERS.indexOf(currentTier);
@@ -92,11 +91,13 @@ function CafeStatsPanel({ state, onClose }) {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+      // Anchor wraps both the trigger button and the panel, so clicking the
+      // button doesn't race its own toggle (mousedown close vs click reopen).
+      if (anchorRef.current && !anchorRef.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   // A lapsed streak: current is 0 but a previous run was lost (see mergeLoadedSave).
   const streakBroken = (state.stats?.currentStreak ?? 0) === 0 && (state.stats?.lapsedStreak ?? 0) > 0;
@@ -119,7 +120,6 @@ function CafeStatsPanel({ state, onClose }) {
 
   return (
     <div
-      ref={panelRef}
       className="absolute bottom-14 right-10 z-50 w-[26rem] rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
       style={getFocusPanelStyle()}
     >
@@ -201,20 +201,19 @@ function CafeStatsPanel({ state, onClose }) {
   );
 }
 
-function CafeUpgradePanel({ state, onClose }) {
-  const panelRef = useRef(null);
-
+function CafeUpgradePanel({ state, onClose, anchorRef }) {
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+      // Anchor wraps both the trigger button and the panel, so clicking the
+      // button doesn't race its own toggle (mousedown close vs click reopen).
+      if (anchorRef.current && !anchorRef.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   return (
     <div
-      ref={panelRef}
       className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
       style={getFocusPanelStyle()}
     >
@@ -313,18 +312,18 @@ function StatsPopup({ onClose, anchorRef }) {
   );
 }
 
-function BgModePanel({ state, dispatch, onClose }) {
-  
-  const panelRef = useRef(null);
+function BgModePanel({ state, dispatch, onClose, anchorRef }) {
   const { bgMode } = state.cafe;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+      // Anchor wraps both the trigger button and the panel, so clicking the
+      // button doesn't race its own toggle (mousedown close vs click reopen).
+      if (anchorRef.current && !anchorRef.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   const modes = [
     {
@@ -349,7 +348,6 @@ function BgModePanel({ state, dispatch, onClose }) {
 
   return (
     <div
-      ref={panelRef}
       className="absolute bottom-14 right-0 z-50 w-72 rounded-xl border border-border/50 bg-card/95 shadow-2xl backdrop-blur-md p-4"
       style={getFocusPanelStyle()}
     >
@@ -441,9 +439,12 @@ export default function CafeView() {
   }
 
   const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const statsPanelAnchorRef = useRef(null);
   const [showStatsPopup, setShowStatsPopup] = useState(false);
   const statsPopupAnchorRef = useRef(null);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
+  const upgradeAnchorRef = useRef(null);
+  const bgModeAnchorRef = useRef(null);
   const [showJournal, setShowJournal] = useState(false);
   const [showPetShop, setShowPetShop] = useState(false);
   const [showModePrompt, setShowModePrompt] = useState(false);
@@ -1054,14 +1055,6 @@ export default function CafeView() {
           : {}
         }
       >
-        {isZenMode && !popupOpen && !isImmersive && (
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-            <div className="relative">
-              <CafeCanvas frozen={true} />
-              <div className="absolute inset-0 rounded-xl bg-background" />
-            </div>
-          </div>
-        )}
         {(popupOpen || isZenMode) && isImmersive && (
           <div
             className="absolute inset-0 pointer-events-none"
@@ -1111,22 +1104,60 @@ export default function CafeView() {
                 </p>
               </div>
             </motion.div>
-          ) : isZenMode ? (
-            <ZenFocusView key="zen" state={state} />
           ) : (
+            /* Persistent cafe: one canvas stays mounted across Zen and game
+               view (same "cafe" key), so switching between them is seamless —
+               no remount or fade. In Zen it's hidden by an opaque cover; game
+               view layers its overlays on top. */
             <motion.div
-              key="canvas"
+              key="cafe"
               className="relative shrink-0"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
             >
-              <CafeCanvas />
-              <ParticleOverlay />
-              <ChaosGauge />
-              <ChaosEventLog />
-              <GameFeedback />
-              <DecoratePanel />
+              <CafeCanvas noShadow={isZenMode} />
+              {/* Opaque cover hides the cafe in Zen (immersive mode instead
+                  relies on its own blurred backdrop above). Fades out on the
+                  way to game view so the cafe is smoothly revealed. */}
+              <AnimatePresence>
+                {isZenMode && !isImmersive && (
+                  <motion.div
+                    key="zen-cover"
+                    className="absolute inset-0 rounded-xl bg-background"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.45, ease: 'easeInOut' }}
+                  />
+                )}
+              </AnimatePresence>
+              {!isZenMode && (
+                <>
+                  <ParticleOverlay />
+                  <ChaosGauge />
+                  <ChaosEventLog />
+                  <GameFeedback />
+                  <DecoratePanel />
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Zen content fades in/out over the (persistent) cafe. */}
+        <AnimatePresence>
+          {isZenMode && !popupOpen && (
+            <motion.div
+              key="zen-overlay"
+              className="absolute inset-0 z-10 flex items-center justify-center p-4 overflow-auto pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: 'easeInOut' }}
+            >
+              <div className="pointer-events-auto">
+                <ZenFocusView state={state} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1159,7 +1190,7 @@ export default function CafeView() {
             {isManagement && !state.cafe.decorateMode && (
               <>
               {/* Stats button */}
-              <div className="relative">
+              <div className="relative" ref={statsPanelAnchorRef}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1170,12 +1201,12 @@ export default function CafeView() {
                   <BarChart2 className="w-4 h-4" />
                 </Button>
                 {showStatsPanel && (
-                  <CafeStatsPanel state={state} onClose={() => setShowStatsPanel(false)} />
+                  <CafeStatsPanel state={state} anchorRef={statsPanelAnchorRef} onClose={() => setShowStatsPanel(false)} />
                 )}
               </div>
 
               {/* Upgrade button */}
-              <div className="relative">
+              <div className="relative" ref={upgradeAnchorRef}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1186,12 +1217,12 @@ export default function CafeView() {
                   <Store className="w-4 h-4" />
                 </Button>
                 {showUpgradePanel && (
-                  <CafeUpgradePanel state={state} onClose={() => setShowUpgradePanel(false)} />
+                  <CafeUpgradePanel state={state} anchorRef={upgradeAnchorRef} onClose={() => setShowUpgradePanel(false)} />
                 )}
               </div>
 
               {/* Wand button */}
-              <div className="relative">
+              <div className="relative" ref={bgModeAnchorRef}>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1205,6 +1236,7 @@ export default function CafeView() {
                   <BgModePanel
                     state={state}
                     dispatch={dispatch}
+                    anchorRef={bgModeAnchorRef}
                     onClose={() => setShowBgModePanel(false)}
                   />
                 )}
