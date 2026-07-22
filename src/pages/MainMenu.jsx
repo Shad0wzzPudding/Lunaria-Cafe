@@ -1,18 +1,73 @@
+import { useState } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { Button } from '@/components/ui/button';
-import { Play, BarChart3, Settings, BookOpen, Users, Radio } from 'lucide-react';
+import { Play, BarChart3, Settings, BookOpen, Users, Radio, Pencil, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNameDraft, MAX_DISPLAY_NAME } from '@/lib/account/useNameDraft';
+
+// Inline name editor that pops out of the greeting when the pencil is pressed.
+// Mounted only while editing, so each open starts fresh from the current name.
+function MenuNameEditor({ current, onSave, onClose }) {
+  const { name, onChange, status, error, canSave, save } = useNameDraft(current, onSave);
+
+  const submit = async () => {
+    const { error: err } = await save();
+    if (!err) onClose();
+  };
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submit();
+          if (e.key === 'Escape') onClose();
+        }}
+        maxLength={MAX_DISPLAY_NAME}
+        placeholder="Your name"
+        aria-label="Your name"
+        className="font-pixel text-xs bg-white/10 border border-white/30 rounded px-2 py-1 text-white placeholder:text-white/40 focus:outline-none focus:border-white/60 drop-shadow-md"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!canSave}
+        title="Save name"
+        aria-label="Save name"
+        className="text-emerald-300/80 hover:text-emerald-300 disabled:opacity-30 disabled:hover:text-emerald-300/80 transition-colors drop-shadow-md"
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onClose}
+        title="Cancel"
+        aria-label="Cancel"
+        className="text-white/45 hover:text-white transition-colors drop-shadow-md"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+      {status === 'error' && (
+        <span className="font-pixel text-[10px] text-amber-300 drop-shadow-md">{error}</span>
+      )}
+    </span>
+  );
+}
 
 export default function MainMenu() {
   const { state, dispatch, logout } = useGame();
   // Old saves lack the key: undefined -> bubble shows, same as a fresh game.
   const letterUnread = !state.settings?.welcomeLetterOpened;
-  const { user, profile, isGuest, chooseRole } = useAuth();
+  const { user, profile, isGuest, chooseRole, updateDisplayName } = useAuth();
   const { currentRound } = useLiveRound();
+  const [editingName, setEditingName] = useState(false);
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
   const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
+  const canEditName = !isGuest && Boolean(profile?.is_student);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -35,9 +90,30 @@ export default function MainMenu() {
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2, delay: 0.2 }}
       >
-        <p className="font-pixel text-xs text-white/70 drop-shadow-md">
-          The cafe welcomes you, {isGuest ? 'Guest' : user?.email}!
-        </p>
+        {editingName && canEditName ? (
+          <MenuNameEditor
+            current={profile?.display_name || user?.email?.split('@')[0] || 'Student'}
+            onSave={updateDisplayName}
+            onClose={() => setEditingName(false)}
+          />
+        ) : (
+          <>
+            <p className="font-pixel text-xs text-white/70 drop-shadow-md">
+              The cafe welcomes you, {isGuest ? 'Guest' : (profile?.display_name || user?.email)}!
+            </p>
+            {canEditName && (
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                title="Edit your name"
+                aria-label="Edit your name"
+                className="text-white/45 hover:text-white transition-colors drop-shadow-md"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
+          </>
+        )}
         <button
           type="button"
           onClick={logout}

@@ -12,27 +12,18 @@ import {
 } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/useAuth';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
+import { useNameDraft, MAX_DISPLAY_NAME } from '@/lib/account/useNameDraft';
 
-function DisplayNameEditor({ profile, onSave }) {
-  const current = profile?.display_name ?? '';
-  const [name, setName] = useState(current);
-  const [status, setStatus] = useState('idle'); // idle | saving | saved | error
-  const [error, setError] = useState('');
+function DisplayNameEditor({ profile, fallbackName, onSave, onReset }) {
+  // Seed with the effective name shown elsewhere (leaderboards etc.) when no
+  // display_name has been set yet, so the field matches what the user sees.
+  const current = profile?.display_name || fallbackName;
+  const { name, onChange, status, error, canSave, save } = useNameDraft(current, onSave);
+  const hasCustomName = Boolean(profile?.display_name);
 
-  const trimmed = name.trim();
-  const unchanged = trimmed === current;
-  const canSave = trimmed.length > 0 && trimmed.length <= 24 && !unchanged && status !== 'saving';
-
-  const save = async () => {
-    setStatus('saving');
-    setError('');
-    const { error: err } = await onSave(trimmed);
-    if (err) {
-      setStatus('error');
-      setError(err.message || 'Could not save your name.');
-    } else {
-      setStatus('saved');
-    }
+  const resetToDefault = async () => {
+    const { error: err } = await onReset();
+    if (!err) onChange(fallbackName); // reflect the default (email) in the field
   };
 
   return (
@@ -41,8 +32,8 @@ function DisplayNameEditor({ profile, onSave }) {
       <div className="flex items-center gap-2">
         <input
           value={name}
-          onChange={(e) => { setName(e.target.value); if (status !== 'idle') setStatus('idle'); }}
-          maxLength={24}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={MAX_DISPLAY_NAME}
           placeholder="Your name"
           className="flex-1 rounded-md border border-border/40 bg-background px-3 py-2 text-sm"
         />
@@ -58,7 +49,18 @@ function DisplayNameEditor({ profile, onSave }) {
         </Button>
       </div>
       {status === 'error' && <p className="text-sm text-amber-400">{error}</p>}
-      <p className="text-xs text-muted-foreground">Shown on your classroom leaderboards. Up to 24 characters.</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Shown on your classroom leaderboards. Up to 24 characters.</p>
+        {hasCustomName && (
+          <button
+            type="button"
+            onClick={resetToDefault}
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
+          >
+            Reset to default
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -99,7 +101,7 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
 
 export default function GameSettings() {
   const { state, dispatch, saveError, logout } = useGame();
-  const { user, isGuest, profile, updateDisplayName } = useAuth();
+  const { user, isGuest, profile, updateDisplayName, resetDisplayName } = useAuth();
   const { audio } = state;
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
 
@@ -304,7 +306,12 @@ export default function GameSettings() {
               </p>
             ) : null}
             {!isGuest && profile?.is_student && (
-              <DisplayNameEditor profile={profile} onSave={updateDisplayName} />
+              <DisplayNameEditor
+                profile={profile}
+                fallbackName={user?.email?.split('@')[0] || 'Student'}
+                onSave={updateDisplayName}
+                onReset={resetDisplayName}
+              />
             )}
             {saveError && (
               <p className="text-sm text-amber-400">Save issue: {saveError}</p>

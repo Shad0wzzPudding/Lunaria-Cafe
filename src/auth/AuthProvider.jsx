@@ -108,12 +108,22 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
+  // Clear the custom name so the app falls back to the email-derived default.
+  const resetDisplayName = async () => {
+    if (!supabase || !user) return { error: new Error('Not signed in') };
+    const { error } = await supabase.rpc('reset_display_name');
+    if (!error) {
+      setProfile((p) => (p && p.id === user.id ? { ...p, display_name: null } : p));
+    }
+    return { error };
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user, profile: freshProfile, loading, profileLoading, isGuest,
         activeRole, chooseRole,
-        signUp, signIn, signOut, signInAsGuest, updateDisplayName,
+        signUp, signIn, signOut, signInAsGuest, updateDisplayName, resetDisplayName,
       }}
     >
       {children}
