@@ -4,7 +4,7 @@ import { X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
-import { isDetectionZoneVisible, setDetectionZoneVisible } from '@/lib/ai/browserAI';
+import { isDetectionZoneVisible, setDetectionZoneVisible, isLowConfFloor, setLowConfFloor } from '@/lib/ai/browserAI';
 
 const CHAOS_LEVELS = [
   { label: 'Calm',              score: 85, color: 'text-emerald-400' },
@@ -55,6 +55,13 @@ export default function DebugPanel({ onClose }) {
   const toggleAiZone = () => {
     setDetectionZoneVisible(!showAiZone);
     setShowAiZone(!showAiZone);
+  };
+  // Mirrors browserAI's low-confidence-floor flag (drops the worker's detection
+  // floor to 10%); this state only drives the checkbox UI.
+  const [lowConfFloor, setLowConfFloorUi] = useState(isLowConfFloor());
+  const toggleLowConfFloor = () => {
+    setLowConfFloor(!lowConfFloor);
+    setLowConfFloorUi(!lowConfFloor);
   };
 
   // Left column state
@@ -283,6 +290,16 @@ export default function DebugPanel({ onClose }) {
                     </button>
                     <p className="font-body text-[10px] text-muted-foreground/60">
                       Shades the camera edges the phone detector can't see (it runs on the center square).
+                    </p>
+                    <button onClick={toggleLowConfFloor}
+                      className="w-full rounded-lg border border-border/40 bg-black/20 px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center justify-between">
+                      <span className="font-pixel text-[10px] text-foreground">Detect phones at 10%</span>
+                      <span className={`font-pixel text-[10px] ${lowConfFloor ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                        {lowConfFloor ? 'ON' : 'OFF'}
+                      </span>
+                    </button>
+                    <p className="font-body text-[10px] text-muted-foreground/60">
+                      Drops the phone-counting floor to 10% confidence so faint phone-shaped hits count (the shape gate still screens the band).
                     </p>
                   </div>
 

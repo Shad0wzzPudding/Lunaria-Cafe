@@ -83,6 +83,28 @@ export function setDetectionZoneVisible(visible) {
 export function isDetectionZoneVisible() {
   return debugShowDetectionZone;
 }
+
+// Drops the worker's phone-detection floor (softConf — the lowest bar a
+// phone-shaped hit must clear to count) to 10%, so faint phones register. The
+// near-miss floor is pushed just below it to keep the tiers ordered. ON by
+// default; the debug panel can turn it off to restore the normal V2 floors.
+// (Shape gate still screens the band.)
+const LOW_CONF_SOFT = 0.10;     // counting floor when enabled
+const LOW_CONF_NEARMISS = 0.05; // near-miss floor, kept below softConf
+let lowConfFloorEnabled = true;
+
+export function setLowConfFloor(enabled) {
+  lowConfFloorEnabled = !!enabled;
+  yoloWorker?.postMessage({
+    type: 'config',
+    softConf:     lowConfFloorEnabled ? LOW_CONF_SOFT : null,
+    nearMissConf: lowConfFloorEnabled ? LOW_CONF_NEARMISS : null,
+  });
+}
+
+export function isLowConfFloor() {
+  return lowConfFloorEnabled;
+}
 let latestWarning = '';
 let isUserFocusedGlobal = true;
 
@@ -317,6 +339,10 @@ function initYoloWorker() {
   };
 
   yoloWorker.postMessage({ type: 'init' });
+  // Carry the current debug floor override into the fresh worker.
+  if (lowConfFloorEnabled) {
+    yoloWorker.postMessage({ type: 'config', softConf: LOW_CONF_SOFT, nearMissConf: LOW_CONF_NEARMISS });
+  }
 }
 
 async function getWebcamStream() {

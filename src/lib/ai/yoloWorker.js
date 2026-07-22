@@ -27,13 +27,19 @@ const PHONE_CLASS_ID = 67; // Class 67 คือ โทรศัพท์ใน 
 // field name from either file finds both the tuning and its use.
 const {
   hardConf,     // above: red box (shape-gated), counts in ~1.6s
-  softConf,     // above: amber "Phone?" (shape-gated), counts via persistence
-  nearMissConf, // above: diagnostics only; below: noise
   bypassConf,   // above: trust the model, any shape
   minArea,
   minAspect,
   maxAspect,
 } = POLICY;
+
+// Mutable so the debug panel can lower the detection floors (see the 'config'
+// message). softConf is the lowest COUNTING bar — a phone-shaped hit at/above it
+// is detected (amber "Phone?"). nearMissConf is the diagnostics floor below it
+// (near-miss text; below = noise). They must stay ordered nearMiss < soft.
+// Default to the policy values.
+let softConf = POLICY.softConf;
+let nearMissConf = POLICY.nearMissConf;
 
 // Geometry gate — a second screen for props the model mislabels as a phone:
 //   - too small in frame   -> a wristwatch (small and roughly square)
@@ -201,6 +207,13 @@ self.onmessage = async (e) => {
   const { type, payload } = e.data;
   if (type === 'init') {
     await initModel();
+  }
+
+  if (type === 'config') {
+    // Debug overrides for the detection floors; null restores policy defaults.
+    softConf     = (payload?.softConf     != null) ? payload.softConf     : POLICY.softConf;
+    nearMissConf = (payload?.nearMissConf != null) ? payload.nearMissConf : POLICY.nearMissConf;
+    return;
   }
 
   if (type === 'detect') {
