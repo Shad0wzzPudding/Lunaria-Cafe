@@ -42,8 +42,13 @@ export default function CafeStatusPopup() {
   const [data, setData] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const camWrapRef = useRef(null);
   const [camReady, setCamReady] = useState(false);
   const [camError, setCamError] = useState(false);
+  // Side of the centered detection-zone square, in display px. The AI crops a
+  // centered min(w,h) square from the source, so mirror that as the smaller of
+  // the camera box's dimensions.
+  const [zoneSide, setZoneSide] = useState(0);
   const { aiMode } = getAIConfig();
   const showCamera = aiMode === 'browser';
   const isFullscreen = useIsFullscreen();
@@ -102,6 +107,38 @@ export default function CafeStatusPopup() {
     };
   }, [showCamera]);
 
+  // Size the detection-zone square to match what the AI actually crops. The AI
+  // takes a centered min(w,h) square from the SOURCE video; the popup shows that
+  // video with object-cover (scaled to fill, cropped). So the displayed zone
+  // side = source-square-side × the object-cover scale. Falls back to the
+  // smaller box dimension until the video's intrinsic size is known.
+  useEffect(() => {
+    if (!showCamera) return;
+    const box = camWrapRef.current;
+    const vid = videoRef.current;
+    if (!box) return;
+    const measure = () => {
+      const cw = box.clientWidth;
+      const ch = box.clientHeight;
+      const vw = vid?.videoWidth ?? 0;
+      const vh = vid?.videoHeight ?? 0;
+      if (vw > 0 && vh > 0) {
+        const coverScale = Math.max(cw / vw, ch / vh);
+        setZoneSide(Math.min(vw, vh) * coverScale);
+      } else {
+        setZoneSide(Math.min(cw, ch));
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(box);
+    vid?.addEventListener('loadedmetadata', measure);
+    return () => {
+      ro.disconnect();
+      vid?.removeEventListener('loadedmetadata', measure);
+    };
+  }, [showCamera]);
+
   const chaos    = data ? getChaosStage(data.attentionScore ?? 100) : null;
   // Match the main-tab gauge: performance mode keeps the stage-stepped fill,
   // otherwise the bar fills smoothly as the focus score drops.
@@ -140,7 +177,7 @@ export default function CafeStatusPopup() {
       {/* Camera feed — or spacer when camera is off */}
       {!showCamera && <div className="flex-1" />}
       {showCamera && (
-        <div className="relative bg-black w-full flex-1 min-h-0 overflow-hidden">
+        <div ref={camWrapRef} className="relative bg-black w-full flex-1 min-h-0 overflow-hidden">
           <video
             ref={videoRef}
             autoPlay playsInline muted
@@ -151,6 +188,31 @@ export default function CafeStatusPopup() {
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="font-pixel text-[10px] text-muted-foreground">
                 {camError ? 'Camera unavailable' : 'Starting camera...'}
+              </span>
+            </div>
+          )}
+
+          {/* Detection zone — mirrors the main camera: a centered square where
+              the phone AI actually looks, with a dashed border, a subtle tint
+              outside it, and the "sees inside this box" label. */}
+          {camReady && zoneSide > 0 && data?.showDetectionZone !== false && (
+            <div
+              className="absolute z-10 pointer-events-none"
+              style={{
+                width: zoneSide,
+                height: zoneSide,
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                border: '1px dashed rgba(255,120,120,0.7)',
+                boxShadow: '0 0 0 9999px rgba(255,70,70,0.14)',
+              }}
+            >
+              <span
+                className="absolute left-1/2 -translate-x-1/2 px-1 text-[10px] font-bold whitespace-nowrap"
+                style={{ top: 4, background: 'rgba(120,40,40,0.8)', color: '#ffd7d7', fontFamily: '"Segoe UI", sans-serif' }}
+              >
+                PHONE AI SEES INSIDE THIS BOX
               </span>
             </div>
           )}
@@ -190,6 +252,36 @@ export default function CafeStatusPopup() {
                   </div>
                 );
               })}
+
+              {/* Soft "Phone?" box — shape-approved but under the hard bar
+                  (amber dashed), mirrors the main camera. */}
+              {data.detection?.tier === 'soft' && data.detection.box && (
+                <div className="absolute pointer-events-none"
+                  style={{
+                    left:   `${(1 - data.detection.box.x1 - data.detection.box.w) * 100}%`,
+                    top:    `${data.detection.box.y1 * 100}%`,
+                    width:  `${data.detection.box.w * 100}%`,
+                    height: `${data.detection.box.h * 100}%`,
+                    border: '2px dashed rgb(255,190,0)',
+                    zIndex: 24,
+                  }}>
+                  <span className="absolute -top-5 left-0 px-1 text-[10px] font-bold text-white"
+                    style={{ background: 'rgba(180,140,0,0.85)', fontFamily: '"Segoe UI", sans-serif', whiteSpace: 'nowrap' }}>
+                    Phone? {Math.round(data.detection.box.conf * 100)}%
+                  </span>
+                </div>
+              )}
+
+              {/* Near-miss diagnostics / familiar-object escalation — amber,
+                  bottom-left, same as the main camera. */}
+              {(data.detection?.escalated || data.detection?.tier === 'rejected') && (
+                <div className="absolute bottom-2 left-2 z-20 px-1 text-[10px] font-bold text-white pointer-events-none"
+                  style={{ background: 'rgba(180,140,0,0.85)', fontFamily: '"Segoe UI", sans-serif', whiteSpace: 'nowrap' }}>
+                  {data.detection.escalated
+                    ? 'Familiar object detected'
+                    : `NEAR MISS: ${data.detection.nearMissReason} @ ${Math.round((data.detection.nearMissConf ?? 0) * 100)}%`}
+                </div>
+              )}
 
               {/* Warning — center. While paused, always show the pause
                   notice instead of (stale) distraction warnings. */}

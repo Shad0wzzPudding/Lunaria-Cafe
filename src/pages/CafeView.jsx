@@ -8,6 +8,7 @@ import {
   generateChaosEvent,
   setAIScoreFrozen,
 } from '@/lib/ai/aiIntegration';
+import { isDetectionZoneVisible } from '@/lib/ai/browserAI';
 import AttentionCamera from '@/components/cafe/AttentionCamera';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
 import CafeHUD from '@/components/cafe/CafeHUD';
@@ -743,6 +744,11 @@ export default function CafeView() {
     userPresent: state.attention.userPresent,
     warningMessage: state.attention.warningMessage,
     phones: state.attention.phones,
+    // Tier diagnostics (soft "Phone?" box, near-miss text, familiar-object state)
+    // so the popup can mirror the main camera overlay.
+    detection: state.attention.detection,
+    // Same debug toggle drives the zone box in both the main camera and popup.
+    showDetectionZone: isDetectionZoneVisible(),
     elapsed: state.focus.elapsed,
     status: state.focus.status,
     themeMode: getThemeMode(),
@@ -756,11 +762,13 @@ export default function CafeView() {
 
   // Broadcast live state to the popup window via BroadcastChannel.
   // Channel is created once per focus session; data is read from the ref each tick.
+  // 500ms keeps the popup's detection overlays reasonably live (the main-window
+  // camera stays real-time regardless — this post is outbound-only to the popup).
   useEffect(() => {
     if (!isFocusing) return;
     const channel = new BroadcastChannel('cafe-status');
     channel.postMessage(broadcastDataRef.current); // immediate first push
-    const interval = setInterval(() => channel.postMessage(broadcastDataRef.current), 2000);
+    const interval = setInterval(() => channel.postMessage(broadcastDataRef.current), 500);
     return () => { clearInterval(interval); channel.close(); };
   }, [isFocusing]);
 
