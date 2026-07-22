@@ -1149,13 +1149,15 @@ export default function CafeView() {
           {isZenMode && !popupOpen && (
             <motion.div
               key="zen-overlay"
-              className="absolute inset-0 z-10 flex items-center justify-center p-4 overflow-auto pointer-events-none"
+              className="absolute inset-0 z-10 flex items-center justify-center p-4 pointer-events-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.45, ease: 'easeInOut' }}
             >
-              <div className="pointer-events-auto">
+              {/* Scroll + pointer events on the inner box so tall Zen content
+                  stays scrollable while the corners (camera) stay click-through. */}
+              <div className="pointer-events-auto max-h-full overflow-auto">
                 <ZenFocusView state={state} />
               </div>
             </motion.div>
