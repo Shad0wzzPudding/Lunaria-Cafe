@@ -1055,17 +1055,27 @@ export default function CafeView() {
           : {}
         }
       >
-        {(popupOpen || isZenMode) && isImmersive && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `url(${timeOfDay === 'day' ? '/assets/background/C_BG_Daylight.png' : '/assets/background/C_BG_Nightfall.png'})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center center',
-              filter: 'blur(6px)',
-            }}
-          />
-        )}
+        {/* Immersive blurred backdrop. z-[5] so it sits ABOVE the persistent
+            cafe canvas (hiding it in Zen) but below the Zen content (z-10) and
+            popup placeholder (z-20). Fades to match the Zen cover transition. */}
+        <AnimatePresence>
+          {(popupOpen || isZenMode) && isImmersive && (
+            <motion.div
+              key="immersive-blur-bg"
+              className="absolute inset-0 z-[5] pointer-events-none"
+              style={{
+                backgroundImage: `url(${timeOfDay === 'day' ? '/assets/background/C_BG_Daylight.png' : '/assets/background/C_BG_Nightfall.png'})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                filter: 'blur(6px)',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: 'easeInOut' }}
+            />
+          )}
+        </AnimatePresence>
         <AnimatePresence mode="wait">
           {popupClosing ? (
             <motion.div
@@ -1082,7 +1092,7 @@ export default function CafeView() {
             <motion.div
               key="popup-placeholder"
               className="flex flex-col items-center justify-center gap-6 text-center"
-              style={{ position: 'relative', zIndex: 1 }}
+              style={{ position: 'relative', zIndex: 20 }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -1156,8 +1166,9 @@ export default function CafeView() {
               transition={{ duration: 0.45, ease: 'easeInOut' }}
             >
               {/* Scroll + pointer events on the inner box so tall Zen content
-                  stays scrollable while the corners (camera) stay click-through. */}
-              <div className="pointer-events-auto max-h-full overflow-auto">
+                  stays scrollable while the corners (camera) stay click-through.
+                  Scrollbar hidden so it doesn't show a bar across the backdrop. */}
+              <div className="pointer-events-auto max-h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <ZenFocusView state={state} />
               </div>
             </motion.div>
