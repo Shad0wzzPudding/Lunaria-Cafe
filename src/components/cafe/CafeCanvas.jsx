@@ -397,7 +397,7 @@ function buildMaskedBg(img) {
   return off;
 }
 
-export default function CafeCanvas({ frozen = false }) {
+export default function CafeCanvas({ frozen = false, noShadow = false }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const bgImages = useRef({ day: null, night: null });
@@ -920,14 +920,22 @@ export default function CafeCanvas({ frozen = false }) {
       <canvas
         ref={canvasRef} width={CAFE_W} height={CAFE_H}
         onClick={handleCanvasClick}
-        className={`rounded-xl border shadow-2xl block ${
+        className={`rounded-xl border block ${
           state.cafe.decorateMode
             ? state.cafe.decorateTool === 'remove'
               ? 'border-destructive cursor-pointer ring-2 ring-destructive/40'
               : 'border-primary cursor-crosshair ring-2 ring-primary/40'
             : 'border-border/50'
         }`}
-        style={{ imageRendering: 'pixelated', maxWidth: '100%' }}
+        style={{
+          imageRendering: 'pixelated',
+          maxWidth: '100%',
+          // Deeper, layered drop shadow so the cafe reads as lifted off the
+          // page in game view. Suppressed in zen mode (see noShadow).
+          boxShadow: noShadow
+            ? 'none'
+            : '0 30px 60px -15px rgba(0,0,0,0.65), 0 12px 24px -10px rgba(0,0,0,0.5)',
+        }}
       />
 
       {pf && overlayStyle && (
