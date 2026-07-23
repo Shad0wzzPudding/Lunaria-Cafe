@@ -342,15 +342,24 @@ function initYoloWorker() {
         }
       }
 
-      // Once the window reaches the threshold, treat the near-miss AND any
-      // grace-bridged gap frames as a counting soft "Phone?" (familiar object),
-      // so confirmPhone's soft persistence keeps advancing across flickers and
-      // the phone warning fires the same as a real soft detection. Genuine
+      // Once the window reaches the threshold, treat a near-miss as a counting
+      // soft "Phone?" (familiar object), so confirmPhone's persistence advances
+      // and the phone warning fires like a real soft detection. Genuine
       // hard/soft detections pass through unchanged.
+      //
+      // Empty frames are bridged the same way, but ONLY until the phone is
+      // confirmed. That bridging exists to stop the streak resetting while a
+      // flickery object is still building toward confirmation; once confirmed,
+      // an empty frame genuinely means "it's gone", and faking it as a soft hit
+      // kept phoneMissStreak at zero — so the warning ran for the whole 5s
+      // grace plus the release frames (~6.6s) after the phone was put down.
+      // A near-miss still promotes after confirmation: something phone-like is
+      // visibly there, so the warning should hold.
+      const windowOpen =
+        nearMissStart !== 0 && now - nearMissStart >= NEAR_MISS_ESCALATE_MS;
       const escalated =
-        nearMissStart !== 0 &&
-        now - nearMissStart >= NEAR_MISS_ESCALATE_MS &&
-        (det.tier === 'rejected' || det.tier === null);
+        windowOpen &&
+        (det.tier === 'rejected' || (det.tier === null && !phoneConfirmed));
       latestDetection = escalated
         ? { tier: 'soft', escalated: true, conf: det.conf, reason: det.reason }
         : det;
