@@ -322,15 +322,24 @@ function initYoloWorker() {
           nearMissStart = now;
         }
         nearMissLastAt = now;
-      } else if (det.tier === null) {
-        // A gap frame: tolerate it during the grace period so an intermittent
-        // near-miss keeps accumulating; drop the window once the gap exceeds it.
+      } else if (det.tier === 'soft' || det.tier === 'hard') {
+        // Tier went UP to a real detection — the same object, seen better. Keep
+        // an existing window running (and refresh the grace) instead of clearing
+        // it. A phone that flickers between near-miss and a real hit would
+        // otherwise lose its progress on every good frame: confirmPhone's streak
+        // already dies on each near-miss frame, so if the escalation window
+        // restarted too, an oscillating phone could never confirm by either
+        // route. Deliberately does NOT start a window — a clean detection counts
+        // on its own (hard in ~1.6s, soft via persistence) and needs no
+        // familiar-object path.
+        if (nearMissStart !== 0) nearMissLastAt = now;
+      } else {
+        // A gap frame (tier null): tolerate it during the grace period so an
+        // intermittent near-miss keeps accumulating; drop the window once the
+        // gap exceeds it.
         if (nearMissStart !== 0 && now - nearMissLastAt > NEAR_MISS_GRACE_MS) {
           nearMissStart = 0;
         }
-      } else {
-        // A genuine hard/soft detection supersedes the near-miss window.
-        nearMissStart = 0;
       }
 
       // Once the window reaches the threshold, treat the near-miss AND any
