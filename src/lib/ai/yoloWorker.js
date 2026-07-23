@@ -1,4 +1,8 @@
-import * as ort from 'onnxruntime-web';
+// The wasm-only build on purpose. The default entry pulls the JSEP
+// (WebGPU/WebNN) runtime — 25MB vs 12MB — and we only ever run
+// executionProviders: ['wasm'], so that half was downloaded and compiled for
+// nothing. WASM compile is CPU-bound, so the saving shows up worst-machine-first.
+import * as ort from 'onnxruntime-web/wasm';
 import { POLICY, cropRect, TENSOR_SIZE } from './detectionPolicy.js';
 
 // บังคับให้โหลด WASM จาก CDN ป้องกันปัญหาตอน Deploy ลง Vercel
