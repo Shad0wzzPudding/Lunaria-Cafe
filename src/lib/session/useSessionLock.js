@@ -34,7 +34,10 @@ const TAB_CHANNEL = 'lunaria-tab-lock'; // distinct from 'cafe-status' (the pop-
 const TAB_LOCK_NAME = 'lunaria-active-tab';
 const DEVICE_KEY = 'lunaria-device-id';
 const RETRY_MS = 120;        // re-request cadence while taking over
-const RELEASE_WAIT_MS = 1500; // give up waiting for the old tab to stand down
+// Generous, because the holder now flushes its save before releasing: the wait
+// covers a save round-trip, not just message latency. We keep retrying rather
+// than assuming a fixed delay, so this is only the give-up point for a wedged tab.
+const RELEASE_WAIT_MS = 6000;
 const HEARTBEAT_MS = 30_000;
 
 // Fresh per page load, so two tabs never share one. (Duplicating a tab copies
@@ -71,10 +74,16 @@ const SUPPORTS_TAB_LOCK =
   typeof navigator !== 'undefined' &&
   typeof navigator.locks?.request === 'function';
 
-export function useSessionLock({ userId, isStudent }) {
+export function useSessionLock({ userId, isStudent, onBeforeRelease }) {
   const [status, setStatus] = useState(SUPPORTS_TAB_LOCK ? 'checking' : 'active');
+  const [handingOver, setHandingOver] = useState(false);
   const statusRef = useRef(status);
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  // Read through a ref: the flush is registered by GameProvider after this hook
+  // runs, and its identity changes, but the takeover handler is set up once.
+  const beforeReleaseRef = useRef(onBeforeRelease);
+  useEffect(() => { beforeReleaseRef.current = onBeforeRelease; }, [onBeforeRelease]);
 
   const channelRef = useRef(null);
   const releaseLockRef = useRef(null); // resolves the held lock's promise
@@ -108,12 +117,24 @@ export function useSessionLock({ userId, isStudent }) {
     channel.onmessage = (e) => {
       const msg = e.data;
       if (!msg || msg.tabId === TAB_ID) return;
-      // Another tab is taking over: stop, and drop the lock so it can start
-      // only once we've stopped writing.
+      // Another tab is taking over. Flush our save FIRST, then drop the lock —
+      // the incoming tab can only acquire it after the write has landed, and it
+      // then mounts fresh and loads that save, so a handover loses nothing.
+      // Capture the flush before setStatus, because going inactive unmounts
+      // GameProvider and clears the registration.
       if (msg.type === 'takeover' && statusRef.current === 'active') {
-        setStatus('taken-over');
-        releaseLockRef.current?.();
-        releaseLockRef.current = null;
+        const flush = beforeReleaseRef.current;
+        (async () => {
+          try {
+            await flush?.();
+          } catch {
+            // A failed save must not strand the handover — the other tab is
+            // already waiting on this lock.
+          }
+          setStatus('taken-over');
+          releaseLockRef.current?.();
+          releaseLockRef.current = null;
+        })();
       }
     };
 
@@ -134,17 +155,20 @@ export function useSessionLock({ userId, isStudent }) {
     const acquire = acquireRef.current;
     if (!channel || !acquire) { setStatus('active'); return; }
 
+    setHandingOver(true);
     channel.postMessage({ type: 'takeover', tabId: TAB_ID });
 
     // Retry until the holder actually drops the lock, rather than assuming a
-    // fixed delay is enough. Give up after RELEASE_WAIT_MS in case the other
-    // tab is wedged — the browser will have freed the lock if it simply died.
+    // fixed delay is enough — it is now saving first, so the wait is variable.
+    // Give up after RELEASE_WAIT_MS in case the other tab is wedged; the
+    // browser will already have freed the lock if it simply died.
     const deadline = Date.now() + RELEASE_WAIT_MS;
     const tick = async () => {
-      if (statusRef.current === 'active') return;
+      if (statusRef.current === 'active') { setHandingOver(false); return; }
       await acquire();
-      if (statusRef.current === 'active') return;
+      if (statusRef.current === 'active') { setHandingOver(false); return; }
       if (Date.now() < deadline) setTimeout(tick, RETRY_MS);
+      else setHandingOver(false);
     };
     setTimeout(tick, RETRY_MS);
   }, []);
@@ -191,5 +215,5 @@ export function useSessionLock({ userId, isStudent }) {
     }
   }, [userId, isStudent]);
 
-  return { status, takeOver, releaseDevice };
+  return { status, handingOver, takeOver, releaseDevice };
 }

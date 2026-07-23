@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useCallback } from 'react'
 import { Toaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -162,11 +162,17 @@ function AppShell() {
   // below, so this always runs — but it is only ACTED on in the game branch,
   // which is why instructors (who return earlier, and whose dashboard has no
   // autosave to clobber) are never blocked.
-  const { status: lockStatus, takeOver, releaseDevice } = useSessionLock({
+  // GameProvider registers its saveNow here so the lock can flush before
+  // handing over to another tab. A ref (not a prop callback) because the lock
+  // is set up above the provider that supplies the function.
+  const flushRef = useRef(null)
+  const flushSave = useCallback(() => flushRef.current?.(), [])
+  const { status: lockStatus, handingOver, takeOver, releaseDevice } = useSessionLock({
     userId: isGuest ? null : user?.id,
     // Device lock is students-only; guests have no account to claim, though the
     // tab lock still covers them (a guest save clobbers just the same).
     isStudent: !isGuest && Boolean(profile?.is_student),
+    onBeforeRelease: flushSave,
   })
 
   if (loading || (user && profileLoading)) {
@@ -211,6 +217,7 @@ function AppShell() {
     return (
       <SessionLockNotice
         status={lockStatus}
+        busy={handingOver}
         onAction={lockStatus === 'displaced' ? signOut : takeOver}
       />
     )
@@ -218,7 +225,11 @@ function AppShell() {
 
   return (
     <QueryClientProvider client={queryClientInstance}>
-      <GameProvider userId={isGuest ? null : user?.id} onBeforeSignOut={releaseDevice}>
+      <GameProvider
+        userId={isGuest ? null : user?.id}
+        onBeforeSignOut={releaseDevice}
+        flushRef={flushRef}
+      >
         <LiveRoundProvider>
           <main className="dark min-h-screen relative">
             <GameRouter />

@@ -42,7 +42,7 @@ const COPY = {
   },
 };
 
-export default function SessionLockNotice({ status, onAction }) {
+export default function SessionLockNotice({ status, onAction, busy = false }) {
   const copy = COPY[status];
   if (!copy) return null;
   const Icon = status === 'displaced' ? MonitorSmartphone : Copy;
@@ -62,9 +62,11 @@ export default function SessionLockNotice({ status, onAction }) {
           <p className="font-body text-xs leading-relaxed text-muted-foreground">{copy.body}</p>
         </div>
 
-        <Button onClick={onAction} className="w-full gap-2 font-pixel text-xs">
-          <ActionIcon className="h-4 w-4" />
-          {copy.action}
+        {/* Busy while the other tab flushes its save before releasing — the
+            wait is a save round-trip, so it must not look like a dead button. */}
+        <Button onClick={onAction} disabled={busy} className="w-full gap-2 font-pixel text-xs">
+          {!busy && <ActionIcon className="h-4 w-4" />}
+          {busy ? 'Handing over…' : copy.action}
         </Button>
 
         <p className="font-body text-[10px] leading-relaxed text-muted-foreground/70">

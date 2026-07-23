@@ -8,7 +8,7 @@ import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/useAuth';
 
-export function GameProvider({ children, userId, onBeforeSignOut }) {
+export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [ready, setReady] = useState(!userId);
   const [saveError, setSaveError] = useState(null);
@@ -46,6 +46,16 @@ export function GameProvider({ children, userId, onBeforeSignOut }) {
       await signOut();
     }
   }, [saveNow, signOut, onBeforeSignOut]);
+
+  // Expose a save to the session lock, which lives above this provider: when
+  // another tab takes over it flushes through this BEFORE releasing the lock,
+  // so the handover doesn't drop up to an autosave interval of progress.
+  // Cleared on unmount so a departed instance can never be asked to write.
+  useEffect(() => {
+    if (!flushRef) return undefined;
+    flushRef.current = saveNow;
+    return () => { flushRef.current = null; };
+  }, [flushRef, saveNow]);
 
   // Adjust-during-render: a userId change (guest → account) restarts loading.
   const [prevUserId, setPrevUserId] = useState(userId);
