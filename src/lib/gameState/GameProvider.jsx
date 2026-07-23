@@ -8,7 +8,7 @@ import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/useAuth';
 
-export function GameProvider({ children, userId }) {
+export function GameProvider({ children, userId, onBeforeSignOut }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [ready, setReady] = useState(!userId);
   const [saveError, setSaveError] = useState(null);
@@ -39,9 +39,13 @@ export function GameProvider({ children, userId }) {
     try {
       await saveNow();
     } finally {
+      // Drop the device claim while we still have a session — the RPC keys off
+      // auth.uid(), so it can only run BEFORE signOut. Best-effort: under
+      // last-wins a stale claim is harmless, it just delays nothing.
+      try { await onBeforeSignOut?.(); } catch { /* not worth blocking logout */ }
       await signOut();
     }
-  }, [saveNow, signOut]);
+  }, [saveNow, signOut, onBeforeSignOut]);
 
   // Adjust-during-render: a userId change (guest → account) restarts loading.
   const [prevUserId, setPrevUserId] = useState(userId);

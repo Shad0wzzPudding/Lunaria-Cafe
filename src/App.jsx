@@ -21,6 +21,8 @@ import Help from '@/pages/Help'
 import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
 import DebugPanel from '@/components/debug/DebugPanel'
+import SessionLockNotice from '@/components/session/SessionLockNotice'
+import { useSessionLock } from '@/lib/session/useSessionLock'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
 import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
@@ -154,7 +156,18 @@ function GameRouter() {
 }
 
 function AppShell() {
-  const { user, loading, profileLoading, isGuest, profile, activeRole } = useAuth()
+  const { user, loading, profileLoading, isGuest, profile, activeRole, signOut } = useAuth()
+
+  // One running instance per account. Hooks can't sit behind the early returns
+  // below, so this always runs — but it is only ACTED on in the game branch,
+  // which is why instructors (who return earlier, and whose dashboard has no
+  // autosave to clobber) are never blocked.
+  const { status: lockStatus, takeOver, releaseDevice } = useSessionLock({
+    userId: isGuest ? null : user?.id,
+    // Device lock is students-only; guests have no account to claim, though the
+    // tab lock still covers them (a guest save clobbers just the same).
+    isStudent: !isGuest && Boolean(profile?.is_student),
+  })
 
   if (loading || (user && profileLoading)) {
     return (
@@ -182,9 +195,30 @@ function AppShell() {
     }
   }
 
+  // Block BEFORE the game tree mounts. This is the part that actually protects
+  // the save: GameProvider is never mounted while another instance owns the
+  // lock, so its 30s autosave and beforeunload save don't exist to overwrite
+  // the active one. It also means the winner mounts fresh and loads the latest
+  // save, rather than holding stale state from before the handover.
+  if (lockStatus === 'checking') {
+    return (
+      <p className="min-h-screen flex items-center justify-center bg-background dark text-muted-foreground font-body">
+        Loading…
+      </p>
+    )
+  }
+  if (lockStatus !== 'active') {
+    return (
+      <SessionLockNotice
+        status={lockStatus}
+        onAction={lockStatus === 'displaced' ? signOut : takeOver}
+      />
+    )
+  }
+
   return (
     <QueryClientProvider client={queryClientInstance}>
-      <GameProvider userId={isGuest ? null : user?.id}>
+      <GameProvider userId={isGuest ? null : user?.id} onBeforeSignOut={releaseDevice}>
         <LiveRoundProvider>
           <main className="dark min-h-screen relative">
             <GameRouter />

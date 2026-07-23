@@ -1,0 +1,195 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
+/**
+ * Keeps ONE running instance of the game per account.
+ *
+ * Why: a player's save is a single row that GameProvider autosaves every 30s
+ * and again on beforeunload. Two instances signed into the same account each
+ * hold their own divergent state and write over each other — coins and
+ * reputation go backwards, furniture placement races. So the rule is
+ * one account · one device · one tab.
+ *
+ * Three layers, because none of them covers the others:
+ *
+ *   1. TAB LOCK (BroadcastChannel) — same browser, instant. Applies to guests
+ *      too: their save clobbers exactly the same way.
+ *   2. DEVICE CLAIM (active_sessions + heartbeat RPCs) — other devices, ~30s.
+ *      Students only; instructors may legitimately drive two screens.
+ *   3. TOKEN REVOCATION (signOut scope:'others') — real enforcement. It kills
+ *      the other device's REFRESH token, but its existing access token stays
+ *      valid until it expires, so on its own it is not prompt. That is exactly
+ *      why layer 2 exists: fast detection, backed by slow-but-unbypassable
+ *      revocation.
+ *
+ * Status values:
+ *   checking    – deciding; render nothing game-ish yet
+ *   active      – this instance owns the lock
+ *   conflict    – another tab in this browser owns it (offer to take over)
+ *   taken-over  – another tab took it from us
+ *   displaced   – another device claimed the account
+ */
+
+const TAB_CHANNEL = 'lunaria-tab-lock'; // distinct from 'cafe-status' (the pop-out)
+const TAB_LOCK_NAME = 'lunaria-active-tab';
+const DEVICE_KEY = 'lunaria-device-id';
+const RETRY_MS = 120;        // re-request cadence while taking over
+const RELEASE_WAIT_MS = 1500; // give up waiting for the old tab to stand down
+const HEARTBEAT_MS = 30_000;
+
+// Fresh per page load, so two tabs never share one. (Duplicating a tab copies
+// sessionStorage in some browsers, which is why this is NOT stored there.)
+const TAB_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    // Private mode / storage blocked: fall back to a per-tab id. Worst case the
+    // device lock is a little stricter than intended, never looser.
+    return TAB_ID;
+  }
+}
+
+// Web Locks decides tab ownership; BroadcastChannel only carries the "stand
+// down" signal for a takeover.
+//
+// It was ping/pong over BroadcastChannel first, and that was RACY: the second
+// tab waited a fixed window for a reply, but during page load its own main
+// thread is busy evaluating modules, so the timer could fire before it
+// processed an answer that had already arrived — leaving BOTH tabs active,
+// i.e. failing open in exactly the case this exists to prevent. Web Locks with
+// `ifAvailable` answers immediately and definitively, with no timing window,
+// and the lock is dropped automatically if the tab crashes.
+const SUPPORTS_TAB_LOCK =
+  typeof BroadcastChannel !== 'undefined' &&
+  typeof navigator !== 'undefined' &&
+  typeof navigator.locks?.request === 'function';
+
+export function useSessionLock({ userId, isStudent }) {
+  const [status, setStatus] = useState(SUPPORTS_TAB_LOCK ? 'checking' : 'active');
+  const statusRef = useRef(status);
+  useEffect(() => { statusRef.current = status; }, [status]);
+
+  const channelRef = useRef(null);
+  const releaseLockRef = useRef(null); // resolves the held lock's promise
+  const acquireRef = useRef(null);
+
+  // ── Layer 1: tab lock ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!SUPPORTS_TAB_LOCK) return undefined; // already started 'active'
+
+    const channel = new BroadcastChannel(TAB_CHANNEL);
+    channelRef.current = channel;
+    let cancelled = false;
+
+    // Ask for the lock. `ifAvailable` resolves the callback immediately with
+    // null when another tab holds it — no waiting, no window to race.
+    const acquire = () =>
+      navigator.locks.request(TAB_LOCK_NAME, { ifAvailable: true }, (lock) => {
+        if (cancelled) return undefined;
+        if (!lock) {
+          setStatus('conflict');
+          return undefined; // released at once; the holder keeps it
+        }
+        setStatus('active');
+        // Hold the lock for as long as we're the active tab: the lock lives
+        // until THIS promise settles, and the browser drops it for us if the
+        // tab is closed or crashes (no stale lock to time out).
+        return new Promise((resolve) => { releaseLockRef.current = resolve; });
+      });
+    acquireRef.current = acquire;
+
+    channel.onmessage = (e) => {
+      const msg = e.data;
+      if (!msg || msg.tabId === TAB_ID) return;
+      // Another tab is taking over: stop, and drop the lock so it can start
+      // only once we've stopped writing.
+      if (msg.type === 'takeover' && statusRef.current === 'active') {
+        setStatus('taken-over');
+        releaseLockRef.current?.();
+        releaseLockRef.current = null;
+      }
+    };
+
+    acquire();
+
+    return () => {
+      cancelled = true;
+      releaseLockRef.current?.();
+      releaseLockRef.current = null;
+      channel.close();
+      channelRef.current = null;
+    };
+  }, []);
+
+  /** Second tab chose "use this tab": ask the holder to stand down, then take it. */
+  const takeOver = useCallback(() => {
+    const channel = channelRef.current;
+    const acquire = acquireRef.current;
+    if (!channel || !acquire) { setStatus('active'); return; }
+
+    channel.postMessage({ type: 'takeover', tabId: TAB_ID });
+
+    // Retry until the holder actually drops the lock, rather than assuming a
+    // fixed delay is enough. Give up after RELEASE_WAIT_MS in case the other
+    // tab is wedged — the browser will have freed the lock if it simply died.
+    const deadline = Date.now() + RELEASE_WAIT_MS;
+    const tick = async () => {
+      if (statusRef.current === 'active') return;
+      await acquire();
+      if (statusRef.current === 'active') return;
+      if (Date.now() < deadline) setTimeout(tick, RETRY_MS);
+    };
+    setTimeout(tick, RETRY_MS);
+  }, []);
+
+  // ── Layers 2 + 3: device claim, revocation, heartbeat ──────────────
+  useEffect(() => {
+    if (status !== 'active') return undefined;
+    if (!supabase || !userId || !isStudent) return undefined;
+
+    const deviceId = getDeviceId();
+    let cancelled = false;
+
+    (async () => {
+      const { error } = await supabase.rpc('claim_device_session', { p_device_id: deviceId });
+      if (cancelled || error) return;
+      // Layer 3. Revokes every OTHER session's refresh token; the docs are
+      // explicit that no sign-out event fires on the current session, so this
+      // does not log US out.
+      await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
+    })();
+
+    const interval = setInterval(async () => {
+      const { data, error } = await supabase.rpc('heartbeat_device_session', {
+        p_device_id: deviceId,
+      });
+      if (cancelled) return;
+      // A failed request is NOT a displacement. Treating a network hiccup as
+      // one would sign students out mid-session on flaky wifi; only an explicit
+      // false from the RPC means someone else holds the claim.
+      if (error || data == null) return;
+      if (data === false) setStatus('displaced');
+    }, HEARTBEAT_MS);
+
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [status, userId, isStudent]);
+
+  /** Drop the claim on explicit logout so the next login is instant. */
+  const releaseDevice = useCallback(async () => {
+    if (!supabase || !userId || !isStudent) return;
+    try {
+      await supabase.rpc('release_device_session', { p_device_id: getDeviceId() });
+    } catch {
+      // Best-effort: a stale claim is harmless under last-wins.
+    }
+  }, [userId, isStudent]);
+
+  return { status, takeOver, releaseDevice };
+}
