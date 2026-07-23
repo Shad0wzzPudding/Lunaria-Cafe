@@ -163,6 +163,13 @@ const NEAR_MISS_ESCALATE_MS = 2000;
 // gap. Deliberately longer than the escalation window: a phone that only
 // registers in occasional frames should still get there.
 const NEAR_MISS_GRACE_MS = 5000;
+// How long an EMPTY frame may still be treated as a soft hit after the object
+// was last actually seen. Much tighter than the accumulation grace above, and
+// for a different job: the grace decides how long the escalation WINDOW keeps
+// accumulating, this decides how long we may pretend "nothing on screen" is
+// still the object. ~2 frames at the 800ms cadence, so a brief dropout is
+// covered but a genuine absence is not.
+const NEAR_MISS_BRIDGE_MS = 1600;
 let nearMissStart = 0;
 let nearMissLastAt = 0;
 
@@ -347,19 +354,25 @@ function initYoloWorker() {
       // and the phone warning fires like a real soft detection. Genuine
       // hard/soft detections pass through unchanged.
       //
-      // Empty frames are bridged the same way, but ONLY until the phone is
-      // confirmed. That bridging exists to stop the streak resetting while a
-      // flickery object is still building toward confirmation; once confirmed,
-      // an empty frame genuinely means "it's gone", and faking it as a soft hit
-      // kept phoneMissStreak at zero — so the warning ran for the whole 5s
-      // grace plus the release frames (~6.6s) after the phone was put down.
-      // A near-miss still promotes after confirmation: something phone-like is
-      // visibly there, so the warning should hold.
+      // Empty frames are bridged the same way, but only to cover a brief
+      // dropout: they must be within NEAR_MISS_BRIDGE_MS of the last real
+      // sighting, and only while the phone isn't already confirmed.
+      //
+      // Both conditions are load-bearing. Without the time bound, bridging
+      // resumes the instant a confirmation RELEASES (phoneConfirmed flips back
+      // to false), and three empty frames re-confirm a phone that isn't there —
+      // the warning flickers on/off for the whole grace instead of clearing.
+      // Without the confirmed check, empty frames keep phoneMissStreak at zero
+      // and release never starts at all (the ~6.6s tail after putting the phone
+      // down). A near-miss still promotes after confirmation: something
+      // phone-like is visibly there, so the warning should hold.
       const windowOpen =
         nearMissStart !== 0 && now - nearMissStart >= NEAR_MISS_ESCALATE_MS;
+      const canBridgeGap =
+        !phoneConfirmed && now - nearMissLastAt <= NEAR_MISS_BRIDGE_MS;
       const escalated =
         windowOpen &&
-        (det.tier === 'rejected' || (det.tier === null && !phoneConfirmed));
+        (det.tier === 'rejected' || (det.tier === null && canBridgeGap));
       latestDetection = escalated
         ? { tier: 'soft', escalated: true, conf: det.conf, reason: det.reason }
         : det;
