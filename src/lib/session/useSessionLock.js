@@ -12,8 +12,9 @@ import { supabase } from '@/lib/supabase';
  *
  * Three layers, because none of them covers the others:
  *
- *   1. TAB LOCK (BroadcastChannel) — same browser, instant. Applies to guests
- *      too: their save clobbers exactly the same way.
+ *   1. TAB LOCK (Web Locks; BroadcastChannel only signals a takeover) — same
+ *      browser, instant. Applies to guests too: their save clobbers just the
+ *      same. See the note above SUPPORTS_TAB_LOCK for why not ping/pong.
  *   2. DEVICE CLAIM (active_sessions + heartbeat RPCs) — other devices, ~30s.
  *      Students only; instructors may legitimately drive two screens.
  *   3. TOKEN REVOCATION (signOut scope:'others') — real enforcement. It kills
