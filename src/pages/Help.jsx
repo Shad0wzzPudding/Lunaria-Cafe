@@ -136,6 +136,7 @@ const INFO_SECTIONS = [
       'v.2 (Second round) — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
     ],
     footer: 'Source on GitHub: https://github.com/Shad0wzzPudding/Lunaria-Cafe/tree/v2-First-round',
+    //footer: 'Source on GitHub: https://github.com/Shad0wzzPudding/Lunaria-Cafe/tree/v2-First-round',
   },
 ];
 

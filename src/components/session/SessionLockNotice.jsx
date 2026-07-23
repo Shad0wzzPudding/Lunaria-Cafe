@@ -13,6 +13,7 @@ import { MonitorSmartphone, Copy, LogIn } from 'lucide-react';
 const COPY = {
   conflict: {
     icon: Copy,
+    actionIcon: Copy,
     title: 'Already open in another tab',
     body:
       'Lunaria Cafe is already running in another tab. Only one can run at a time, ' +
@@ -24,6 +25,7 @@ const COPY = {
   },
   'taken-over': {
     icon: Copy,
+    actionIcon: Copy,
     title: 'Taken over in another tab',
     body:
       'You opened Lunaria Cafe in another tab, so this one stopped to keep your ' +
@@ -33,6 +35,7 @@ const COPY = {
   },
   displaced: {
     icon: MonitorSmartphone,
+    actionIcon: LogIn,
     title: 'Signed in on another device',
     body:
       'Your account was opened on another device, so this one stopped. Only one ' +
@@ -45,8 +48,10 @@ const COPY = {
 export default function SessionLockNotice({ status, onAction, busy = false }) {
   const copy = COPY[status];
   if (!copy) return null;
-  const Icon = status === 'displaced' ? MonitorSmartphone : Copy;
-  const ActionIcon = status === 'displaced' ? LogIn : Copy;
+  // Read the icons from COPY rather than re-deriving from status, so the map is
+  // the single source — editing an entry there used to have no effect at all.
+  const Icon = copy.icon;
+  const ActionIcon = copy.actionIcon;
 
   return (
     <div className="dark min-h-screen flex items-center justify-center bg-background text-foreground p-6">

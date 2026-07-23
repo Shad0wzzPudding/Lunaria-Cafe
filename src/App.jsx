@@ -167,13 +167,21 @@ function AppShell() {
   // is set up above the provider that supplies the function.
   const flushRef = useRef(null)
   const flushSave = useCallback(() => flushRef.current?.(), [])
-  const { status: lockStatus, handingOver, takeOver, releaseDevice } = useSessionLock({
-    userId: isGuest ? null : user?.id,
-    // Device lock is students-only; guests have no account to claim, though the
-    // tab lock still covers them (a guest save clobbers just the same).
-    isStudent: !isGuest && Boolean(profile?.is_student),
-    onBeforeRelease: flushSave,
-  })
+  const { status: lockStatus, handingOver, takeOver, releaseDevice, clearDisplaced } =
+    useSessionLock({
+      userId: isGuest ? null : user?.id,
+      // Device lock is students-only; guests have no account to claim, though the
+      // tab lock still covers them (a guest save clobbers just the same).
+      isStudent: !isGuest && Boolean(profile?.is_student),
+      onBeforeRelease: flushSave,
+    })
+
+  // Displaced → sign out AND leave the displaced state, or logging back in
+  // lands straight back on the notice with no way forward but a reload.
+  const handleDisplacedSignOut = async () => {
+    await signOut()
+    clearDisplaced()
+  }
 
   if (loading || (user && profileLoading)) {
     return (
@@ -218,7 +226,7 @@ function AppShell() {
       <SessionLockNotice
         status={lockStatus}
         busy={handingOver}
-        onAction={lockStatus === 'displaced' ? signOut : takeOver}
+        onAction={lockStatus === 'displaced' ? handleDisplacedSignOut : takeOver}
       />
     )
   }

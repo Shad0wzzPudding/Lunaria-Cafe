@@ -209,6 +209,20 @@ export function useSessionLock({ userId, isStudent, onBeforeRelease }) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [status, userId, isStudent]);
 
+  /**
+   * Leave the displaced state after the user has dealt with it (signed out in
+   * order to log back in here). Without this the notice is a dead end: nothing
+   * else ever sets 'active' again, so signing back in lands straight back on
+   * the notice and only a manual reload escapes.
+   *
+   * Safe to go straight to active: displacement never released the TAB lock —
+   * that happens only on takeover or unmount — so this instance still
+   * legitimately owns it, and the claim effect re-claims the device on the way.
+   */
+  const clearDisplaced = useCallback(() => {
+    if (statusRef.current === 'displaced') setStatus('active');
+  }, []);
+
   /** Drop the claim on explicit logout so the next login is instant. */
   const releaseDevice = useCallback(async () => {
     if (!supabase || !userId || !isStudent) return;
@@ -219,5 +233,5 @@ export function useSessionLock({ userId, isStudent, onBeforeRelease }) {
     }
   }, [userId, isStudent]);
 
-  return { status, handingOver, takeOver, releaseDevice };
+  return { status, handingOver, takeOver, releaseDevice, clearDisplaced };
 }
