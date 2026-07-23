@@ -211,8 +211,18 @@ self.onmessage = async (e) => {
 
   if (type === 'config') {
     // Debug overrides for the detection floors; null restores policy defaults.
-    softConf     = (payload?.softConf     != null) ? payload.softConf     : POLICY.softConf;
-    nearMissConf = (payload?.nearMissConf != null) ? payload.nearMissConf : POLICY.nearMissConf;
+    const nextSoft = (payload?.softConf     != null) ? payload.softConf     : POLICY.softConf;
+    const nextNear = (payload?.nearMissConf != null) ? payload.nearMissConf : POLICY.nearMissConf;
+    // Same ordering invariant the static policies are checked against (see
+    // detectionPolicy.js) — applied here too, or an override could silently
+    // create a band of shape-unchecked candidates and reopen the watch false
+    // positive. Reject the whole override rather than half-apply it.
+    if (!(nextNear < nextSoft && nextSoft < hardConf)) {
+      console.warn('[yolo] ignoring incoherent detection-floor override', { nextSoft, nextNear, hardConf });
+      return;
+    }
+    softConf = nextSoft;
+    nearMissConf = nextNear;
     return;
   }
 
