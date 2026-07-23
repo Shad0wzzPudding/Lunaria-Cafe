@@ -162,13 +162,17 @@ export function useSessionLock({ userId, isStudent, onBeforeRelease }) {
     // fixed delay is enough — it is now saving first, so the wait is variable.
     // Give up after RELEASE_WAIT_MS in case the other tab is wedged; the
     // browser will already have freed the lock if it simply died.
+    //
+    // Deliberately does NOT await acquire(): on success its callback returns a
+    // promise that stays pending for as long as we hold the lock, so awaiting
+    // it would park here forever and never clear handingOver. Fire it off and
+    // let the NEXT tick observe the resulting status instead.
     const deadline = Date.now() + RELEASE_WAIT_MS;
-    const tick = async () => {
+    const tick = () => {
       if (statusRef.current === 'active') { setHandingOver(false); return; }
-      await acquire();
-      if (statusRef.current === 'active') { setHandingOver(false); return; }
-      if (Date.now() < deadline) setTimeout(tick, RETRY_MS);
-      else setHandingOver(false);
+      if (Date.now() >= deadline) { setHandingOver(false); return; }
+      acquire();
+      setTimeout(tick, RETRY_MS);
     };
     setTimeout(tick, RETRY_MS);
   }, []);
