@@ -6,15 +6,19 @@ import Draggable from 'react-draggable';
 /**
  * The AI camera preview panel.
  *
- * Appears ONLY while the AI is actually live: it subscribes to browserAI's
- * camera stream and renders nothing until the models are loaded and the
- * camera is rolling — then pops in fully working. This replaces the old
- * "Loading..." placeholder + 200ms poll + 30s give-up deadline, all three of
- * which had failure modes (a slow model download left the panel stuck on an
- * error forever; a ready-flag that never reset suppressed error UI for the
- * rest of the mount). There is no loading state to get stuck in: the panel's
- * existence IS the ready signal. Load/error status still surfaces through
- * the HUD and settings via the connection-status channel.
+ * Shows the live camera ONLY once the AI is fully up: the stream is rolling AND
+ * the YOLO model is loaded (phoneReady on the connection-status channel). Until
+ * then it shows a "Loading model" card, because the stream arrives first and a
+ * camera that looks fully working while phone detection is silently inactive is
+ * worse than saying so.
+ *
+ * This is NOT the old "Loading..." placeholder, which had a 200ms poll and a 30s
+ * give-up deadline and could leave the panel stuck on an error forever after a
+ * merely-slow model download. There is no poll and no deadline here: the loading
+ * card resolves on a real push, and a genuine startup failure renders the error
+ * card instead. `modelReady` is latched so a mid-session 'degraded' (phone
+ * detection dying) can't hide an otherwise-working camera — the on-canvas
+ * "PHONE DETECTION OFFLINE" banner covers that case.
  *
  * The stream is browserAI's own (never a second getUserMedia — two streams
  * meant the pixels the player watched were not the pixels the model judged).
@@ -34,6 +38,13 @@ export default function AttentionCamera() {
   // collapses 'error' into an icon and settings is unreachable during focus.
   // So the panel slot itself says it.
   const [aiFailed, setAiFailed] = useState(false);
+  // True once the YOLO model has finished loading this session. LATCHED on
+  // purpose: if phone detection dies mid-session ('degraded'), the camera must
+  // keep showing — face/gaze still work and the on-canvas "PHONE DETECTION
+  // OFFLINE" banner covers it. Reverting to the loading card would hide a
+  // working camera. Resets naturally on unmount (the panel unmounts between
+  // sessions), so a new session starts unlatched.
+  const [modelReady, setModelReady] = useState(false);
 
   const showCamera = aiMode === 'browser';
 
@@ -48,7 +59,10 @@ export default function AttentionCamera() {
 
   useEffect(() => {
     if (!showCamera) return;
-    return onConnectionStatus(({ status }) => setAiFailed(status === 'error'));
+    return onConnectionStatus(({ status, phoneReady }) => {
+      setAiFailed(status === 'error');
+      if (phoneReady) setModelReady(true); // latch; never flipped back
+    });
   }, [showCamera]);
 
   useEffect(() => {
@@ -78,8 +92,26 @@ export default function AttentionCamera() {
     );
   }
 
-  // Loading (or not in a session yet): no panel at all — it appears when live.
-  if (!stream) return null;
+  // Still starting up: the camera stream and the YOLO model load in parallel,
+  // and the model finishes LAST. Say so instead of showing a camera that looks
+  // fully working while phone detection is silently inactive.
+  //
+  // Unlike the placeholder this replaced, there is no poll and no give-up
+  // deadline: it resolves on a real push (phoneReady) and a genuine failure
+  // falls through to the error card above — so it can't get stuck showing an
+  // error for a merely-slow model download.
+  if (!stream || !modelReady) {
+    return (
+      <aside className="absolute bottom-3 left-3 z-50 w-64 rounded-lg border border-border/50 bg-black/70 shadow-lg p-3">
+        <p className="text-[10px] font-pixel text-muted-foreground">
+          AI Camera <span className="text-amber-400">(Loading model)</span>
+        </p>
+        <p className="mt-1 text-[10px] font-body text-muted-foreground">
+          Loading the phone-detection model — the camera starts once it's ready.
+        </p>
+      </aside>
+    );
+  }
 
   return (
     // 👇 nodeRef + ref เชื่อม Draggable กับ DOM node

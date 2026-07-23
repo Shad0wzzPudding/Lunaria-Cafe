@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
-import { getChaosStage, getConnectionStatus, formatFocusScore } from '@/lib/ai/aiIntegration';
+import { getChaosStage, getConnectionStatus, formatFocusScore, isPhoneDetectionReady, getAIConfig } from '@/lib/ai/aiIntegration';
 import { Coins, Heart, Users, Sparkles, Wifi, WifiOff } from 'lucide-react';
 
 function StatPill({ icon: Icon, value, colorClass, iconColor, title }) {
@@ -31,6 +31,13 @@ export default function CafeHUD() {
   const inRound = state.focus.roundControlled;
   const sessionRep = state.focus.sessionRep ?? 0;
   const aiStatus = getConnectionStatus();
+  // Starting up: either the AI is still connecting, or it's up but the phone
+  // model hasn't finished loading (the stream comes first). Mirrors the camera
+  // panel's "Loading model" card, so the two never disagree. Browser-AI only —
+  // other modes never set phoneReady, so they'd read as loading forever.
+  const aiLoading =
+    getAIConfig().aiMode === 'browser' &&
+    (aiStatus === 'connecting' || (aiStatus === 'live' && !isPhoneDetectionReady()));
   const sourceLabel =
     state.attention.source === 'browser'
       ? 'Browser AI'
@@ -91,9 +98,19 @@ export default function CafeHUD() {
       />
       <span
         className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground"
-        title={aiStatus === 'degraded' ? 'Phone detection offline — face tracking still running' : undefined}
+        title={
+          aiLoading
+            ? 'Loading the phone-detection model — detection starts once it is ready'
+            : aiStatus === 'degraded'
+              ? 'Phone detection offline — face tracking still running'
+              : undefined
+        }
       >
-        {aiStatus === 'live' || aiStatus === 'connecting' ? (
+        {aiLoading ? (
+          // Amber while the model loads: the session is running but not yet
+          // fully armed, so green would over-promise and "Offline" would lie.
+          <Wifi className="w-3.5 h-3.5 text-amber-400" />
+        ) : aiStatus === 'live' || aiStatus === 'connecting' ? (
           <Wifi className="w-3.5 h-3.5 text-emerald-400" />
         ) : aiStatus === 'degraded' ? (
           // Amber, not green: the session runs but phone detection is dead —
@@ -102,7 +119,7 @@ export default function CafeHUD() {
         ) : (
           <WifiOff className="w-3.5 h-3.5" />
         )}
-        <span className="font-pixel text-[10px]">{sourceLabel}</span>
+        <span className="font-pixel text-[10px]">{aiLoading ? 'Loading...' : sourceLabel}</span>
       </span>
     </div>
   );

@@ -208,7 +208,11 @@ let _status = 'idle';
 
 function setStatus(status, detail = '') {
   _status = status;
-  if (_onStatusChange) _onStatusChange({ status, detail });
+  // phoneReady rides the existing status push rather than a third listener
+  // channel (see the KNOWN DUPLICATION note in aiIntegration.js): the camera
+  // panel needs to know when the YOLO model is actually live, not just when
+  // the session started.
+  if (_onStatusChange) _onStatusChange({ status, detail, phoneReady: isYoloReady });
 }
 
 export function getBrowserAIStatus() {
@@ -281,7 +285,14 @@ function initYoloWorker() {
 
   yoloWorker.onmessage = (e) => {
     if (e.data.type === 'status' && e.data.status === 'ready') {
+      const firstReady = !isYoloReady;
       isYoloReady = true;
+      if (firstReady && !yoloError && _onStatusChange) {
+        // Phone detection just came live — re-announce the current status so the
+        // camera panel can drop its "Loading model" state. Without this the
+        // panel would wait for some unrelated later status push.
+        _onStatusChange({ status: _status, detail: '', phoneReady: true });
+      }
       if (yoloError) {
         // RECOVERY must be announced, not just recorded: reportYoloError pushed
         // 'degraded' to the app-wide status (settings shows its detail text
@@ -289,7 +300,7 @@ function initYoloWorker() {
         // banner while settings kept saying "Phone detection offline" for the
         // rest of the session.
         yoloError = null;
-        if (_onStatusChange) _onStatusChange({ status: 'active', detail: 'Browser AI running' });
+        if (_onStatusChange) _onStatusChange({ status: 'active', detail: 'Browser AI running', phoneReady: true });
       }
     }
     if (e.data.type === 'status' && e.data.status === 'error') {

@@ -59,9 +59,15 @@ export function setAIConfig(updates) {
   return saveConfig(updates);
 }
 
-function setConnectionStatus(status, detail = '') {
+// phoneReady = the YOLO model is loaded and phone detection is actually live.
+// Defaults false so every non-browser path (start, stop, mock) resets it, which
+// is correct: those states have no live detector.
+let phoneDetectionReady = false;
+
+function setConnectionStatus(status, detail = '', phoneReady = false) {
   connectionStatus = status;
-  statusListeners.forEach((cb) => cb({ status, detail }));
+  phoneDetectionReady = phoneReady;
+  statusListeners.forEach((cb) => cb({ status, detail, phoneReady }));
 }
 
 // KNOWN DUPLICATION (deliberate): same subscribe pattern as streamListeners/
@@ -72,8 +78,15 @@ function setConnectionStatus(status, detail = '') {
 // reason. Fix that in the shared helper if it ever matters.)
 export function onConnectionStatus(callback) {
   statusListeners.add(callback);
-  callback({ status: connectionStatus, detail: '' });
+  callback({ status: connectionStatus, detail: '', phoneReady: phoneDetectionReady });
   return () => statusListeners.delete(callback);
+}
+
+// Whether the phone-detection model has finished loading. Read alongside
+// getConnectionStatus() to tell "starting up" apart from "fully armed" — the
+// stream comes up well before the model does.
+export function isPhoneDetectionReady() {
+  return phoneDetectionReady;
 }
 
 export function getConnectionStatus() {
@@ -140,10 +153,10 @@ export async function startBrowserTracking() {
   try {
     browserVideoElement = await startBrowserAI({
       onEvent: (event) => processAIEvent(event),
-      onStatusChange: ({ status, detail }) => {
-        if (status === 'active') setConnectionStatus('live', 'Browser AI');
-        else if (status === 'error') setConnectionStatus('error', detail);
-        else if (status === 'loading') setConnectionStatus('connecting', detail);
+      onStatusChange: ({ status, detail, phoneReady }) => {
+        if (status === 'active') setConnectionStatus('live', 'Browser AI', phoneReady);
+        else if (status === 'error') setConnectionStatus('error', detail, phoneReady);
+        else if (status === 'loading') setConnectionStatus('connecting', detail, phoneReady);
         // Session still running — face and gaze tracking are fine — but phone
         // detection is dead. Passed through as its own value, NOT collapsed to
         // 'live': collapsing meant no consumer could render the difference,
