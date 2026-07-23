@@ -30,6 +30,10 @@ export default function CafeHUD() {
   // session (starts at 0) instead of lifetime reputation.
   const inRound = state.focus.roundControlled;
   const sessionRep = state.focus.sessionRep ?? 0;
+  // Coins earned THIS live session. Unlike rep, the wallet still accrues
+  // normally — only the readout is scoped, so a student sees what this session
+  // is worth. Same baseline the end-of-session summary uses (focus.coinsAtStart).
+  const sessionCoins = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
   const aiStatus = getConnectionStatus();
   // Starting up: either the AI is still connecting, or it's up but the phone
   // model hasn't finished loading (the stream comes first). Mirrors the camera
@@ -56,10 +60,14 @@ export default function CafeHUD() {
       <span className="relative inline-flex">
         <StatPill
           icon={Coins}
-          value={state.coins}
+          value={inRound ? `+${sessionCoins}` : state.coins}
           colorClass="text-amber-300"
           iconColor="#f0c674"
-          title="Coins — earn by serving customers and finishing focus sessions"
+          title={
+            inRound
+              ? 'Coins earned this live session (still added to your total)'
+              : 'Coins — earn by serving customers and finishing focus sessions'
+          }
         />
         <AnimatePresence>
           {state.ui.coinFloat ? (

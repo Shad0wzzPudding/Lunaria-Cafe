@@ -34,9 +34,12 @@ export default function ZenFocusView({ state }) {
   // In a live session show reputation earned THIS session (held out of lifetime).
   const inRound = state.focus.roundControlled;
   const sessionRep = state.focus.sessionRep ?? 0;
+  // Coins earned THIS live session. The wallet still accrues normally — only
+  // the readout is scoped. Same baseline the end-of-session summary uses.
+  const sessionCoins = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
 
   const stats = [
-    { icon: Coins,    label: 'Coins',       value: state.coins ?? 0,                                                    color: '#f0c674' },
+    { icon: Coins,    label: inRound ? 'Session Coins' : 'Coins', value: inRound ? `+${sessionCoins}` : (state.coins ?? 0),   color: '#f0c674' },
     { icon: Heart,    label: inRound ? 'Session Rep' : 'Reputation', value: inRound ? `${sessionRep >= 0 ? '+' : ''}${sessionRep}` : `${state.reputation ?? 0}%`, color: '#f0a0b8' },
     { icon: Users,    label: 'Customers',   value: `${state.cafe.currentCustomers ?? 0}/${state.cafe.maxCustomers ?? 8}`, color: '#9ec8e8' },
     { icon: Sparkles, label: 'Focus Score', value: formatFocusScore(state.attention.score ?? 100),                        color: chaos.color },
