@@ -157,10 +157,12 @@ let phoneConfirmed = false;
 // A near-miss (rejected) that persists this long is promoted to a soft "Phone?"
 // — a "familiar object" the AI keeps almost-detecting, so it starts counting via
 // the normal soft persistence instead of being ignored forever.
-const NEAR_MISS_ESCALATE_MS = 3000;
-// Brief drop-outs shorter than this are bridged, so a flickering / intermittent
-// near-miss still accumulates toward the 3s instead of resetting on one gap.
-const NEAR_MISS_GRACE_MS = 2000;
+const NEAR_MISS_ESCALATE_MS = 2000;
+// Drop-outs shorter than this are bridged, so a flickering / intermittent
+// near-miss still accumulates toward the escalation instead of resetting on one
+// gap. Deliberately longer than the escalation window: a phone that only
+// registers in occasional frames should still get there.
+const NEAR_MISS_GRACE_MS = 5000;
 let nearMissStart = 0;
 let nearMissLastAt = 0;
 
