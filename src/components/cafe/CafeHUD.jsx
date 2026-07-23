@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
 import { getChaosStage, getConnectionStatus, formatFocusScore, isPhoneDetectionReady, getAIConfig } from '@/lib/ai/aiIntegration';
@@ -35,8 +35,12 @@ export default function CafeHUD() {
   // model hasn't finished loading (the stream comes first). Mirrors the camera
   // panel's "Loading model" card, so the two never disagree. Browser-AI only —
   // other modes never set phoneReady, so they'd read as loading forever.
+  // Read once per mount: getAIConfig() hits storage + JSON.parse, and this
+  // component re-renders on every timer tick. The mode can't change while the
+  // HUD is mounted (switching it happens in Settings, a different phase).
+  const isBrowserAI = useMemo(() => getAIConfig().aiMode === 'browser', []);
   const aiLoading =
-    getAIConfig().aiMode === 'browser' &&
+    isBrowserAI &&
     (aiStatus === 'connecting' || (aiStatus === 'live' && !isPhoneDetectionReady()));
   const sourceLabel =
     state.attention.source === 'browser'
