@@ -6,19 +6,22 @@ import Draggable from 'react-draggable';
 /**
  * The AI camera preview panel.
  *
- * Shows the live camera ONLY once the AI is fully up: the stream is rolling AND
- * the YOLO model is loaded (phoneReady on the connection-status channel). Until
- * then it shows a "Loading model" card, because the stream arrives first and a
- * camera that looks fully working while phone detection is silently inactive is
- * worse than saying so.
+ * Shows the camera as soon as the stream is rolling, and — until the YOLO model
+ * has loaded (phoneReady on the connection-status channel) — overlays a
+ * "Loading model" badge on it. The stream comes up long before the model does,
+ * so the two states must be told apart: a camera that looks fully working while
+ * phone detection is silently inactive is misleading, but HIDING the camera for
+ * the whole (cold-cache, CPU-bound) model load reads as "the camera is broken".
+ * The badge is the middle ground; it was originally a full-panel card, which on
+ * a first visit left the slot looking empty for a long time.
  *
  * This is NOT the old "Loading..." placeholder, which had a 200ms poll and a 30s
  * give-up deadline and could leave the panel stuck on an error forever after a
- * merely-slow model download. There is no poll and no deadline here: the loading
- * card resolves on a real push, and a genuine startup failure renders the error
- * card instead. `modelReady` is latched so a mid-session 'degraded' (phone
- * detection dying) can't hide an otherwise-working camera — the on-canvas
- * "PHONE DETECTION OFFLINE" banner covers that case.
+ * merely-slow model download. There is no poll and no deadline here: the state
+ * resolves on a real push, and a genuine startup failure renders the error card
+ * instead. `modelReady` is latched so a mid-session 'degraded' (phone detection
+ * dying) can't flip the badge back on — the on-canvas "PHONE DETECTION OFFLINE"
+ * banner covers that case.
  *
  * The stream is browserAI's own (never a second getUserMedia — two streams
  * meant the pixels the player watched were not the pixels the model judged).
@@ -92,22 +95,22 @@ export default function AttentionCamera() {
     );
   }
 
-  // Still starting up: the camera stream and the YOLO model load in parallel,
-  // and the model finishes LAST. Say so instead of showing a camera that looks
-  // fully working while phone detection is silently inactive.
+  // No stream yet — the camera itself hasn't started. Brief in practice (camera
+  // access is fast; the MODEL is the slow part, and that's handled below by
+  // showing the preview with a badge rather than hiding it).
   //
   // Unlike the placeholder this replaced, there is no poll and no give-up
-  // deadline: it resolves on a real push (phoneReady) and a genuine failure
-  // falls through to the error card above — so it can't get stuck showing an
-  // error for a merely-slow model download.
-  if (!stream || !modelReady) {
+  // deadline: it resolves on a real push and a genuine failure falls through to
+  // the error card above — so it can't get stuck showing an error for a
+  // merely-slow start.
+  if (!stream) {
     return (
       <aside className="absolute bottom-3 left-3 z-50 w-64 rounded-lg border border-border/50 bg-black/70 shadow-lg p-3">
         <p className="text-[10px] font-pixel text-muted-foreground">
-          AI Camera <span className="text-amber-400">(Loading model)</span>
+          AI Camera <span className="text-amber-400">(Starting…)</span>
         </p>
         <p className="mt-1 text-[10px] font-body text-muted-foreground">
-          Loading the phone-detection model — the camera starts once it's ready.
+          Starting the camera…
         </p>
       </aside>
     );
@@ -118,7 +121,10 @@ export default function AttentionCamera() {
     <Draggable bounds="parent" nodeRef={draggableRef}>
       <aside ref={draggableRef} className="absolute bottom-3 left-3 z-50 w-64 min-w-[200px] resize overflow-auto cursor-move rounded-lg border border-border/50 bg-black/60 shadow-lg pb-1">
         <p className="px-2 py-1 text-[10px] text-muted-foreground font-pixel pointer-events-none">
-          AI Camera <span className="text-emerald-400">(Browser)</span>
+          AI Camera{' '}
+          {modelReady
+            ? <span className="text-emerald-400">(Browser)</span>
+            : <span className="text-amber-400">(Loading model…)</span>}
         </p>
 
         <div className="relative pointer-events-none">
@@ -138,6 +144,21 @@ export default function AttentionCamera() {
             id="ai-canvas"
             className="absolute top-0 left-0 w-full h-full pointer-events-none"
           />
+
+          {/* Model still downloading/compiling: the preview is live but phone
+              detection is NOT armed yet. Say so over the picture rather than
+              hiding the camera — on a cold cache the model can take a long
+              while, and a blank slot reads as "the camera is broken". */}
+          {!modelReady && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span
+                className="rounded px-2 py-0.5 text-[10px] font-bold text-white text-center"
+                style={{ background: 'rgba(180,140,0,0.85)', fontFamily: '"Segoe UI", sans-serif' }}
+              >
+                Loading model — phone detection not active yet
+              </span>
+            </div>
+          )}
         </div>
       </aside>
     </Draggable>
