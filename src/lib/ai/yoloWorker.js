@@ -63,7 +63,10 @@ let nearMissConf = POLICY.nearMissConf;
 // identical to a watch).
 //
 // Master switch: off = shape filtering disabled, only confidence screens.
-const GEOMETRY_GATE_ENABLED = true;
+// Mutable so the debug panel can flip it (see the 'config' message); the
+// default lives in detectionPolicy.js with the bounds it governs, and is
+// currently OFF.
+let geometryGateEnabled = POLICY.geometryGate;
 
 async function initModel() {
   try {
@@ -169,7 +172,7 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
     // Shape gate, judged in real-frame pixels where aspect and area are true.
     // Evaluated for BOTH counting tiers — a soft candidate that skipped the
     // shape check would let the watch back in through the lower door.
-    if (GEOMETRY_GATE_ENABLED && conf < bypassConf) {
+    if (geometryGateEnabled && conf < bypassConf) {
       const aspect = Math.max(wpx, hpx) / Math.min(wpx, hpx);
       if ((wpx * hpx) / (videoW * videoH) < minArea) {
         noteRejection(conf, 'area', ((wpx * hpx) / (videoW * videoH)).toFixed(3));
@@ -214,6 +217,12 @@ self.onmessage = async (e) => {
   }
 
   if (type === 'config') {
+    // The shape gate carries no ordering invariant, so it is applied before
+    // the floors and survives a rejected floor override — "reject the whole
+    // override" below means the soft/nearMiss PAIR, which must move together.
+    if (payload?.geometryGate != null) {
+      geometryGateEnabled = !!payload.geometryGate;
+    }
     // Debug overrides for the detection floors; null restores policy defaults.
     const nextSoft = (payload?.softConf     != null) ? payload.softConf     : POLICY.softConf;
     const nextNear = (payload?.nearMissConf != null) ? payload.nearMissConf : POLICY.nearMissConf;

@@ -92,6 +92,14 @@ export const POLICY_V2 = {
   minArea: 0.02,    // fraction of the frame; below = watch, not a held phone
   minAspect: 1.2,   // loose on purpose — axis-aligned boxes square out under hand tilt
   maxAspect: 3.2,   // beyond this it's a sliver/edge, not a phone
+  // Master switch for the three bounds above. OFF by default: catching real
+  // phones is worth more here than rejecting props, and the shape gate is the
+  // main thing standing between a lukewarm detection and a count. Turning it
+  // ON from the debug panel restores the shape screen — that is the setting
+  // that reliably kills a mislabelled watch, so flip it back on if watches
+  // start counting. Note the gate only ever screened the amber band anyway
+  // (bypassConf and up pass on the model's word alone).
+  geometryGate: false,
   confirmFrames: 2,     // hard hits to confirm (~1.6s at the 800ms cadence)
   softConfirmFrames: 3, // soft frames to confirm (~2.4s). Was 4 (~3.2s);
                         // 3 keeps one extra frame of flicker protection over

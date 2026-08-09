@@ -93,17 +93,40 @@ const LOW_CONF_SOFT = 0.10;     // counting floor when enabled
 const LOW_CONF_NEARMISS = 0.05; // near-miss floor, kept below softConf
 let lowConfFloorEnabled = true;
 
-export function setLowConfFloor(enabled) {
-  lowConfFloorEnabled = !!enabled;
-  yoloWorker?.postMessage({
+// The worker's shape screen (area + aspect bounds). OFF by default, per
+// POLICY.geometryGate — the debug panel can turn it back on. It is the filter
+// that reliably rejects a mislabelled watch, so with it off a watch can count;
+// that is the accepted trade for catching more real phones.
+let geometryGateEnabled = POLICY.geometryGate;
+
+// Always posted WHOLE. The worker reads an absent floor as "restore the policy
+// default", so a message carrying only one knob would silently undo the other
+// — sending a partial config to flip the shape gate would reset the 10% floor.
+function detectionConfigMessage() {
+  return {
     type: 'config',
     softConf:     lowConfFloorEnabled ? LOW_CONF_SOFT : null,
     nearMissConf: lowConfFloorEnabled ? LOW_CONF_NEARMISS : null,
-  });
+    geometryGate: geometryGateEnabled,
+  };
+}
+
+export function setLowConfFloor(enabled) {
+  lowConfFloorEnabled = !!enabled;
+  yoloWorker?.postMessage(detectionConfigMessage());
 }
 
 export function isLowConfFloor() {
   return lowConfFloorEnabled;
+}
+
+export function setGeometryGate(enabled) {
+  geometryGateEnabled = !!enabled;
+  yoloWorker?.postMessage(detectionConfigMessage());
+}
+
+export function isGeometryGate() {
+  return geometryGateEnabled;
 }
 let latestWarning = '';
 let isUserFocusedGlobal = true;
@@ -383,10 +406,11 @@ function initYoloWorker() {
   };
 
   yoloWorker.postMessage({ type: 'init' });
-  // Carry the current debug floor override into the fresh worker.
-  if (lowConfFloorEnabled) {
-    yoloWorker.postMessage({ type: 'config', softConf: LOW_CONF_SOFT, nearMissConf: LOW_CONF_NEARMISS });
-  }
+  // Carry the current debug overrides into the fresh worker. Sent
+  // unconditionally now: a worker respawned mid-session starts from the policy
+  // defaults, so skipping this when the floor happens to be off would leave a
+  // toggled shape gate behind with it.
+  yoloWorker.postMessage(detectionConfigMessage());
 }
 
 async function getWebcamStream() {

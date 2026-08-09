@@ -4,7 +4,7 @@ import { X, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
-import { isDetectionZoneVisible, setDetectionZoneVisible, isLowConfFloor, setLowConfFloor } from '@/lib/ai/browserAI';
+import { isDetectionZoneVisible, setDetectionZoneVisible, isLowConfFloor, setLowConfFloor, isGeometryGate, setGeometryGate } from '@/lib/ai/browserAI';
 
 const CHAOS_LEVELS = [
   { label: 'Calm',              score: 85, color: 'text-emerald-400' },
@@ -62,6 +62,13 @@ export default function DebugPanel({ onClose }) {
   const toggleLowConfFloor = () => {
     setLowConfFloor(!lowConfFloor);
     setLowConfFloorUi(!lowConfFloor);
+  };
+  // Mirrors browserAI's shape-gate flag (the worker screens amber-band hits by
+  // size and aspect); this state only drives the checkbox UI.
+  const [geometryGate, setGeometryGateUi] = useState(isGeometryGate());
+  const toggleGeometryGate = () => {
+    setGeometryGate(!geometryGate);
+    setGeometryGateUi(!geometryGate);
   };
 
   // Left column state
@@ -299,7 +306,17 @@ export default function DebugPanel({ onClose }) {
                       </span>
                     </button>
                     <p className="font-body text-[10px] text-muted-foreground/60">
-                      Drops the phone-counting floor to 10% confidence so faint phone-shaped hits count (the shape gate still screens the band).
+                      Drops the phone-counting floor to 10% confidence so faint phone-shaped hits count.
+                    </p>
+                    <button onClick={toggleGeometryGate}
+                      className="w-full rounded-lg border border-border/40 bg-black/20 px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center justify-between">
+                      <span className="font-pixel text-[10px] text-foreground">Shape gate</span>
+                      <span className={`font-pixel text-[10px] ${geometryGate ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                        {geometryGate ? 'ON' : 'OFF'}
+                      </span>
+                    </button>
+                    <p className="font-body text-[10px] text-muted-foreground/60">
+                      Screens amber-band hits by size and shape. Off by default — turn it ON if a watch starts counting as a phone, since this is the filter that rejects one.
                     </p>
                   </div>
 
