@@ -46,6 +46,37 @@ function NumInput({ label, statKey, value, dispatch }) {
   );
 }
 
+/**
+ * A titled section that folds away.
+ *
+ * `action` renders BESIDE the toggle rather than inside it — the chaos group
+ * carries an "unlock" button, and a button nested in a button is invalid and
+ * swallows the inner click.
+ */
+function Group({ title, note, action, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-lg border border-border/30 bg-black/10">
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex flex-1 items-center gap-2 px-3 py-2 text-left hover:bg-muted/20 transition-colors rounded-lg"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${open ? '' : '-rotate-90'}`}
+          />
+          <SectionLabel>{title}</SectionLabel>
+          {note}
+        </button>
+        {action && <div className="shrink-0 pr-3">{action}</div>}
+      </div>
+      {open && <div className="space-y-2 px-3 pb-3">{children}</div>}
+    </div>
+  );
+}
+
 export default function DebugPanel({ onClose }) {
   const { state, dispatch } = useGame();
   const [collapsed, setCollapsed] = useState(false);
@@ -191,14 +222,14 @@ export default function DebugPanel({ onClose }) {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCollapsed(true)} />
 
             <motion.div
-              className="relative w-full max-w-2xl rounded-2xl border border-violet-500/40 bg-card/95 backdrop-blur-md p-6 shadow-2xl"
+              className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-violet-500/40 bg-card/95 backdrop-blur-md p-6 shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 16 }}
               animate={{ opacity: 1, scale: 1,   y: 0  }}
               exit={{   opacity: 0, scale: 0.9, y: 16  }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-5">
+              {/* Header — fixed; only the body between it and the footer scrolls */}
+              <div className="flex shrink-0 items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <Bug className="w-4 h-4 text-violet-400" />
                   <h2 className="font-pixel text-sm text-violet-400">Debug Panel</h2>
@@ -215,23 +246,24 @@ export default function DebugPanel({ onClose }) {
                 </div>
               </div>
 
-              {/* Two-column body */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              {/* Two-column body — the only scrolling region. items-start keeps
+                  a column from stretching when the other one has more open
+                  groups than it does. */}
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 items-start gap-x-8 gap-y-3">
 
                 {/* ── Left column ── */}
-                <div className="space-y-5">
+                <div className="space-y-3">
 
-                  {/* Chaos Level */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <SectionLabel>Chaos Level</SectionLabel>
-                      {state.attention.debugAttentionLock && (
-                        <button onClick={() => dispatch({ type: 'DEBUG_UNLOCK_ATTENTION' })}
-                          className="font-pixel text-[10px] text-amber-400 hover:text-amber-300 transition-colors">
-                          locked · unlock
-                        </button>
-                      )}
-                    </div>
+                  <Group
+                    title="Chaos Level"
+                    action={state.attention.debugAttentionLock && (
+                      <button onClick={() => dispatch({ type: 'DEBUG_UNLOCK_ATTENTION' })}
+                        className="font-pixel text-[10px] text-amber-400 hover:text-amber-300 transition-colors">
+                        locked · unlock
+                      </button>
+                    )}
+                  >
                     <div className="grid grid-cols-2 gap-1.5">
                       {CHAOS_LEVELS.map(({ label, score, color }) => (
                         <button key={label}
@@ -241,11 +273,9 @@ export default function DebugPanel({ onClose }) {
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </Group>
 
-                  {/* Coins */}
-                  <div className="space-y-2">
-                    <SectionLabel>Coins</SectionLabel>
+                  <Group title="Coins">
                     <div className="flex gap-2">
                       <input type="number" min={0} value={coins}
                         onChange={e => setCoins(e.target.value)}
@@ -253,11 +283,9 @@ export default function DebugPanel({ onClose }) {
                         className={`flex-1 ${inputCls}`} />
                       <Button size="sm" onClick={applyCoins} className="font-pixel text-[10px]">Set</Button>
                     </div>
-                  </div>
+                  </Group>
 
-                  {/* Reputation */}
-                  <div className="space-y-2">
-                    <SectionLabel>Reputation (0–100)</SectionLabel>
+                  <Group title="Reputation (0–100)">
                     <div className="flex gap-2">
                       <input type="number" min={0} max={100} value={rep}
                         onChange={e => setRep(e.target.value)}
@@ -265,17 +293,13 @@ export default function DebugPanel({ onClose }) {
                         className={`flex-1 ${inputCls}`} />
                       <Button size="sm" onClick={applyRep} className="font-pixel text-[10px]">Set</Button>
                     </div>
-                  </div>
+                  </Group>
 
-                  {/* Focus Time Today */}
-                  <div className="space-y-2">
-                    <SectionLabel>Focus Time (Today)</SectionLabel>
+                  <Group title="Focus Time (Today)">
                     {hmsInput(focusH, setFocusH, focusM, setFocusM, focusS, setFocusS, applyFocusTime)}
-                  </div>
+                  </Group>
 
-                  {/* Simulate Date */}
-                  <div className="space-y-2">
-                    <SectionLabel>Simulate Date</SectionLabel>
+                  <Group title="Simulate Date">
                     <div className="flex gap-2">
                       <input type="date" value={debugDate}
                         onChange={e => setDebugDate(e.target.value)}
@@ -283,11 +307,9 @@ export default function DebugPanel({ onClose }) {
                         className={`flex-1 ${inputCls}`} />
                       <Button size="sm" onClick={() => dispatch({ type: 'DEBUG_SET_DATE', payload: debugDate })} className="font-pixel text-[10px]">Set</Button>
                     </div>
-                  </div>
+                  </Group>
 
-                  {/* AI Camera */}
-                  <div className="space-y-2">
-                    <SectionLabel>AI Camera</SectionLabel>
+                  <Group title="AI Camera">
                     <button onClick={toggleAiZone}
                       className="w-full rounded-lg border border-border/40 bg-black/20 px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center justify-between">
                       <span className="font-pixel text-[10px] text-foreground">Show phone-detector zone</span>
@@ -318,19 +340,20 @@ export default function DebugPanel({ onClose }) {
                     <p className="font-body text-[10px] text-muted-foreground/60">
                       Screens amber-band hits by size and shape. Off by default — turn it ON if a watch starts counting as a phone, since this is the filter that rejects one.
                     </p>
-                  </div>
+                  </Group>
 
                 </div>
 
                 {/* ── Right column — Stats Cards ── */}
-                <div className="space-y-5">
-                  <div className="flex items-center gap-2">
-                    <SectionLabel>Stats Cards</SectionLabel>
-                    <span className="font-pixel text-[9px] text-muted-foreground/60">
-                      ({statsMode === 'period' ? 'period values' : 'lifetime values'})
-                    </span>
-                  </div>
-
+                <div className="space-y-3">
+                  <Group
+                    title="Stats Cards"
+                    note={(
+                      <span className="font-pixel text-[9px] text-muted-foreground/60">
+                        ({statsMode === 'period' ? 'period values' : 'lifetime values'})
+                      </span>
+                    )}
+                  >
                   <div className="grid grid-cols-2 gap-3">
                     <NumInput label="Sessions"
                       statKey={statsMode === 'period' ? 'periodSessions'       : 'totalSessions'}
@@ -350,17 +373,17 @@ export default function DebugPanel({ onClose }) {
                       dispatch={dispatch} />
                     <NumInput label="Streak (days)" statKey="currentStreak" value={state.stats?.currentStreak} dispatch={dispatch} />
                   </div>
+                  </Group>
 
-                  {/* Focus Time */}
-                  <div className="space-y-2">
-                    <SectionLabel>{statsMode === 'period' ? 'Period Focus Time' : 'Total Focus Time'}</SectionLabel>
+                  <Group title={statsMode === 'period' ? 'Period Focus Time' : 'Total Focus Time'}>
                     {hmsInput(totalH, setTotalH, totalM, setTotalM, totalS, setTotalS, applyTotalFocus)}
-                  </div>
+                  </Group>
 
+                </div>
                 </div>
               </div>
 
-              <p className="font-body text-[10px] text-muted-foreground/50 text-center mt-5">
+              <p className="font-body text-[10px] text-muted-foreground/50 text-center mt-5 shrink-0">
                 Esc / click outside to collapse · X to close
               </p>
             </motion.div>
