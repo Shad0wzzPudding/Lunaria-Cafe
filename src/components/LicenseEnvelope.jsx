@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/useGame';
+import { CONSENT_STATEMENT, licenseParagraphs } from '@/lib/nsc/licenseText';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
 // glyphs, so the letter body uses the same real font as form inputs.
@@ -13,39 +14,10 @@ const LETTER_FONT = "'Inter Variable', system-ui, sans-serif";
 const PIXEL_CORNERS = (s) =>
   `polygon(0 ${s}, ${s} ${s}, ${s} 0, calc(100% - ${s}) 0, calc(100% - ${s}) ${s}, 100% ${s}, 100% calc(100% - ${s}), calc(100% - ${s}) calc(100% - ${s}), calc(100% - ${s}) 100%, ${s} 100%, ${s} calc(100% - ${s}), 0 calc(100% - ${s}))`;
 
-const ADVISOR_NAME = '"Dr. Punyanuch Borwarnginn"';
-const PROJECT_NAME = '"Lunaria Cafe"';
-
-// The three developers, each signing in their own ink — muted "pen on cream
-// paper" shades, not UI-bright colors, so they sit inside the letter's world.
-const TEAM_MEMBERS = [
-  { name: 'Thanita Thitakan',        color: '#4a8b57' }, // greenish
-  { name: 'Sawastachod Siriphatum',  color: '#1f7f8c' }, // cyan
-  { name: 'Pisitpong Srisuthangkul', color: '#c1701f' }, // orangish
-];
-
-const TeamNames = () => (
-  <>
-    {TEAM_MEMBERS.map((m, i) => (
-      <Fragment key={m.name}>
-        {/* separators stay in the letter's print color, outside the ink spans */}
-        {i > 0 && (i === TEAM_MEMBERS.length - 1 ? ', and ' : ', ')}
-        <span style={{ color: m.color }}>{m.name}</span>
-      </Fragment>
-    ))}
-  </>
-);
-
-// The remaining filled-in fields (campus, advisor, project) render in a faint
-// purplish ink against the letter's brown print — like a form completed by hand.
-const INK_COLOR = '#6b5a9c';
-const Ink = ({ children }) => <span style={{ color: INK_COLOR }}>{children}</span>;
-
-const LICENSE_PARAGRAPHS = [
-  <>This software is a work developed by <TeamNames /> from <Ink>Mahidol University Salaya Campus</Ink> under the provision of <Ink>{ADVISOR_NAME}</Ink> under <Ink>{PROJECT_NAME}</Ink>, which has been supported by the National Science and Technology Development Agency (NSTDA), in order to encourage pupils and students to learn and practice their skills in developing software.</>,
-  <>Therefore, the intellectual property of this software shall belong to the developer and the developer gives NSTDA a permission to distribute this software as an &quot;as is&quot; and non-modified software for a temporary and non-exclusive use without remuneration to anyone for his or her own purpose or academic purpose, which are not commercial purposes.</>,
-  <>In this connection, NSTDA shall not be responsible to the user for taking care, maintaining, training, or developing the efficiency of this software. Moreover, NSTDA shall not be liable for any error, software efficiency and damages in connection with or arising out of the use of the software.</>,
-];
+// The filled-in fields (campus, advisor, project) render in a faint purplish
+// ink against the letter's brown print — like a form completed by hand, with
+// each developer signing in their own color.
+const LICENSE_PARAGRAPHS = licenseParagraphs({ ink: '#6b5a9c', teamInk: true });
 
 function PixelBox({ size = '6px', border = '#7a5230', fill = '#e8cf9e', className = '', style = {}, innerStyle = {}, children }) {
   return (
@@ -203,10 +175,7 @@ function OpenLetter({ onClose, gate = false, onAgree }) {
                 className="text-[12px] leading-relaxed"
                 style={{ fontFamily: LETTER_FONT, color: '#5c4325' }}
               >
-                I understand that Lunaria Cafe is a student project developed for the
-                National Software Contest (NSC) 2026, and that this website does not
-                collect any pictures or personal sensitive data — the attention camera
-                runs entirely on my own device.
+                I understand that {CONSENT_STATEMENT}
               </span>
             </label>
 

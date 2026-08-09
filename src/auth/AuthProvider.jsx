@@ -108,6 +108,19 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
+  // Record that this account has read the NSC notice. Stamped on the profile
+  // rather than in a save, because instructors never mount the game. The RPC
+  // keeps the first acceptance, so calling it twice is harmless; on success we
+  // patch the local profile to take the notice down without a refetch.
+  const acceptNscNotice = async () => {
+    if (!supabase || !user) return { error: new Error('Not signed in') };
+    const { data, error } = await supabase.rpc('accept_nsc_notice');
+    if (!error) {
+      setProfile((p) => (p && p.id === user.id ? { ...p, nsc_consent_at: data } : p));
+    }
+    return { data, error };
+  };
+
   // Clear the custom name so the app falls back to the email-derived default.
   const resetDisplayName = async () => {
     if (!supabase || !user) return { error: new Error('Not signed in') };
@@ -124,6 +137,7 @@ export function AuthProvider({ children }) {
         user, profile: freshProfile, loading, profileLoading, isGuest,
         activeRole, chooseRole,
         signUp, signIn, signOut, signInAsGuest, updateDisplayName, resetDisplayName,
+        acceptNscNotice,
       }}
     >
       {children}

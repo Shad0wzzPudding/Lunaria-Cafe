@@ -23,6 +23,7 @@ import CafeStatusPopup from '@/pages/CafeStatusPopup'
 import DebugPanel from '@/components/debug/DebugPanel'
 import SessionLockNotice from '@/components/session/SessionLockNotice'
 import WelcomeGate from '@/components/WelcomeGate'
+import NscNotice from '@/components/NscNotice'
 import { useSessionLock } from '@/lib/session/useSessionLock'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
@@ -202,6 +203,13 @@ function AppShell() {
   if (!isGuest && profile?.is_instructor) {
     if (profile.is_student && !activeRole) return <RoleSelect />
     if (activeRole === 'instructor' || !profile.is_student) {
+      // Instructors have no save to carry an acknowledgement, so theirs is
+      // stamped on the profile. The notice REPLACES the dashboard rather than
+      // floating over it — nothing behind to tab into, so it needs no inert
+      // wrapper, and it reads as a document rather than a dialog.
+      if (!profile.nsc_consent_at) {
+        return <NscNotice />
+      }
       return (
         <QueryClientProvider client={queryClientInstance}>
           <InstructorDashboard />
