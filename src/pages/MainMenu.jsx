@@ -59,9 +59,7 @@ function MenuNameEditor({ current, onSave, onClose }) {
 }
 
 export default function MainMenu() {
-  const { state, dispatch, logout } = useGame();
-  // Old saves lack the key: undefined -> bubble shows, same as a fresh game.
-  const letterUnread = !state.settings?.welcomeLetterOpened;
+  const { dispatch, logout } = useGame();
   const { user, profile, isGuest, chooseRole, updateDisplayName } = useAuth();
   const { currentRound } = useLiveRound();
   const [editingName, setEditingName] = useState(false);
@@ -141,41 +139,6 @@ export default function MainMenu() {
           draggable={false}
         />
       </motion.button>
-
-      {/* "You've got mail" bubble — pinned above the ? button until the
-          player opens the license letter (see LicenseEnvelope.openLetter);
-          no dismiss, it simply stops existing once the letter is read.
-          Same pixel speech-bubble language as SessionSummary. */}
-      {letterUnread && (
-        <motion.div
-          className="absolute bottom-[5.5rem] right-6 z-20 pointer-events-none select-none"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, y: [0, -5, 0] }}
-          transition={{
-            opacity: { duration: 0.8, delay: 1.4 },
-            y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', delay: 1.4 },
-          }}
-        >
-          <div
-            className="relative font-pixel text-[11px] leading-snug"
-            style={{
-              background: '#fef9f0',
-              color: '#2a2040',
-              border: '4px solid #2a2040',
-              padding: '8px 12px',
-              imageRendering: 'pixelated',
-            }}
-          >
-            A welcome letter is waiting for you &lt;3
-            {/* Pixel tail — steps down toward the ? button */}
-            <div style={{ position: 'absolute', bottom: '-12px', right: '14px' }}>
-              <div style={{ position: 'absolute', bottom: '4px', right: 0, width: '16px', height: '4px', background: '#2a2040' }} />
-              <div style={{ position: 'absolute', bottom: '8px', right: '4px', width: '8px', height: '4px', background: '#fef9f0' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: '4px', width: '8px', height: '4px', background: '#2a2040' }} />
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Menu content — anchored to bottom-left */}
       <motion.div

@@ -22,6 +22,7 @@ import CafeLoadingScreen from '@/pages/CafeLoadingScreen'
 import CafeStatusPopup from '@/pages/CafeStatusPopup'
 import DebugPanel from '@/components/debug/DebugPanel'
 import SessionLockNotice from '@/components/session/SessionLockNotice'
+import WelcomeGate from '@/components/WelcomeGate'
 import { useSessionLock } from '@/lib/session/useSessionLock'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
@@ -240,7 +241,12 @@ function AppShell() {
       >
         <LiveRoundProvider>
           <main className="dark min-h-screen relative">
-            <GameRouter />
+            {/* Wraps rather than replaces the router, so the letter arrives on
+                top of the menu the player is about to enter — and holds that
+                menu inert underneath until the letter has been agreed to. */}
+            <WelcomeGate>
+              <GameRouter />
+            </WelcomeGate>
           </main>
         </LiveRoundProvider>
       </GameProvider>

@@ -164,14 +164,12 @@ export const initialState = {
     owned: [],
   },
   settings: {
-    // False until the player opens the license envelope on the Help page.
-    // Drives ALL the first-time letter signposts — the menu's mail bubble,
-    // the "Read the letter" button glow, and Lulys on the Help page — which
-    // retire together the moment the envelope is opened. (A press-based
-    // lifecycle for the glow was tried and cut: pressing without reading
-    // killed the signpost before its job was done.) Old saves lack the key —
-    // undefined is treated as not-yet-opened.
-    welcomeLetterOpened: false,
+    // False until the player ticks the acknowledgement inside the welcome
+    // letter: NSC 2026 project, no pictures or sensitive data collected.
+    // While false, WelcomeGate holds the letter open over the whole app, so
+    // nobody reaches the cafe without passing it. Guests are asked every
+    // session by construction — their save lives in memory and never persists.
+    nscConsentAccepted: false,
     focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
     performanceMode: false,
     aiMode: 'browser',

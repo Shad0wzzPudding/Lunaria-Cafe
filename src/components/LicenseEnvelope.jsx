@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/useGame';
 
@@ -58,11 +58,12 @@ function PixelBox({ size = '6px', border = '#7a5230', fill = '#e8cf9e', classNam
 }
 
 /* The closed envelope: kraft body, darker flap triangle, wax seal. */
-function ClosedEnvelope({ onOpen }) {
+function ClosedEnvelope({ onOpen, autoFocus = false }) {
   return (
     <motion.button
       type="button"
       onClick={onOpen}
+      autoFocus={autoFocus}
       className="relative block focus-visible:outline-none"
       initial={{ y: 40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -104,8 +105,36 @@ function ClosedEnvelope({ onOpen }) {
   );
 }
 
-/* The unfolded letter carrying the license agreement. */
-function OpenLetter({ onClose }) {
+/* The pixel checkbox the consent gate is tied to — drawn in the letter's own
+   ink so it reads as part of the page, not as a UI control pasted on top. */
+function ConsentCheckbox({ checked }) {
+  return (
+    <span
+      aria-hidden="true"
+      // The real input is sr-only, so the ring on this box is the only thing a
+      // keyboard user has to see where focus is on a gate they cannot skip.
+      className="mt-0.5 flex shrink-0 items-center justify-center peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#7d5fde]"
+      style={{
+        width: '18px',
+        height: '18px',
+        background: checked ? '#7d5fde' : '#fff8e7',
+        border: '3px solid #7a5230',
+        imageRendering: 'pixelated',
+      }}
+    >
+      {checked && <Check className="h-3 w-3" strokeWidth={4} style={{ color: '#fff8e7' }} />}
+    </span>
+  );
+}
+
+/* The unfolded letter carrying the license agreement.
+
+   `gate` turns the letter from a re-readable keepsake into the acknowledgement
+   the player must pass before entering: no X, no click-outside, and a consent
+   checkbox that unlocks the only way onward. */
+function OpenLetter({ onClose, gate = false, onAgree }) {
+  const [agreed, setAgreed] = useState(false);
+
   return (
     <motion.div
       className="relative"
@@ -128,15 +157,17 @@ function OpenLetter({ onClose }) {
               A letter from Lulyssia & the development team
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 hover:opacity-70 transition-opacity"
-            style={{ color: '#6b4a26' }}
-            aria-label="Close the letter"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {!gate && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 hover:opacity-70 transition-opacity"
+              style={{ color: '#6b4a26' }}
+              aria-label="Close the letter"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-3" style={{ fontFamily: LETTER_FONT }}>
@@ -157,7 +188,62 @@ function OpenLetter({ onClose }) {
           <p className="font-pixel text-[11px]" style={{ color: '#6b4a26' }}>— Lulyssia 🌙</p>
           <p className="font-pixel text-[10px] mt-0.5" style={{ color: '#8a6a42' }}>& the development team</p>
         </div>
+
+        {gate && (
+          <div className="mt-5 pt-4" style={{ borderTop: '2px dashed #cbb188' }}>
+            <label className="flex cursor-pointer items-start gap-2.5 select-none">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="peer sr-only"
+              />
+              <ConsentCheckbox checked={agreed} />
+              <span
+                className="text-[12px] leading-relaxed"
+                style={{ fontFamily: LETTER_FONT, color: '#5c4325' }}
+              >
+                I understand that Lunaria Cafe is a student project developed for the
+                National Software Contest (NSC) 2026, and that this website does not
+                collect any pictures or personal sensitive data — the attention camera
+                runs entirely on my own device.
+              </span>
+            </label>
+
+            <div className="mt-4 text-right">
+              <button
+                type="button"
+                onClick={onAgree}
+                disabled={!agreed}
+                className="font-pixel text-[11px] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                style={{
+                  background: '#7d5fde',
+                  color: '#fff8e7',
+                  border: '3px solid #4c3572',
+                  padding: '8px 14px',
+                  imageRendering: 'pixelated',
+                }}
+              >
+                I agree — open the cafe ☕
+              </button>
+            </div>
+          </div>
+        )}
       </PixelBox>
+
+      {/* The consent block is below the letter's fold, and gate mode has no
+          other way out — without this the player sees a wall of legal text and
+          no visible way forward. Retires the moment the box is ticked. */}
+      {gate && !agreed && (
+        <motion.p
+          className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.35, 1, 0.35] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.6 }}
+        >
+          — scroll to the end of the letter to continue ↓ —
+        </motion.p>
+      )}
     </motion.div>
   );
 }
@@ -228,10 +314,26 @@ function StarterPackReveal({ audio, onDone }) {
     Sounds.sessionFinishDone(audio.sfxVolume, audio.masterVolume, audio.sfxSessionFinishDone ?? true);
   }, [audio.sfxVolume, audio.masterVolume, audio.sfxSessionFinishDone]);
 
+  // Reached from the gate, this screen is the only thing not inert — so a
+  // mouse-only dismiss strands a keyboard player here with nothing focusable
+  // on the page. It takes focus on mount and answers the dismiss keys.
+  const surfaceRef = useRef(null);
+  useEffect(() => { surfaceRef.current?.focus(); }, []);
+
   return (
     <motion.div
-      className="absolute inset-0 z-10 cursor-pointer overflow-hidden"
+      ref={surfaceRef}
+      role="button"
+      tabIndex={0}
+      aria-label="Collect the starter pack and continue"
+      className="absolute inset-0 z-10 cursor-pointer overflow-hidden focus:outline-none"
       onClick={onDone}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+          e.preventDefault();
+          onDone();
+        }
+      }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -312,13 +414,15 @@ function StarterPackReveal({ audio, onDone }) {
   );
 }
 
-export default function LicenseEnvelope({ onClose }) {
+// `gate`: the letter is the door into the cafe rather than a keepsake reachable
+// from Help. It cannot be dismissed — only the consent checkbox opens it — and
+// agreeing is what records the NSC acknowledgement on the save.
+export default function LicenseEnvelope({ onClose, gate = false }) {
   const [opened, setOpened] = useState(false);
   const { state, dispatch } = useGame();
 
-  // 'pending' is decided at OPEN time (before the claim dispatch lands):
-  // only the open that actually granted the pack earns the reveal — re-reads
-  // close like any modal.
+  // 'pending' is decided BEFORE the claim dispatch lands: only the claim that
+  // actually granted the pack earns the reveal — re-reads close like any modal.
   const [reveal, setReveal] = useState(false);
   const [revealPending, setRevealPending] = useState(false);
 
@@ -326,15 +430,16 @@ export default function LicenseEnvelope({ onClose }) {
     // `?? true`: saves created before this toggle existed have no
     // sfxLetterOpen key — default them to on, like a fresh game.
     Sounds.letterOpen(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxLetterOpen ?? true);
-    // Retires the main menu's "you've got mail" bubble, permanently (persisted
-    // with the save). Deliberately on OPENING the envelope, not on visiting
-    // the Help page — the bubble's promise is the letter itself.
-    dispatch({ type: 'SET_SETTINGS', payload: { welcomeLetterOpened: true } });
-    // Starter pack rides on the same moment: the reducer makes the grant
-    // idempotent, so re-opens (and pre-feature saves re-reading the letter)
-    // are safe to dispatch unconditionally.
-    setRevealPending(!state.boosts?.starterPackClaimed);
-    dispatch({ type: 'CLAIM_STARTER_PACK' });
+    // Outside the gate, opening IS the whole ceremony, so the pack rides along
+    // with it. The reducer makes the grant idempotent, so re-opens are safe to
+    // dispatch unconditionally. Gate mode defers to agreeAndClose instead: a
+    // player who opens the envelope and quits without agreeing would otherwise
+    // bank the pack and lose its reveal forever — the next visit re-gates them,
+    // but the grant is already spent, so the celebration never plays.
+    if (!gate) {
+      setRevealPending(!state.boosts?.starterPackClaimed);
+      dispatch({ type: 'CLAIM_STARTER_PACK' });
+    }
     setOpened(true);
   };
 
@@ -349,28 +454,51 @@ export default function LicenseEnvelope({ onClose }) {
     }
   };
 
+  // Gate mode's only exit: acknowledgement, then the reward it unlocks.
+  // The grant and the decision to celebrate it happen in the same handler, so
+  // this branches on a local rather than going through requestClose — a state
+  // setter queued here would not be visible to a read in the same tick.
+  const agreeAndClose = () => {
+    dispatch({ type: 'SET_SETTINGS', payload: { nscConsentAccepted: true } });
+    const granting = !state.boosts?.starterPackClaimed;
+    dispatch({ type: 'CLAIM_STARTER_PACK' });
+    if (granting) setReveal(true);
+    else onClose();
+  };
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      // The same container carries both screens, so the label has to follow
+      // whichever one is actually showing.
+      aria-label={reveal
+        ? 'Your starter pack from the cafe'
+        : 'A welcome letter from Lulyssia and the development team'}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={requestClose} />
+      {/* In gate mode the backdrop only blocks — the letter is the way through. */}
+      <div
+        className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+        onClick={gate ? undefined : requestClose}
+      />
       {reveal ? (
         <StarterPackReveal audio={state.audio} onDone={onClose} />
       ) : (
         <div className="relative z-10">
           <AnimatePresence mode="wait">
             {opened
-              ? <OpenLetter key="letter" onClose={requestClose} />
-              : <ClosedEnvelope key="envelope" onOpen={openLetter} />}
+              ? <OpenLetter key="letter" onClose={requestClose} gate={gate} onAgree={agreeAndClose} />
+              : <ClosedEnvelope key="envelope" onOpen={openLetter} autoFocus={gate} />}
           </AnimatePresence>
 
           {/* Blinking close hint — only once the letter is open. pointer-events-
               none so a click on the hint itself falls through to the backdrop
               and closes the letter, exactly as the hint promises. */}
-          {opened && (
+          {opened && !gate && (
             <motion.p
               className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
               initial={{ opacity: 0 }}

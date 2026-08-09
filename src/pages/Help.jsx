@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 import LicenseEnvelope from '@/components/LicenseEnvelope';
-import { Sounds } from '@/lib/sounds';
 
 const TABS = [
   { id: 'info', label: 'Info' },
@@ -135,7 +134,7 @@ const INFO_SECTIONS = [
     body: [
       'v.2 (Second round) — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
     ],
-    footer: 'Source on GitHub: -',
+    // Source link intentionally withheld while the contest entry is under review.
     //footer: 'Source on GitHub: https://github.com/Shad0wzzPudding/Lunaria-Cafe/tree/v2-First-round',
   },
 ];
@@ -223,30 +222,10 @@ const TAB_CONTENT = {
 };
 
 export default function Help() {
-  const { state, dispatch } = useGame();
+  const { dispatch } = useGame();
   const [tab, setTab] = useState('info');
   const [showLicense, setShowLicense] = useState(false);
   const { sections, outro } = TAB_CONTENT[tab];
-
-  // One lifecycle for every signpost (glow, Lulys, the menu bubble): they all
-  // retire when the envelope is actually OPENED, not when a button is merely
-  // pressed — a press-based glow died on the first "pressed but closed
-  // without reading" playtest, before its job was done.
-  const letterUnread = !state.settings?.welcomeLetterOpened;
-
-  // Whoosh as Lulys slides in from the right on her first appearance. Fires
-  // once per visit, only while she's actually shown (letter unread + lg
-  // screen, matching her `hidden lg:block`), delayed to meet her 0.4s slide.
-  const greetedRef = useRef(false);
-  useEffect(() => {
-    if (greetedRef.current || !letterUnread) return;
-    if (!window.matchMedia('(min-width: 1024px)').matches) return;
-    greetedRef.current = true;
-    const id = setTimeout(() => {
-      Sounds.slideIn(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSlideIn ?? true);
-    }, 400);
-    return () => clearTimeout(id);
-  }, [letterUnread, state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxSlideIn]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -282,57 +261,6 @@ export default function Help() {
         </nav>
       </header>
 
-      {/* Lulys guides first-time visitors toward the letter — perched on the
-          upper right by the scrollbar, pointing down it: "the letter is down
-          there, keep scrolling". She retires together with the menu's mail
-          bubble once the envelope is opened (welcomeLetterOpened). Wide
-          screens only: the centered content column owns the middle on
-          smaller ones and she'd overlap it. */}
-      {letterUnread && (
-        <motion.div
-          className="hidden lg:block fixed top-[16vh] z-10 pointer-events-none select-none"
-          // 3vw past the old right-6 anchor — a slight tuck toward the right
-          // edge. One dial: smaller vw = further into the page.
-          style={{ right: 'calc(1.5rem - 3vw)' }}
-          initial={{ opacity: 0, x: 48 }}
-          animate={{ opacity: 1, x: 0, y: [0, -6, 0] }}
-          transition={{
-            opacity: { duration: 0.7, delay: 0.4 },
-            x: { duration: 0.7, delay: 0.4, ease: 'easeOut' },
-            y: { repeat: Infinity, duration: 2.4, ease: 'easeInOut', delay: 1.1 },
-          }}
-        >
-          {/* Speech bubble — left of her head, pixel tail pointing at her.
-              Same visual language as the menu bubble / SessionSummary. */}
-          <div
-            className="absolute right-[82%] top-[38%] z-10 w-max whitespace-nowrap font-pixel text-[11px] leading-snug"
-            style={{
-              background: '#fef9f0',
-              color: '#2a2040',
-              border: '4px solid #2a2040',
-              padding: '8px 12px',
-              imageRendering: 'pixelated',
-            }}
-          >
-            There&apos;s a surprise for you below ✨
-            {/* Pixel tail — steps right toward Lulys */}
-            <div style={{ position: 'absolute', right: '-11px', top: '50%', transform: 'translateY(-50%)' }}>
-              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: '4px', height: '22px', background: '#2a2040' }} />
-              <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '4px', height: '14px', background: '#2a2040' }} />
-              <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', width: '4px', height: '7px', background: '#fef9f0', marginTop: '4px' }} />
-            </div>
-          </div>
-
-          <img
-            src="/assets/Character/lulys_pointingdown_side_right_transparent.png"
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            className="h-[40vh] w-auto drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
-          />
-        </motion.div>
-      )}
-
       <AnimatePresence mode="wait">
         <motion.main
           key={tab}
@@ -361,29 +289,13 @@ export default function Help() {
                 This project is developed under the National Software Contest (NSC) with support
                 from NSTDA. A letter from Lulyssia explains the terms.
               </p>
-              {/* Pulsing highlight until pressed once — the glow lives on a
-                  wrapper so the Button's own hover/active styles stay intact. */}
-              <motion.span
-                className="inline-flex rounded-md"
-                animate={letterUnread ? {
-                  boxShadow: [
-                    '0 0 5px 1px rgba(255, 214, 130, 0.25)',
-                    '0 0 16px 5px rgba(255, 214, 130, 0.65)',
-                    '0 0 5px 1px rgba(255, 214, 130, 0.25)',
-                  ],
-                } : { boxShadow: '0 0 0px 0px rgba(255, 214, 130, 0)' }}
-                transition={letterUnread
-                  ? { repeat: Infinity, duration: 2.4, ease: 'easeInOut' }
-                  : { duration: 0.4 }}
+              <Button
+                variant="secondary"
+                onClick={() => setShowLicense(true)}
+                className="font-pixel text-xs gap-2"
               >
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowLicense(true)}
-                  className="font-pixel text-xs gap-2"
-                >
-                  💌 Read the letter
-                </Button>
-              </motion.span>
+                💌 Read the letter
+              </Button>
             </motion.section>
           )}
 
