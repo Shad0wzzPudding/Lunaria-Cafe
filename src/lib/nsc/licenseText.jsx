@@ -21,11 +21,23 @@ export const TEAM_MEMBERS = [
   { name: 'Pisitpong Srisuthangkul', color: '#c1701f' }, // orangish
 ];
 
-// What the checkbox on both gates commits the reader to having understood.
-export const CONSENT_STATEMENT =
-  'Lunaria Cafe is a student project developed for the National Software Contest (NSC) 2026, ' +
-  'and this website does not collect any pictures or personal sensitive data — the attention ' +
-  'camera runs entirely on the viewer’s own device.';
+/**
+ * What the checkbox on both gates commits the reader to having understood.
+ *
+ * Both sentences begin "I understand/acknowledge that…", so the tail has to be
+ * in the reader's own voice — a neutral "the viewer's own device" reads like
+ * agreeing to a statement about somebody else, which is the wrong note for the
+ * one sentence in the app meant to feel personally binding. It also has to stay
+ * TRUE for each reader: the camera runs on the player's machine, never on the
+ * instructor's, so they cannot be told the same thing.
+ */
+export function consentStatement({ possessive = 'my own' } = {}) {
+  return (
+    'Lunaria Cafe is a student project developed for the National Software Contest (NSC) 2026, ' +
+    'and this website does not collect any pictures or personal sensitive data — the attention ' +
+    `camera runs entirely on ${possessive} device.`
+  );
+}
 
 /**
  * The three NSC license paragraphs, as an array of fragments.

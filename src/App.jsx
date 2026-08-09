@@ -207,6 +207,12 @@ function AppShell() {
       // stamped on the profile. The notice REPLACES the dashboard rather than
       // floating over it — nothing behind to tab into, so it needs no inert
       // wrapper, and it reads as a document rather than a dialog.
+      //
+      // A dual-role account is asked twice — here as instructor, and again by
+      // WelcomeGate as a student. That looks like a bug and is not: the
+      // players' letter is also the starter-pack ceremony, so it cannot be
+      // skipped on the strength of this stamp. The two also say different
+      // things (whose device the camera runs on).
       if (!profile.nsc_consent_at) {
         return <NscNotice />
       }

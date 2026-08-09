@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/useGame';
-import { CONSENT_STATEMENT, licenseParagraphs } from '@/lib/nsc/licenseText';
+import { consentStatement, licenseParagraphs } from '@/lib/nsc/licenseText';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
 // glyphs, so the letter body uses the same real font as form inputs.
@@ -175,7 +175,7 @@ function OpenLetter({ onClose, gate = false, onAgree }) {
                 className="text-[12px] leading-relaxed"
                 style={{ fontFamily: LETTER_FONT, color: '#5c4325' }}
               >
-                I understand that {CONSENT_STATEMENT}
+                I understand that {consentStatement({ possessive: 'my own' })}
               </span>
             </label>
 

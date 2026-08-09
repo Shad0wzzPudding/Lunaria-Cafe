@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FileText, ShieldCheck, Check, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/auth/useAuth';
-import { CONSENT_STATEMENT, licenseParagraphs } from '@/lib/nsc/licenseText';
+import { consentStatement, licenseParagraphs } from '@/lib/nsc/licenseText';
 import { INSTRUCTOR_PAGE_BG, INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
@@ -36,7 +36,14 @@ export default function NscNotice() {
     if (err) {
       setError(err.message || 'Could not record your acknowledgement. Please try again.');
       setSaving(false);
+      return;
     }
+    // Success clears `saving` too, even though the stamped profile normally
+    // unmounts this component a moment later. Relying on that unmount as the
+    // reset is a silent trap: if this branch ever stops unmounting, the button
+    // sticks on "Recording…" with no way out but a reload. React 18+ no-ops a
+    // setState on an unmounted component, so paying for it here is free.
+    setSaving(false);
   };
 
   return (
@@ -82,6 +89,12 @@ export default function NscNotice() {
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white/70 p-6">
+          {/* The sr-only input + hand-drawn box + peer-focus-visible ring is a
+              second copy of the pattern in LicenseEnvelope. Kept deliberately:
+              the two differ in shape and palette (pixel/cream there, rounded/
+              white here) and share only their structure. If a THIRD surface
+              ever needs a consent box, extract one control with a variant
+              rather than copying the a11y wiring a third time. */}
           <label className="flex cursor-pointer items-start gap-3 select-none">
             <input
               type="checkbox"
@@ -98,7 +111,9 @@ export default function NscNotice() {
               {agreed && <Check className="h-3 w-3 text-white" strokeWidth={4} />}
             </span>
             <span className="text-[13px] leading-relaxed text-[#4a4560]" style={{ fontFamily: DOC_FONT }}>
-              I acknowledge that {CONSENT_STATEMENT}
+              {/* Not "my own device" — the camera runs on the students'
+                  machines, never on the instructor's. */}
+              I acknowledge that {consentStatement({ possessive: 'each student’s own' })}
             </span>
           </label>
 
