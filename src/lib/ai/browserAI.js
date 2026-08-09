@@ -102,12 +102,20 @@ let geometryGateEnabled = POLICY.geometryGate;
 // Always posted WHOLE. The worker reads an absent floor as "restore the policy
 // default", so a message carrying only one knob would silently undo the other
 // — sending a partial config to flip the shape gate would reset the 10% floor.
+//
+// The fields go inside `payload`, matching the 'detect' message. They used to
+// sit at the top level while the worker read them from `payload`, so every
+// config message resolved to undefined and quietly restored policy defaults:
+// the 10% floor never applied from the day it was added, and neither did the
+// shape-gate toggle. One envelope, one convention — don't flatten this again.
 function detectionConfigMessage() {
   return {
     type: 'config',
-    softConf:     lowConfFloorEnabled ? LOW_CONF_SOFT : null,
-    nearMissConf: lowConfFloorEnabled ? LOW_CONF_NEARMISS : null,
-    geometryGate: geometryGateEnabled,
+    payload: {
+      softConf:     lowConfFloorEnabled ? LOW_CONF_SOFT : null,
+      nearMissConf: lowConfFloorEnabled ? LOW_CONF_NEARMISS : null,
+      geometryGate: geometryGateEnabled,
+    },
   };
 }
 
