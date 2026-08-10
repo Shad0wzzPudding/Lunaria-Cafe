@@ -8,10 +8,55 @@ import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/useAuth';
 
+/**
+ * Shown INSTEAD of the game when the save could not be loaded.
+ *
+ * Rendering it in place of the children is the protection, not the wording:
+ * the game tree never mounts, so nothing can dispatch into a blank state and
+ * no write path exists to overwrite the save that is still sitting safely in
+ * the database.
+ */
+function SaveLoadFailure({ message, onRetry, onSignOut }) {
+  return (
+    <div className="dark min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="w-full max-w-md rounded-xl border border-amber-500/40 bg-card/60 p-6 text-center space-y-4">
+        <p className="text-4xl select-none" aria-hidden="true">☕</p>
+        <h1 className="font-pixel text-sm text-foreground">Couldn&apos;t reach your cafe</h1>
+        <p className="font-body text-sm text-muted-foreground leading-relaxed">
+          Your save couldn&apos;t be loaded, so the cafe is staying closed for now —
+          opening it empty would risk writing over what&apos;s there. Nothing has been
+          changed. Check your connection and try again.
+        </p>
+        <div className="flex flex-col gap-2 pt-1">
+          <button type="button" onClick={onRetry}
+            className="rounded-md border border-primary/40 bg-primary/15 px-4 py-2 font-pixel text-xs text-primary hover:bg-primary/25 transition-colors">
+            Try again
+          </button>
+          <button type="button" onClick={onSignOut}
+            className="rounded-md border border-border/40 px-4 py-2 font-pixel text-xs text-muted-foreground hover:text-foreground transition-colors">
+            Log out
+          </button>
+        </div>
+        <details className="text-left">
+          <summary className="cursor-pointer font-pixel text-[10px] text-muted-foreground/60 hover:text-muted-foreground">
+            Technical details
+          </summary>
+          <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground/70">{message}</p>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [ready, setReady] = useState(!userId);
   const [saveError, setSaveError] = useState(null);
+  // A load failure is NOT a save failure and must not be treated as one. Every
+  // write path is gated on this being null, because the danger is not the
+  // failed read — it is the blank state that follows it being written back.
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
 
@@ -20,7 +65,9 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   }, []);
 
   const saveNow = useCallback(async () => {
-    if (!userId) return false;
+    // Refuse to write when the load failed — the in-memory state is the blank
+    // initialState, and persisting it is exactly the data loss this guards.
+    if (!userId || loadError) return false;
     try {
       await savePlayerSave(userId, stateRef.current);
       setSaveError(null);
@@ -30,7 +77,7 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
       setSaveError(err.message ?? 'Save failed');
       return false;
     }
-  }, [userId]);
+  }, [userId, loadError]);
 
   // Flush the save before ending the session — the one logout path
   // shared by every page with a logout button.
@@ -88,11 +135,10 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
       })
       .catch((err) => {
         console.error('Load save failed:', err);
-        if (!cancelled) {
-          setSaveError(err.message ?? 'Load failed');
-          setAIConfig({ aiMode: initialState.settings.aiMode });
-          applyThemeSettings(initialState.settings.theme, 'day');
-        }
+        // Deliberately does NOT fall back to defaults and carry on. The old
+        // behaviour mounted the game on initialState and the 30s autosave then
+        // wrote that blank cafe over a save that was merely unreachable.
+        if (!cancelled) setLoadError(err.message ?? 'Load failed');
       })
       .finally(() => {
         if (!cancelled) setReady(true);
@@ -101,7 +147,13 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setLoadError(null);
+    setReady(false);
+    setLoadAttempt((n) => n + 1);
+  }, []);
 
   // Reset period stats when the day/week rolls over while the app stays open
   // (the load-time reset only fires on refresh). Runs on refocus and once a
@@ -119,21 +171,28 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
     };
   }, [dispatch]);
 
+  // Both write paths below are gated on loadError as well as ready: the game
+  // tree is not mounted in that state, but these two fire on timers and page
+  // teardown, not on anything the player does, so they would still run.
   useEffect(() => {
-    if (!userId || !ready) return;
+    if (!userId || !ready || loadError) return;
 
     const interval = setInterval(() => {
-      savePlayerSave(userId, stateRef.current).catch((err) => {
-        console.error('Auto-save failed:', err);
-        setSaveError(err.message ?? 'Auto-save failed');
-      });
+      savePlayerSave(userId, stateRef.current)
+        // Clear on success, or one dropped save leaves a warning on screen for
+        // the rest of the session while everything is in fact being saved.
+        .then(() => setSaveError(null))
+        .catch((err) => {
+          console.error('Auto-save failed:', err);
+          setSaveError(err.message ?? 'Auto-save failed');
+        });
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [userId, ready]);
+  }, [userId, ready, loadError]);
 
   useEffect(() => {
-    if (!userId || !ready) return;
+    if (!userId || !ready || loadError) return;
 
     const handleBeforeUnload = () => {
       savePlayerSave(userId, stateRef.current).catch(() => {});
@@ -141,7 +200,22 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [userId, ready]);
+  }, [userId, ready, loadError]);
+
+  if (loadError) {
+    return (
+      <SaveLoadFailure
+        message={loadError}
+        onRetry={retryLoad}
+        // signOut directly, NOT logout() — logout flushes the save first, which
+        // is the one thing that must never happen from this screen.
+        onSignOut={async () => {
+          try { await onBeforeSignOut?.(); } catch { /* best effort */ }
+          await signOut();
+        }}
+      />
+    );
+  }
 
   if (!ready) {
     return (

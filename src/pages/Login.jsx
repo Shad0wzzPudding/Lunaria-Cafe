@@ -11,7 +11,7 @@ const FORM_FONT = { fontFamily: "'Inter Variable', sans-serif" };
 
 export default function Login() {
   const [showGuestWarning, setShowGuestWarning] = useState(false);
-  const { signIn, signUp, signInAsGuest } = useAuth();
+  const { signIn, signUp, signInAsGuest, authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
@@ -61,6 +61,14 @@ export default function Login() {
     <div data-theme="light" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border border-border/30 bg-card/60 p-6">
         <h1 className="font-display text-2xl text-center">Lunaria Cafe</h1>
+        {/* A failed session check drops you here looking exactly like a normal
+            logged-out visit. Say which it was, so nobody retypes a password
+            that was never the problem. */}
+        {authError && (
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700" style={FORM_FONT}>
+            {authError}
+          </p>
+        )}
         <input
           type="email"
           placeholder="Email"

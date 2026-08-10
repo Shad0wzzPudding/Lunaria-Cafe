@@ -12,6 +12,11 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(supabase));
   const [isGuest, setIsGuest] = useState(false);
+  // Network/auth trouble that the app used to swallow into console.error. Both
+  // failures below change what the player sees — one drops them at the login
+  // screen, the other quietly downgrades their role — so neither should be
+  // invisible.
+  const [authError, setAuthError] = useState(null);
   const [activeRole, setActiveRole] = useState(null); // 'student' | 'instructor' | null
 
   // Derived: the profile only counts once it belongs to the current user.
@@ -25,7 +30,10 @@ export function AuthProvider({ children }) {
       .then(({ data: { session } }) => {
         setUser(session?.user ?? null);
       })
-      .catch((err) => console.error('[auth] getSession failed:', err))
+      .catch((err) => {
+        console.error('[auth] getSession failed:', err);
+        setAuthError('Could not reach the server to check your login. You may be offline.');
+      })
       .finally(() => setLoading(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -49,11 +57,23 @@ export function AuthProvider({ children }) {
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error) console.error('[auth] profile fetch failed:', error);
+        // A failed fetch falls back to a plain student below. That is a real
+        // downgrade — an instructor would land in the game instead of their
+        // dashboard — so say so rather than letting it look intentional.
+        if (error) {
+          console.error('[auth] profile fetch failed:', error);
+          setAuthError('Could not load your account details, so some features may be missing. Reload once you are back online.');
+        } else {
+          setAuthError(null);
+        }
         // No row and no error → the account was deleted but the login
         // token is still alive. End the ghost session.
         if (!data && !error) {
           console.warn('[auth] no profile for user — signing out');
+          // Say why. Without this the sign-out is indistinguishable from the
+          // session simply expiring, and the player retries a password that was
+          // never the problem — the same gap the two branches above just closed.
+          setAuthError('Your account is no longer available, so you have been signed out.');
           supabase.auth.signOut();
           return;
         }
@@ -134,7 +154,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
-        user, profile: freshProfile, loading, profileLoading, isGuest,
+        user, profile: freshProfile, loading, profileLoading, isGuest, authError,
         activeRole, chooseRole,
         signUp, signIn, signOut, signInAsGuest, updateDisplayName, resetDisplayName,
         acceptNscNotice,

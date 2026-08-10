@@ -24,6 +24,8 @@ import DebugPanel from '@/components/debug/DebugPanel'
 import SessionLockNotice from '@/components/session/SessionLockNotice'
 import WelcomeGate from '@/components/WelcomeGate'
 import NscNotice from '@/components/NscNotice'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import SystemNotice from '@/components/SystemNotice'
 import { useSessionLock } from '@/lib/session/useSessionLock'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
@@ -32,7 +34,7 @@ import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter']
 
 function GameRouter() {
-  const { state } = useGame()
+  const { state, dispatch } = useGame()
   useCafeAudio()
 
   const [debugOpen,  setDebugOpen]  = React.useState(false)
@@ -135,7 +137,19 @@ function GameRouter() {
           inset: 0,
           zIndex: 0,
         }}>
-          <CafeView />
+          {/* The cafe is by far the biggest tree — canvas, AI camera, live
+              rounds — so it is where a crash is most likely. Its own boundary
+              means one goes no further than the cafe: the player lands back on
+              the menu with the app alive and the save intact, instead of
+              losing the whole page. */}
+          <ErrorBoundary
+            title="The cafe needs a moment"
+            message="Something went wrong inside the cafe. Your coins, furniture and progress are safe — the menu is still there."
+            resetLabel="Back to the menu"
+            onReset={() => dispatch({ type: 'SET_PHASE', payload: 'menu' })}
+          >
+            <CafeView />
+          </ErrorBoundary>
         </div>
       )}
 
@@ -261,6 +275,10 @@ function AppShell() {
             <WelcomeGate>
               <GameRouter />
             </WelcomeGate>
+            {/* Outside the gate's children on purpose — the gate marks them
+                inert, and a save failure has to stay readable and retryable
+                whatever else is on screen. */}
+            <SystemNotice />
           </main>
         </LiveRoundProvider>
       </GameProvider>
@@ -273,10 +291,15 @@ function App() {
   if (window.name === 'cafe-status-popup') {
     return <CafeStatusPopup />;
   }
+  // Outermost net: catches anything the inner boundary doesn't, including a
+  // crash in AuthProvider itself. No onReset — at this level there is no known
+  // good state to return to, so reloading is the honest offer.
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 
