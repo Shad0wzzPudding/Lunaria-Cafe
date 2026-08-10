@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/useGame';
-import { consentStatement, licenseParagraphs } from '@/lib/nsc/licenseText';
+import { consentStatement, licenseParagraphs, privacyStatement } from '@/lib/nsc/licenseText';
+import PrivacyNoticeBody from '@/components/PrivacyNoticeBody';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
 // glyphs, so the letter body uses the same real font as form inputs.
@@ -19,10 +20,12 @@ const PIXEL_CORNERS = (s) =>
 // each developer signing in their own color.
 const LICENSE_PARAGRAPHS = licenseParagraphs({ ink: '#6b5a9c', teamInk: true });
 
-function PixelBox({ size = '6px', border = '#7a5230', fill = '#e8cf9e', className = '', style = {}, innerStyle = {}, children }) {
+function PixelBox({ size = '6px', border = '#7a5230', fill = '#e8cf9e', className = '', style = {}, innerStyle = {}, innerProps = {}, children }) {
   return (
     <div className={className} style={{ clipPath: PIXEL_CORNERS(size), background: border, padding: '4px', ...style }}>
-      <div style={{ clipPath: PIXEL_CORNERS(size), background: fill, width: '100%', height: '100%', ...innerStyle }}>
+      {/* innerProps reaches the SCROLLING element — the privacy notice needs a
+          scroll handler on exactly this div, not on the outer frame. */}
+      <div style={{ clipPath: PIXEL_CORNERS(size), background: fill, width: '100%', height: '100%', ...innerStyle }} {...innerProps}>
         {children}
       </div>
     </div>
@@ -104,8 +107,87 @@ function ConsentCheckbox({ checked }) {
    `gate` turns the letter from a re-readable keepsake into the acknowledgement
    the player must pass before entering: no X, no click-outside, and a consent
    checkbox that unlocks the only way onward. */
-function OpenLetter({ onClose, gate = false, onAgree }) {
+function OpenLetter({ onClose, gate = false, onAgree, showPrivacy, setShowPrivacy }) {
   const [agreed, setAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  // The privacy box stays locked until the notice has actually been scrolled to
+  // the end. "I have read this" should cost at least the scroll.
+  const [privacyRead, setPrivacyRead] = useState(false);
+  const bothTicked = agreed && privacyAgreed;
+
+  // Reaching the bottom marks it read. The `scrollHeight <= clientHeight` case
+  // is not an edge case to be tidy about — on a tall window the notice fits
+  // without scrolling, there is no scroll event to wait for, and without this
+  // the box could never be ticked and the gate would be impassable.
+  const markIfRead = (el) => {
+    if (!el) return;
+    if (el.scrollHeight <= el.clientHeight + 2 || el.scrollTop + el.clientHeight >= el.scrollHeight - 8) {
+      setPrivacyRead(true);
+    }
+  };
+
+  if (gate && showPrivacy) {
+    return (
+      <motion.div
+        className="relative"
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
+        <PixelBox
+          size="8px"
+          border="#9a7648"
+          fill="#f6ecd3"
+          style={{ width: 'min(38rem, 92vw)' }}
+          innerStyle={{ padding: '1.75rem 1.5rem', maxHeight: 'min(72vh, 36rem)', overflowY: 'auto' }}
+          innerProps={{
+            onScroll: (e) => markIfRead(e.currentTarget),
+            // Runs on mount too, for the case where it all fits already.
+            ref: markIfRead,
+          }}
+        >
+          <h2 className="font-pixel text-base mb-4" style={{ color: '#4a2f14' }}>
+            Privacy Notice 🔒
+          </h2>
+          <PrivacyNoticeBody
+            font={LETTER_FONT}
+            headingColor="#4a2f14"
+            bodyColor="#5c4325"
+            mutedColor="#8a6a42"
+            ruleColor="#cbb188"
+          />
+          <div className="mt-5 text-right">
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(false)}
+              className="font-pixel text-[11px]"
+              style={{
+                background: '#7d5fde', color: '#fff8e7', border: '3px solid #4c3572',
+                padding: '8px 14px', imageRendering: 'pixelated',
+              }}
+            >
+              ← Back to the letter
+            </button>
+          </div>
+        </PixelBox>
+
+        {/* Same hint the letter uses, for the same reason: the thing that
+            unlocks the next step is below the fold, and without a prompt the
+            reader just looks at a wall of text. Retires once the end is
+            reached, which is also the moment the checkbox unlocks. */}
+        {!privacyRead && (
+          <motion.p
+            className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.35, 1, 0.35] }}
+            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut', delay: 0.6 }}
+          >
+            — scroll to the end of the notice to continue ↓ —
+          </motion.p>
+        )}
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -175,15 +257,52 @@ function OpenLetter({ onClose, gate = false, onAgree }) {
                 className="text-[12px] leading-relaxed"
                 style={{ fontFamily: LETTER_FONT, color: '#5c4325' }}
               >
-                I understand that {consentStatement({ possessive: 'my own' })}
+                I understand that {consentStatement({ voice: 'player' })}
               </span>
             </label>
+
+            <label
+              className={`mt-3 flex items-start gap-2.5 select-none ${privacyRead ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+            >
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                disabled={!privacyRead}
+                onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                className="peer sr-only"
+              />
+              <ConsentCheckbox checked={privacyAgreed} />
+              <span
+                className="text-[12px] leading-relaxed"
+                style={{ fontFamily: LETTER_FONT, color: '#5c4325' }}
+              >
+                {privacyStatement({ voice: 'player' })}
+              </span>
+            </label>
+
+            {/* Sits directly under the checkbox's own text, indented to line up
+                with it: a disabled control needs its reason next to it, not
+                below the link that follows. */}
+            {!privacyRead && (
+              <p className="mt-1 pl-[28px] text-[11px]" style={{ fontFamily: LETTER_FONT, color: '#8a6a42' }}>
+                Read the Privacy Notice to the end first to enable this.
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(true)}
+              className="mt-2 text-[12px] underline underline-offset-2"
+              style={{ fontFamily: LETTER_FONT, color: '#6b5a9c' }}
+            >
+              Read the Privacy Notice →
+            </button>
 
             <div className="mt-4 text-right">
               <button
                 type="button"
                 onClick={onAgree}
-                disabled={!agreed}
+                disabled={!bothTicked}
                 className="font-pixel text-[11px] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
                 style={{
                   background: '#7d5fde',
@@ -203,7 +322,7 @@ function OpenLetter({ onClose, gate = false, onAgree }) {
       {/* The consent block is below the letter's fold, and gate mode has no
           other way out — without this the player sees a wall of legal text and
           no visible way forward. Retires the moment the box is ticked. */}
-      {gate && !agreed && (
+      {gate && !bothTicked && (
         <motion.p
           className="mt-4 text-center font-pixel text-[11px] text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] pointer-events-none select-none"
           initial={{ opacity: 0 }}
@@ -388,6 +507,9 @@ function StarterPackReveal({ audio, onDone }) {
 // agreeing is what records the NSC acknowledgement on the save.
 export default function LicenseEnvelope({ onClose, gate = false }) {
   const [opened, setOpened] = useState(false);
+  // Lives here rather than in OpenLetter so the dialog's aria-label can follow
+  // whichever of the three screens is actually showing.
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const { state, dispatch } = useGame();
 
   // 'pending' is decided BEFORE the claim dispatch lands: only the claim that
@@ -444,7 +566,9 @@ export default function LicenseEnvelope({ onClose, gate = false }) {
       // whichever one is actually showing.
       aria-label={reveal
         ? 'Your starter pack from the cafe'
-        : 'A welcome letter from Lulyssia and the development team'}
+        : showPrivacy
+          ? 'Privacy Notice'
+          : 'A welcome letter from Lulyssia and the development team'}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -460,7 +584,7 @@ export default function LicenseEnvelope({ onClose, gate = false }) {
         <div className="relative z-10">
           <AnimatePresence mode="wait">
             {opened
-              ? <OpenLetter key="letter" onClose={requestClose} gate={gate} onAgree={agreeAndClose} />
+              ? <OpenLetter key="letter" onClose={requestClose} gate={gate} onAgree={agreeAndClose} showPrivacy={showPrivacy} setShowPrivacy={setShowPrivacy} />
               : <ClosedEnvelope key="envelope" onOpen={openLetter} autoFocus={gate} />}
           </AnimatePresence>
 

@@ -5,9 +5,11 @@ import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 import LicenseEnvelope from '@/components/LicenseEnvelope';
+import PrivacyNoticeBody from '@/components/PrivacyNoticeBody';
 
 const TABS = [
   { id: 'info', label: 'Info' },
+  { id: 'privacy', label: 'Privacy' },
   { id: 'credits', label: 'Credits' },
   { id: 'tutorial', label: 'Tutorial' },
 ];
@@ -217,6 +219,10 @@ function HelpSection({ section, index }) {
 
 const TAB_CONTENT = {
   info: { sections: INFO_SECTIONS, outro: null },
+  // The notice has no `sections` — it renders its own body below. It lives here
+  // as well as inside the gate so it stays readable after consent, which is the
+  // whole point of a privacy notice: consultable, not just agreed to once.
+  privacy: { sections: [], outro: null },
   credits: { sections: CREDITS_SECTIONS, outro: null },
   tutorial: { sections: TUTORIAL_SECTIONS, outro: 'Now go on — the cafe is waiting for you. ☕' },
 };
@@ -273,6 +279,27 @@ export default function Help() {
           {sections.map((section, i) => (
             <HelpSection key={section.title} section={section} index={i} />
           ))}
+
+          {tab === 'privacy' && (
+            <motion.section
+              className="rounded-xl border border-border/40 bg-card/60 p-5"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <h2 className="font-pixel text-sm text-foreground mb-3 flex items-center gap-2">
+                <span aria-hidden="true">🔒</span>
+                Privacy Notice
+              </h2>
+              <PrivacyNoticeBody
+                font="'Inter Variable', system-ui, sans-serif"
+                headingColor="var(--foreground)"
+                bodyColor="var(--muted-foreground)"
+                mutedColor="var(--muted-foreground)"
+                ruleColor="var(--border)"
+              />
+            </motion.section>
+          )}
 
           {tab === 'info' && (
             <motion.section

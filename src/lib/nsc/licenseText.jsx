@@ -22,21 +22,41 @@ export const TEAM_MEMBERS = [
 ];
 
 /**
- * What the checkbox on both gates commits the reader to having understood.
+ * What the first checkbox on both gates commits the reader to having understood.
  *
- * Both sentences begin "I understand/acknowledge that…", so the tail has to be
- * in the reader's own voice — a neutral "the viewer's own device" reads like
- * agreeing to a statement about somebody else, which is the wrong note for the
- * one sentence in the app meant to feel personally binding. It also has to stay
- * TRUE for each reader: the camera runs on the player's machine, never on the
- * instructor's, so they cannot be told the same thing.
+ * `voice` is REQUIRED, with no default. Both sentences begin "I understand /
+ * acknowledge that…", so every pronoun in the tail has to be both in the
+ * reader's own voice and TRUE of them: the camera runs on the player's machine
+ * and never on the instructor's, so the two cannot be told the same thing. A
+ * default here would let a future third surface silently claim the wrong one,
+ * which is the exact bug this parameter was introduced to fix.
  */
-export function consentStatement({ possessive = 'my own' } = {}) {
+// Declared ABOVE its callers on purpose. `const` is hoisted but sits in the
+// temporal dead zone until evaluated, so a caller running at MODULE scope —
+// exactly what `const LICENSE_PARAGRAPHS = licenseParagraphs(...)` already does
+// in two files — would throw a ReferenceError at import and blank the app.
+const VOICES = {
+  player:     { webcam: 'my webcam',             device: 'my device',                 person: 'me'   },
+  instructor: { webcam: "each student's webcam", device: "each student's own device",  person: 'them' },
+};
+
+export function consentStatement({ voice }) {
+  const v = VOICES[voice];
+  if (!v) throw new Error(`consentStatement: unknown voice "${voice}"`);
   return (
-    'Lunaria Cafe is a student project developed for the National Software Contest (NSC) 2026, ' +
-    'and this website does not collect any pictures or personal sensitive data — the attention ' +
-    `camera runs entirely on ${possessive} device.`
+    'Lunaria Cafe is a student project developed for the National Software Contest (NSC) 2026. ' +
+    `The application uses ${v.webcam} only to analyse attention during learning. Webcam data is ` +
+    `processed locally on ${v.device} and is not uploaded, stored, or shared with third parties. ` +
+    `The system does not use facial data to identify or authenticate ${v.person}.`
   );
+}
+
+/** What the second checkbox commits the reader to: they have read the notice. */
+export function privacyStatement({ voice }) {
+  if (!VOICES[voice]) throw new Error(`privacyStatement: unknown voice "${voice}"`);
+  return voice === 'instructor'
+    ? 'I have read the Privacy Notice and understand what Lunaria Cafe processes, stores, and shares with instructors.'
+    : 'I have read the Privacy Notice and understand what Lunaria Cafe processes, stores, and shares.';
 }
 
 /**
