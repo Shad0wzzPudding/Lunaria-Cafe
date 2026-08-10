@@ -72,7 +72,11 @@ function Group({ title, note, action, children, defaultOpen = false }) {
         </button>
         {action && <div className="shrink-0 pr-3">{action}</div>}
       </div>
-      {open && <div className="space-y-2 px-3 pb-3">{children}</div>}
+      {/* Hidden rather than unmounted: the stat inputs keep their typed-but-
+          not-yet-applied value in local state, and folding a group used to
+          throw it away. `display: none` also keeps a folded group out of the
+          tab order, so nothing behind a closed header is keyboard-reachable. */}
+      <div className={`space-y-2 px-3 pb-3 ${open ? '' : 'hidden'}`}>{children}</div>
     </div>
   );
 }
