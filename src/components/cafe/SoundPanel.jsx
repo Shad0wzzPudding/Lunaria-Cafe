@@ -152,6 +152,17 @@ export default function SoundPanel({ open, onOpenChange, muted }) {
               >
                 {page === 'toggles' ? (
                   <div>
+                    {/* Above the per-layer switches on purpose: music off still
+                        leaves rain and chatter playing, which reads as a bug
+                        unless there's one control that means silence. */}
+                    <SoundToggle
+                      icon={VolumeX}
+                      label="Mute everything"
+                      checked={audio.preMuteVolume != null}
+                      onCheckedChange={() => dispatch({ type: 'TOGGLE_MUTE_ALL' })}
+                    />
+                    <div className="my-2 border-t border-border/30" />
+
                     <SoundToggle
                       icon={Music}
                       label="Background Music"

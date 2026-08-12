@@ -104,6 +104,10 @@ export const initialState = {
   },
   audio: {
     masterVolume: 0.8,
+    // "Mute everything" parks the master at 0 and remembers the level here;
+    // non-null IS the muted state. Muting through the one knob every sound
+    // path already reads (music, ambience, SFX) is what makes it total.
+    preMuteVolume: null,
     // Music/ambience start low so the cafe is soft out of the box; the cafe
     // plays at the full slider level (cafeAudioEngine phaseMul=1), so raising
     // these toward 100% takes it up to full loudness.

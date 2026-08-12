@@ -922,8 +922,25 @@ export function gameReducer(state, action) {
 
     // ── Audio / Cafe meta ────────────────────────────────────────────────────
 
-    case 'SET_AUDIO':
-      return { ...state, audio: { ...state.audio, ...action.payload } };
+    case 'SET_AUDIO': {
+      const audio = { ...state.audio, ...action.payload };
+      // Touching the master slider ends a mute: otherwise the next unmute would
+      // restore the old level and silently undo the drag.
+      if ('masterVolume' in action.payload) audio.preMuteVolume = null;
+      return { ...state, audio };
+    }
+
+    case 'TOGGLE_MUTE_ALL': {
+      const a = state.audio;
+      return {
+        ...state,
+        audio: a.preMuteVolume != null
+          // Unmute to where it was — unless it was silent anyway, which would
+          // make the button do nothing visible.
+          ? { ...a, masterVolume: a.preMuteVolume > 0 ? a.preMuteVolume : 0.8, preMuteVolume: null }
+          : { ...a, masterVolume: 0, preMuteVolume: a.masterVolume },
+      };
+    }
 
     case 'SET_TIME_OF_DAY':
       if (state.cafe?.timeOfDay === action.payload) return state;
