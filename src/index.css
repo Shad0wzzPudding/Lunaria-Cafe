@@ -3,9 +3,6 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 @import "@fontsource/silkscreen";
-@import "@fontsource/press-start-2p";
-@import "@fontsource/vt323";
-@import "@fontsource/pixelify-sans";
 
 @custom-variant dark (&:is(.dark *));
 
