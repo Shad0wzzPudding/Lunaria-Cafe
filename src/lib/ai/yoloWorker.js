@@ -50,9 +50,10 @@ let nearMissConf = POLICY.nearMissConf;
 //   - too square           -> a watch face or a cube-ish object
 //   - impossibly elongated -> a sliver or frame edge, never a phone
 //
-// Honest limits: this RELIABLY kills the watch (small + square). A UHT carton
-// is a genuine tall rectangle — front-on it is as elongated as a phone or
-// more — so geometry barely helps there; the carton's defence is confidence
+// Honest limits: this RELIABLY kills the small-and-square family — the watch,
+// and a hand cupped at the ear, whose box is near 1:1. A UHT carton is a
+// genuine tall rectangle — front-on it is as elongated as a phone or more —
+// so geometry barely helps there; the carton's defence is confidence
 // alone. All three bounds are judged in TRUE frame proportions (detections
 // are unmapped from the crop first — never judge shape in distorted tensor
 // space; that bug rejected upright and landscape phones alike). The aspect
@@ -65,7 +66,7 @@ let nearMissConf = POLICY.nearMissConf;
 // Master switch: off = shape filtering disabled, only confidence screens.
 // Mutable so the debug panel can flip it (see the 'config' message); the
 // default lives in detectionPolicy.js with the bounds it governs, and is
-// currently OFF.
+// currently ON.
 let geometryGateEnabled = POLICY.geometryGate;
 
 async function initModel() {
@@ -118,7 +119,9 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // three parallel nullable values):
 //   { tier: 'hard',     box }            counts on its own (red box)
 //   { tier: 'soft',     box }            counts via persistence (amber box)
-//   { tier: 'rejected', conf, reason }   diagnostics only (near-miss text)
+//   { tier: 'rejected', conf, reason, rejectedBy }
+//                                        near-miss text; only rejectedBy
+//                                        'conf' is eligible for escalation
 //   { tier: null }                       nothing phone-like this frame
 function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
   const data = output.data;
@@ -144,10 +147,27 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
   // ever draws.)
   let best = null;
   let soft = null;
-  let rejected = null;
-  const noteRejection = (conf, reason, extra) => {
-    if (rejected && conf <= rejected.conf) return;
-    rejected = { conf, reason: extra ? `${reason} ${extra}` : reason };
+  // `by` is the machine-readable cause, kept separate from the human `reason`
+  // string (which carries the measured value for the debug overlay). The main
+  // thread branches on it: only a 'conf' rejection — the model saw a phone
+  // SHAPE but scored it faintly — may be escalated into a counting detection.
+  // A shape rejection is the gate's positive verdict that this is not a phone,
+  // and escalating that would launder the very object the gate exists to kill.
+  //
+  // TWO slots, not one, precisely because the cause carries that weight: a
+  // single slot ranked by confidence alone would let a higher-scoring shape
+  // rejection MASK a genuine conf near-miss in the same frame — a hand at the
+  // ear rejected on aspect at 33% hiding a faint real phone at 15%, which
+  // would then never escalate. Rank within each cause, report the escalatable
+  // one first.
+  let rejected = null;      // best 'conf' near-miss — the only escalatable kind
+  let shapeRejected = null; // best 'area'/'aspect'  — diagnostics only
+  const noteRejection = (conf, by, extra) => {
+    const slot = by === 'conf' ? rejected : shapeRejected;
+    if (slot && conf <= slot.conf) return;
+    const record = { conf, by, reason: extra ? `${by} ${extra}` : by };
+    if (by === 'conf') rejected = record;
+    else shapeRejected = record;
   };
 
   for (let i = 0; i < numDets; i++) {
@@ -200,7 +220,10 @@ function postprocess(output, videoW = TENSOR_SIZE, videoH = TENSOR_SIZE) {
   // explains the frame.
   if (best) return { tier: 'hard', box: best };
   if (soft) return { tier: 'soft', box: soft };
-  if (rejected) return { tier: 'rejected', conf: rejected.conf, reason: rejected.reason };
+  // Escalatable first: reporting a shape rejection in its place would suppress
+  // an escalation that is legitimately building.
+  const report = rejected ?? shapeRejected;
+  if (report) return { tier: 'rejected', conf: report.conf, reason: report.reason, rejectedBy: report.by };
   return { tier: null };
 }
 

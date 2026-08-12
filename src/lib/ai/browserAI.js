@@ -93,10 +93,11 @@ const LOW_CONF_SOFT = 0.10;     // counting floor when enabled
 const LOW_CONF_NEARMISS = 0.05; // near-miss floor, kept below softConf
 let lowConfFloorEnabled = true;
 
-// The worker's shape screen (area + aspect bounds). OFF by default, per
-// POLICY.geometryGate — the debug panel can turn it back on. It is the filter
-// that reliably rejects a mislabelled watch, so with it off a watch can count;
-// that is the accepted trade for catching more real phones.
+// The worker's shape screen (area + aspect bounds). ON by default, per
+// POLICY.geometryGate — the debug panel can turn it off to compare. It is the
+// only filter that rejects a phone-labelled prop the model is merely lukewarm
+// about (a hand at the ear, a watch, a bottle), since those score well above
+// any floor worth setting.
 let geometryGateEnabled = POLICY.geometryGate;
 
 // Always posted WHOLE. The worker reads an absent floor as "restore the policy
@@ -185,9 +186,11 @@ let phoneSoftStreak = 0;
 let phoneMissStreak = 0;
 let phoneConfirmed = false;
 
-// A near-miss (rejected) that persists this long is promoted to a soft "Phone?"
-// — a "familiar object" the AI keeps almost-detecting, so it starts counting via
-// the normal soft persistence instead of being ignored forever.
+// A CONFIDENCE near-miss (rejected for scoring below softConf, having already
+// passed the shape gate) that persists this long is promoted to a soft
+// "Phone?" — a "familiar object" the AI keeps almost-detecting, so it starts
+// counting via the normal soft persistence instead of being ignored forever.
+// Shape rejections are excluded on purpose; see the result handler.
 const NEAR_MISS_ESCALATE_MS = 2000;
 // Drop-outs shorter than this are bridged, so a flickering / intermittent
 // near-miss still accumulates toward the escalation instead of resetting on one
@@ -353,7 +356,15 @@ function initYoloWorker() {
     if (e.data.type === 'result') {
       const det = e.data.detection ?? { tier: null };
       const now = Date.now();
-      if (det.tier === 'rejected') {
+      // Only a CONFIDENCE near-miss may feed the escalation window. A shape
+      // rejection ('area'/'aspect') is the geometry gate saying "this is not a
+      // phone" — routing it here would promote it to a counting soft hit ~2s
+      // later, which silently undid the gate: a watch rejected for being small
+      // and square still confirmed a phone, just two seconds slower. Shape
+      // rejections fall through to the gap-frame branch, so they still SHOW as
+      // near-miss diagnostics but never accumulate toward a count.
+      const escalatable = det.tier === 'rejected' && det.rejectedBy === 'conf';
+      if (escalatable) {
         // Start the window, or restart it only after a lapse longer than the
         // grace period — a brief flicker keeps the accumulated time.
         if (nearMissStart === 0 || now - nearMissLastAt > NEAR_MISS_GRACE_MS) {
@@ -395,15 +406,15 @@ function initYoloWorker() {
       // the warning flickers on/off for the whole grace instead of clearing.
       // Without the confirmed check, empty frames keep phoneMissStreak at zero
       // and release never starts at all (the ~6.6s tail after putting the phone
-      // down). A near-miss still promotes after confirmation: something
-      // phone-like is visibly there, so the warning should hold.
+      // down). A confidence near-miss still promotes after confirmation:
+      // something phone-SHAPED is visibly there, so the warning should hold.
       const windowOpen =
         nearMissStart !== 0 && now - nearMissStart >= NEAR_MISS_ESCALATE_MS;
       const canBridgeGap =
         !phoneConfirmed && now - nearMissLastAt <= NEAR_MISS_BRIDGE_MS;
       const escalated =
         windowOpen &&
-        (det.tier === 'rejected' || (det.tier === null && canBridgeGap));
+        (escalatable || (det.tier === null && canBridgeGap));
       latestDetection = escalated
         ? { tier: 'soft', escalated: true, conf: det.conf, reason: det.reason }
         : det;
