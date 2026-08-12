@@ -125,6 +125,18 @@ export function mergeLoadedSave(loaded, initialState) {
     ? (loadedStreak > 0 ? loadedStreak : normalizeNonNegativeNumber(loadedStats.lapsedStreak))
     : 0;
 
+  // ── Legacy cafe keys ──────────────────────────────────────────
+  // Keys the game has stopped writing, dropped on the way IN. `save_data` is
+  // one schemaless blob, so anything an old build stored would otherwise be
+  // spread into live state here and written straight back out by the next
+  // autosave — which makes a database scrub impossible to land while any
+  // client still holds a pre-scrub save in memory.
+  //   maxCustomers — seats derive from cafe.upgrades (maxCustomersFor) now
+  //   fullNotice   — a "cafe is full" flag that existed for one afternoon
+  const loadedCafe = { ...(loaded.cafe ?? {}) };
+  delete loadedCafe.maxCustomers;
+  delete loadedCafe.fullNotice;
+
   // ── Weekly chart reset ────────────────────────────────────────
   let weeklyData;
   if (!isSameWeek) {
@@ -145,7 +157,7 @@ export function mergeLoadedSave(loaded, initialState) {
     reputation: loaded.reputation ?? initialState.reputation,
     cafe: {
       ...initialState.cafe,
-      ...loaded.cafe,
+      ...loadedCafe,
       furniture:
         loaded.cafe?.furniture?.length > 0
           ? loaded.cafe.furniture.map((f, i) => ({
