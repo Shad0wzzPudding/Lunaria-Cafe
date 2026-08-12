@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Coins, Users, Heart, Sparkles } from 'lucide-react';
 import { getChaosStage, formatFocusScore } from '@/lib/ai/aiIntegration';
 import { ZEN_PICTURES } from './zenPictures';
+import { maxCustomersFor } from '@/lib/cafe/upgrades.js';
 
 
 function renderTip(text) {
@@ -41,7 +42,7 @@ export default function ZenFocusView({ state }) {
   const stats = [
     { icon: Coins,    label: inRound ? 'Session Coins' : 'Coins', value: inRound ? `+${sessionCoins}` : (state.coins ?? 0),   color: '#f0c674' },
     { icon: Heart,    label: inRound ? 'Session Rep' : 'Reputation', value: inRound ? `${sessionRep >= 0 ? '+' : ''}${sessionRep}` : `${state.reputation ?? 0}%`, color: '#f0a0b8' },
-    { icon: Users,    label: 'Customers',   value: `${state.cafe.currentCustomers ?? 0}/${state.cafe.maxCustomers ?? 8}`, color: '#9ec8e8' },
+    { icon: Users,    label: 'Customers',   value: `${state.cafe.currentCustomers ?? 0}/${maxCustomersFor(state.cafe.upgrades)}`, color: '#9ec8e8' },
     { icon: Sparkles, label: 'Focus Score', value: formatFocusScore(state.attention.score ?? 100),                        color: chaos.color },
   ];
 

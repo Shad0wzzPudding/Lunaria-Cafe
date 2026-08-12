@@ -2,6 +2,7 @@ import { getChaosStage, generateChaosEvent } from '@/lib/ai/aiIntegration';
 import { pushPopup } from '@/lib/gameState/feedbackHelpers';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
 import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
+import { UPGRADE_BY_ID, VIP_PAY_MULTIPLIER } from '@/lib/cafe/upgrades.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS, BOOST_MULTIPLIER, BOOST_WINDOW_SECONDS, BOOST_MAX_GAIN_DELTA } from './constants';
 import { initialState } from './initialState';
 import { calcSessionMins, calcNewStreak, getDateString, getWeekStart, periodRolloverPatch } from './gameHelpers';
@@ -101,6 +102,21 @@ export function gameReducer(state, action) {
     case 'SET_RESET_PERIOD': {
       const period = action.payload === 'weekly' ? 'weekly' : 'daily';
       return { ...state, stats: { ...state.stats, resetPeriod: period } };
+    }
+
+    // Grant or take back an upgrade for free, ignoring coins and reputation —
+    // the only way to exercise the effects without grinding for them.
+    case 'DEBUG_TOGGLE_UPGRADE': {
+      const id = action.payload;
+      if (!UPGRADE_BY_ID[id]) return state;
+      const owned = state.cafe.upgrades ?? [];
+      return {
+        ...state,
+        cafe: {
+          ...state.cafe,
+          upgrades: owned.includes(id) ? owned.filter((u) => u !== id) : [...owned, id],
+        },
+      };
     }
 
     case 'DEBUG_SET_DATE': {
@@ -805,6 +821,31 @@ export function gameReducer(state, action) {
       };
     }
 
+    // ── Cafe upgrades ────────────────────────────────────────────────────────
+
+    case 'BUY_UPGRADE': {
+      const upg = UPGRADE_BY_ID[action.payload];
+      if (!upg) return state;
+      const owned = state.cafe.upgrades ?? [];
+      // All three gates are re-checked here. The panel hides the Buy button for
+      // a locked or owned upgrade, but deliberately leaves it clickable when
+      // coins are short so the shortfall popup below can explain — so the
+      // reducer, not the UI, is what actually decides.
+      if (owned.includes(upg.id)) return state;
+      if (state.reputation < upg.repReq) {
+        return { ...state, ui: pushPopup(state, { message: `🔒 ${upg.name} needs ${upg.repReq} reputation.` }) };
+      }
+      if (state.coins < upg.cost) {
+        return { ...state, ui: pushPopup(state, { icon: 'coins', message: '❌ Not enough coins!', shortfall: upg.cost - state.coins }) };
+      }
+      return {
+        ...state,
+        coins: state.coins - upg.cost,
+        cafe: { ...state.cafe, upgrades: [...owned, upg.id] },
+        ui: pushPopup(state, { icon: 'coins', message: `${upg.icon} ${upg.name} installed!`, amount: -upg.cost }),
+      };
+    }
+
     // ── UI ───────────────────────────────────────────────────────────────────
 
     case 'DISMISS_UI_POPUP':
@@ -825,8 +866,13 @@ export function gameReducer(state, action) {
         cafe: { ...state.cafe, currentCustomers: state.npcs.customers.length + 1 },
       };
 
+    // Fires ONLY when the cafe is so packed with furniture that an arriving
+    // customer can be placed nowhere: no free chair AND no patch of open floor
+    // to stand on (see the arrival check in CafeView). It is a decorating
+    // problem, not a capacity one — a cafe that is simply at its customer
+    // limit turns nobody away and says nothing.
     case 'CUSTOMER_TURNED_AWAY':
-      return { ...state, ui: pushPopup(state, '😕 The cafe was too cluttered, so a customer left.', 0) };
+      return { ...state, ui: pushPopup(state, '😕 The cafe was too cluttered, remove some furniture.', 0) };
 
     case 'SERVE_CUSTOMER':
     case 'REMOVE_CUSTOMER': {
@@ -849,7 +895,11 @@ export function gameReducer(state, action) {
         return left;
       }
 
-      const baseCoins = customer ? 8 + Math.floor(Math.random() * 7) : 0;
+      // VIPs (flagged on arrival once the VIP Corner is built) pay double, and
+      // the chaos debuff still applies on top — a messy cafe short-changes them
+      // exactly like anyone else.
+      const vipMul    = customer?.vip ? VIP_PAY_MULTIPLIER : 1;
+      const baseCoins = customer ? (8 + Math.floor(Math.random() * 7)) * vipMul : 0;
       const coinsGain = state.attention.chaosLevel >= 3 ? 0
         : state.attention.chaosLevel >= 2 ? Math.floor(baseCoins * 0.25)  // stage 2: −75%
         : state.attention.chaosLevel >= 1 ? Math.floor(baseCoins * 0.5)   // stage 1: −50%
@@ -893,7 +943,10 @@ export function gameReducer(state, action) {
       if (customer && !isZen) {
         // Always carry an explicit amount (even 0 at high chaos) so the coin
         // line shows "+0 coins" rather than being hidden.
-        next = { ...next, ui: pushPopup(next, { message: `${emoji} Customer served!`, amount: coinsGain }) };
+        next = { ...next, ui: pushPopup(next, {
+          message: customer.vip ? `${emoji} VIP customer served!` : `${emoji} Customer served!`,
+          amount: coinsGain,
+        }) };
       }
       return next;
     }

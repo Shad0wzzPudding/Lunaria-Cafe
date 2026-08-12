@@ -294,6 +294,16 @@ function drawCustomer(ctx, customer, time, furniture) {
     ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(emoji, x, y - (seated ? 4 : 8) + bobY);
   }
+  // VIP Corner customers (they pay double) wear a small gold halo so the
+  // upgrade is visible in the cafe, not just in the coin popup.
+  if (customer.vip) {
+    const headY = y - (seated ? 8 : 12) + bobY;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(240,198,116,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(x, headY - 11, 6, 2.2, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawAmbientLights(ctx, furniture, time, dim = 1, lowPerf = false) {

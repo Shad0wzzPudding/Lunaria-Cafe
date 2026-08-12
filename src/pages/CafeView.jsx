@@ -23,7 +23,7 @@ import LowScoreWarning from '@/components/focus/LowScoreWarning';
 import DecoratePanel from '@/components/cafe/DecoratePanel';
 import GameFeedback from '@/components/cafe/GameFeedback';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, Sprout, Coffee, Moon, Star, Crown, PawPrint, Gamepad2, Radio } from 'lucide-react';
+import { ArrowLeft, Play, Sofa, Sparkles, Square, Pause, Wand2, X, BarChart2, BarChart3, RefreshCw, Store, Coins, PawPrint, Gamepad2, Radio } from 'lucide-react';
 import StatsCharts from '@/components/stats/StatsCharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import SessionSummary from '@/components/cafe/SessionSummary';
@@ -40,6 +40,8 @@ import { Sounds } from '@/lib/sounds';
 import { toast } from 'sonner';
 import { getThemeMode, getThemeHex, getGlassShadeHex, getFocusPanelStyle, getGlassGradient, FOCUS_GLASS_BASE } from '@/lib/theme/themeDeriver';
 import { CAFE_W, CAFE_H, findRandomOpenSpot } from '@/lib/cafe/spatial.js';
+import { CAFE_UPGRADES, maxCustomersFor, dwellSecondsFor, vipChanceFor } from '@/lib/cafe/upgrades.js';
+import { REPUTATION_TIERS, getCurrentTier, arrivalChanceFor, arrivalMultiplierFor, formatArrivalMultiplier } from '@/lib/cafe/reputation.js';
 import { DANGER_SECONDS } from '@/components/focus/useDangerCountdown';
 
 const CHAOS_STAGE_NAMES = { 1: 'Cute Chaos', 2: 'Magical Chaos', 3: 'Midnight Incident' };
@@ -56,30 +58,9 @@ const JOURNAL_BUTTON_ART = '/assets/button/journal-button.png';
 const CUSTOMER_COLORS = ['#6b7db3', '#7db36b', '#b36b7d', '#b3a06b', '#6bb3a0', '#a06bb3'];
 const CUSTOMER_EMOJIS = ['😊', '😌', '🤓', '📖', '☕', '🧙', '🦊', '🌙'];
 const CUSTOMER_RADIUS = 12;
-
-const REPUTATION_TIERS = [
-  { min: 0,   max: 19,  name: 'Newcomer',  icon: Sprout,   color: '#9ca3af' },
-  { min: 20,  max: 39,  name: 'Local Gem', icon: Coffee,   color: '#7ec8a0' },
-  { min: 40,  max: 59,  name: 'Popular',   icon: Sparkles, color: '#6bb3d4' },
-  { min: 60,  max: 79,  name: 'Renowned',  icon: Moon,     color: '#cc7ada' },
-  { min: 80,  max: 99,  name: 'Legendary', icon: Star,     color: '#f0c674' },
-  { min: 100, max: 100, name: 'Mythic',    icon: Crown,    color: '#f472b6' },
-];
-
-function getCurrentTier(rep) {
-  for (let i = REPUTATION_TIERS.length - 1; i >= 0; i--) {
-    if (rep >= REPUTATION_TIERS[i].min) return REPUTATION_TIERS[i];
-  }
-  return REPUTATION_TIERS[0];
-}
-
-// Upgrade data - can be expanded with actual effects later
-const CAFE_UPGRADES = [
-  { icon: '🪑', name: 'Extra Seating',   desc: 'Adds 2 more seats for customers.',  repReq: 30,  cost: 200  },
-  { icon: '🧙', name: 'Skilled Barista', desc: 'Serves customers twice as fast.',   repReq: 50,  cost: 500  },
-  { icon: '🌙', name: 'VIP Corner',      desc: 'Attracts higher-paying guests.',    repReq: 70,  cost: 800  },
-  { icon: '🏰', name: 'Cafe Expansion',  desc: "Double your cafe's capacity.",      repReq: 90,  cost: 1500 },
-];
+// Stable empty fallback — a fresh `[]` per render would churn the effect deps
+// that read the upgrade list.
+const NO_UPGRADES = [];
 
 function CafeStatsPanel({ state, onClose, anchorRef }) {
   const reputation = state.reputation ?? 0;
@@ -133,14 +114,24 @@ function CafeStatsPanel({ state, onClose, anchorRef }) {
 
       {/* Reputation tier section */}
       <div className="mb-4 rounded-lg border border-border/30 p-3" style={{ background: `${currentTier.color}10` }}>
-        <div className="text-[10px] font-pixel text-muted-foreground mb-3 uppercase tracking-wider">Reputation Tier</div>
+        <div className="flex items-baseline justify-between gap-2 mb-3">
+          <div className="text-[10px] font-pixel text-muted-foreground uppercase tracking-wider">Reputation Tier</div>
+          {/* What the tier is actually worth — otherwise the row is decoration. */}
+          <div className="text-[9px] font-pixel whitespace-nowrap" style={{ color: currentTier.color }}>
+            {formatArrivalMultiplier(arrivalMultiplierFor(currentTier))} customers
+          </div>
+        </div>
 
         <div className="flex justify-between items-end gap-1 mb-3">
           {REPUTATION_TIERS.map((tier) => {
             const isCurrent = tier.name === currentTier.name;
             const isLocked = reputation < tier.min;
             return (
-              <div key={tier.name} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              <div
+                key={tier.name}
+                className="flex flex-col items-center gap-1 flex-1 min-w-0"
+                title={`${tier.name} (rep ${tier.min}+) — customers arrive ${formatArrivalMultiplier(arrivalMultiplierFor(tier))} as often`}
+              >
                 <div
                   className="relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
                   style={isCurrent ? {
@@ -203,6 +194,9 @@ function CafeStatsPanel({ state, onClose, anchorRef }) {
 }
 
 function CafeUpgradePanel({ state, onClose, anchorRef }) {
+  const { dispatch } = useGame();
+  const owned = state.cafe.upgrades ?? [];
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       // Anchor wraps both the trigger button and the panel, so clicking the
@@ -224,41 +218,59 @@ function CafeUpgradePanel({ state, onClose, anchorRef }) {
           <X className="w-4 h-4" />
         </button>
       </div>
-      <p className="font-body text-[11px] text-muted-foreground mb-3">Expand and improve your cafe.</p>
+      <div className="flex items-baseline justify-between mb-3 gap-2">
+        <p className="font-body text-[11px] text-muted-foreground">Expand and improve your cafe.</p>
+        <span className="font-pixel text-[9px] text-muted-foreground shrink-0">
+          {maxCustomersFor(owned)} seats
+        </span>
+      </div>
 
       <div className="flex flex-col gap-2">
         {CAFE_UPGRADES.map((upg) => {
+          const isOwned    = owned.includes(upg.id);
           const isUnlocked = state.reputation >= upg.repReq;
           return (
             <div
-              key={upg.name}
+              key={upg.id}
               className={`rounded-lg border p-3 flex items-start gap-3 transition-colors ${
-                isUnlocked
-                  ? 'border-border/40 bg-secondary/30'
-                  : 'border-border/20 bg-secondary/10 opacity-40'
+                isOwned
+                  ? 'border-primary/40 bg-primary/5'
+                  : isUnlocked
+                    ? 'border-border/40 bg-secondary/30'
+                    : 'border-border/20 bg-secondary/10 opacity-40'
               }`}
             >
-              <span className="text-xl mt-0.5">{isUnlocked ? upg.icon : '🔒'}</span>
+              <span className="text-xl mt-0.5">{isUnlocked || isOwned ? upg.icon : '🔒'}</span>
               <div className="flex-1 min-w-0">
                 <div className="font-pixel text-xs text-foreground">{upg.name}</div>
                 <div className="font-body text-[10px] text-muted-foreground mt-0.5 leading-snug">{upg.desc}</div>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="font-pixel text-[12px] text-yellow-400 flex items-center gap-0.5">
-                    <Coins size={11} strokeWidth={2.5} className="text-yellow-400" /> {upg.cost}
-                  </span>
-                  {!isUnlocked && (
+                  {/* Once bought the price is history — showing it next to an
+                      "Installed" badge reads as a running cost. */}
+                  {!isOwned && (
+                    <span className="font-pixel text-[12px] text-yellow-400 flex items-center gap-0.5">
+                      <Coins size={11} strokeWidth={2.5} className="text-yellow-400" /> {upg.cost}
+                    </span>
+                  )}
+                  {!isOwned && !isUnlocked && (
                     <span className="font-pixel text-[9px] text-muted-foreground">Rep {upg.repReq}+ needed</span>
                   )}
                 </div>
               </div>
-              {isUnlocked && (
+              {isOwned ? (
+                <span className="shrink-0 self-center rounded-md px-2 py-1 font-pixel text-[9px] bg-primary/15 text-primary border border-primary/30">
+                  Installed
+                </span>
+              ) : isUnlocked ? (
+                // Left clickable when the coins are short: the reducer answers
+                // with a "Required N more coins" popup, like furniture and pets.
                 <button
-                  disabled
-                  className="shrink-0 self-center rounded-md px-2 py-1 font-pixel text-[9px] bg-primary/10 text-primary border border-primary/20 opacity-60 cursor-not-allowed"
+                  onClick={() => dispatch({ type: 'BUY_UPGRADE', payload: upg.id })}
+                  className="shrink-0 self-center rounded-md px-2.5 py-1 font-pixel text-[9px] bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-colors"
                 >
-                  Soon™
+                  Buy
                 </button>
-              )}
+              ) : null}
             </div>
           );
         })}
@@ -421,6 +433,19 @@ export default function CafeView() {
   }, [isPaused]);
   const isManagement = state.phase === 'management';
 
+  // Everything the bought upgrades change, derived in one place.
+  const upgrades    = state.cafe.upgrades ?? NO_UPGRADES;
+  const maxCustomers = maxCustomersFor(upgrades);
+  // A famous cafe fills up faster: the arrival roll steps up at each
+  // reputation tier (0.20/tick at Newcomer … 0.45 at Mythic).
+  const arrivalChance = arrivalChanceFor(state.reputation);
+
+  // The session clock in a ref: customer departure times are measured against it,
+  // and reading it through a ref keeps the cafe loop from tearing down and
+  // restarting its interval once a second.
+  const elapsedRef = useRef(state.focus.elapsed);
+  useEffect(() => { elapsedRef.current = state.focus.elapsed; }, [state.focus.elapsed]);
+
   // Nothing audible — every layer off, or the master pulled to zero.
   const soundMuted =
     state.audio.masterVolume <= 0 ||
@@ -523,7 +548,9 @@ export default function CafeView() {
 
     // 1. ลูกค้าเข้าและออกร้าน
     const customerInterval = setInterval(() => {
-      if (state.cafe.currentCustomers < state.cafe.maxCustomers && Math.random() < 0.3) {
+      // A cafe already at its customer limit simply takes no arrivals — that is
+      // normal and says nothing. The popup below is for a different problem.
+      if (state.cafe.currentCustomers < maxCustomers && Math.random() < arrivalChance) {
         const sittable = state.cafe.furniture.filter(f => FURNITURE_CATALOG[f.type]?.sittable);
         const occupiedIds = new Set(state.npcs.customers.map(c => c.seatedAt).filter(Boolean));
         const freeSeat = sittable.find(f => !occupiedIds.has(f.id));
@@ -540,23 +567,37 @@ export default function CafeView() {
               seatedAt: freeSeat?.id ?? null,
               color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
               emoji: CUSTOMER_EMOJIS[Math.floor(Math.random() * CUSTOMER_EMOJIS.length)],
-              arrivedAt: Date.now(),
+              // Decided on arrival (0 without the VIP Corner) so the customer is
+              // a VIP for their whole stay, not just at the moment they pay.
+              vip: Math.random() < vipChanceFor(upgrades),
+              // Each customer carries their own departure time, measured in
+              // SESSION seconds (focus.elapsed), never wall-clock: elapsed
+              // freezes on pause, so a paused cafe doesn't empty itself the
+              // moment the player comes back.
+              leaveAtElapsed: elapsedRef.current + dwellSecondsFor(upgrades),
             },
           });
         } else {
+          // The cafe has room for this customer but the ROOM has no room for
+          // them: every sittable piece is taken and `findRandomOpenSpot` found
+          // no patch of floor clear of solid furniture to stand on. That means
+          // the place has been over-decorated — the one arrival failure worth
+          // telling the player about, since only they can fix it (remove or
+          // rearrange furniture in Decorate mode). Rare by nature, so the
+          // popup does not spam.
           dispatch({ type: 'CUSTOMER_TURNED_AWAY' });
         }
       }
 
-      if (state.npcs.customers.length > 0 && Math.random() < 0.15) {
-        const leaving = state.npcs.customers[Math.floor(Math.random() * state.npcs.customers.length)];
-        if (leaving) {
-          // The messier the cafe, the likelier a customer gives up and leaves
-          // unserved (calm → always served; Midnight Incident → usually not).
-          const unservedChance = [0, 0.15, 0.4, 0.75][state.attention.chaosLevel] ?? 0;
-          const served = Math.random() >= unservedChance;
-          dispatch({ type: served ? 'SERVE_CUSTOMER' : 'REMOVE_CUSTOMER', payload: leaving.id });
-        }
+      // Anyone whose time is up leaves now. Whether they leave *served* is
+      // still the chaos roll: calm cafes always serve, chaotic ones often
+      // don't. Stays are randomised per customer, so simultaneous departures
+      // are rare rather than a wave.
+      for (const leaving of state.npcs.customers) {
+        if ((leaving.leaveAtElapsed ?? 0) > elapsedRef.current) continue;
+        const unservedChance = [0, 0.15, 0.4, 0.75][state.attention.chaosLevel] ?? 0;
+        const served = Math.random() >= unservedChance;
+        dispatch({ type: served ? 'SERVE_CUSTOMER' : 'REMOVE_CUSTOMER', payload: leaving.id });
       }
     }, 4000);
 
@@ -573,7 +614,7 @@ export default function CafeView() {
       clearInterval(chaosInterval);
     };
   // ตัวแปรที่ใช้เช็คว่าต้องรันโค้ดก้อนนี้ใหม่เมื่อไหร่ (ไม่ต้องใส่ dispatch ก็ได้ แต่ใส่ไว้ก็ไม่เป็นไร)
-  }, [isFocusing, state.focus.status, state.cafe.currentCustomers, state.cafe.maxCustomers, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
+  }, [isFocusing, state.focus.status, state.cafe.currentCustomers, maxCustomers, arrivalChance, upgrades, state.npcs.customers, state.cafe.furniture, state.attention.chaosLevel, dispatch]);
   const requestNotifPermission = () => {
     if (!NOTIF_SUPPORTED) return;
     if (Notification.permission === 'default') {
@@ -735,7 +776,7 @@ export default function CafeView() {
     coins: state.coins,
     reputation: state.reputation,
     customers: state.cafe.currentCustomers,
-    maxCustomers: state.cafe.maxCustomers,
+    maxCustomers,
     attentionScore: state.attention.score,
     chaosLevel: state.attention.chaosLevel,
     performanceMode: state.settings.performanceMode,

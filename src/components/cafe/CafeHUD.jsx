@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
 import { getChaosStage, getConnectionStatus, formatFocusScore, isPhoneDetectionReady, getAIConfig } from '@/lib/ai/aiIntegration';
 import { Coins, Heart, Users, Sparkles, Wifi, WifiOff } from 'lucide-react';
+import { maxCustomersFor } from '@/lib/cafe/upgrades.js';
 
 function StatPill({ icon: Icon, value, colorClass, iconColor, title }) {
   return (
@@ -96,7 +97,7 @@ export default function CafeHUD() {
       />
       <StatPill
         icon={Users}
-        value={`${state.npcs.customers.length}/${state.cafe.maxCustomers}`}
+        value={`${state.npcs.customers.length}/${maxCustomersFor(state.cafe.upgrades)}`}
         colorClass="text-sky-200"
         iconColor="#9ec8e8"
         title="Customers in your cafe right now"

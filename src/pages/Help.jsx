@@ -78,6 +78,7 @@ const TUTORIAL_SECTIONS = [
     body: [
       'Customers wander in while you focus and seat themselves at chairs and sofas. They are served automatically — your only job is to keep the cafe calm so they stay and pay.',
       'Spend coins in Decorate mode on furniture (more seats = more customers at once) and in the Pet Shop on companions who roam your cafe.',
+      'The cafe starts with room for 6 customers, and each one stays a minute or two before moving on. The Upgrades shop (the shop icon in the cafe) unlocks permanent improvements as your reputation grows: Extra Seating (+2 seats, rep 30), Skilled Barista (customers served 25% faster, rep 50), VIP Corner (1 in 3 customers pays double, rep 70), and Cafe Expansion (doubles capacity, rep 90).',
     ],
   },
   {
@@ -85,6 +86,7 @@ const TUTORIAL_SECTIONS = [
     title: 'Reputation & Streak',
     body: [
       'Serving a customer while your focus score is 85 or higher earns +1 reputation. Serving during heavy chaos risks losing it, and failed sessions cost 3.',
+      'Reputation sets your tier — Newcomer, Local Gem, Popular, Renowned, Legendary, Mythic — and a famous cafe is a busy one: customers arrive more than twice as often at Mythic as they do at Newcomer, stepping up at every tier. Tiers also unlock the upgrades in the shop.',
       'Your streak counts consecutive days with at least one completed session — the timer must actually reach the end. Skip two days and the streak is lost.',
     ],
   },

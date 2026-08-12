@@ -5,6 +5,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
 import { isDetectionZoneVisible, setDetectionZoneVisible, isLowConfFloor, setLowConfFloor, isGeometryGate, setGeometryGate } from '@/lib/ai/browserAI';
+import { CAFE_UPGRADES, maxCustomersFor } from '@/lib/cafe/upgrades.js';
 
 const CHAOS_LEVELS = [
   { label: 'Calm',              score: 85, color: 'text-emerald-400' },
@@ -310,6 +311,24 @@ export default function DebugPanel({ onClose }) {
                         onKeyDown={e => e.key === 'Enter' && dispatch({ type: 'DEBUG_SET_DATE', payload: debugDate })}
                         className={`flex-1 ${inputCls}`} />
                       <Button size="sm" onClick={() => dispatch({ type: 'DEBUG_SET_DATE', payload: debugDate })} className="font-pixel text-[10px]">Set</Button>
+                    </div>
+                  </Group>
+
+                  <Group title={`Cafe Upgrades (${maxCustomersFor(state.cafe.upgrades)} seats)`}>
+                    <div className="space-y-1.5">
+                      {CAFE_UPGRADES.map((upg) => {
+                        const owned = (state.cafe.upgrades ?? []).includes(upg.id);
+                        return (
+                          <button key={upg.id}
+                            onClick={() => dispatch({ type: 'DEBUG_TOGGLE_UPGRADE', payload: upg.id })}
+                            className="w-full rounded-lg border border-border/40 bg-black/20 px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center justify-between gap-2">
+                            <span className="font-pixel text-[10px] text-foreground truncate">{upg.icon} {upg.name}</span>
+                            <span className={`font-pixel text-[10px] shrink-0 ${owned ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+                              {owned ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </Group>
 

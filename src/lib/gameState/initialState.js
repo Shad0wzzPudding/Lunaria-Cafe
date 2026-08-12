@@ -9,7 +9,9 @@ export const initialState = {
   cafe: {
     name: 'Lunaria Cafe',
     currentCustomers: 0,
-    maxCustomers: 8,
+    // Seat count is DERIVED from `upgrades` (maxCustomersFor) rather than
+    // stored, so an old save and a newly bought upgrade can't disagree.
+    upgrades: [], // ids from CAFE_UPGRADES, in purchase order
     timeOfDay: 'day',
     bgMode: 'immersive', // 'immersive' | 'reallife' | 'freestyle'
     decorateMode: false,
