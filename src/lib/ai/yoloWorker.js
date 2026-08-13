@@ -66,7 +66,7 @@ let nearMissConf = POLICY.nearMissConf;
 // Master switch: off = shape filtering disabled, only confidence screens.
 // Mutable so the debug panel can flip it (see the 'config' message); the
 // default lives in detectionPolicy.js with the bounds it governs, and is
-// currently ON.
+// currently OFF.
 let geometryGateEnabled = POLICY.geometryGate;
 
 async function initModel() {

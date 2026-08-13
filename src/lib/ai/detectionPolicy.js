@@ -94,24 +94,26 @@ export const POLICY_V2 = {
   minArea: 0.02,    // fraction of the frame; below = watch, not a held phone
   minAspect: 1.2,   // loose on purpose — axis-aligned boxes square out under hand tilt
   maxAspect: 3.2,   // beyond this it's a sliver/edge, not a phone
-  // Master switch for the three bounds above. Back ON (2026-08-12) after live
-  // testing with the 10% floor genuinely applied for the first time: a hand
-  // cupped at the ear scored 33% with a near-square box, and a water bottle
-  // came through as a tall sliver. Both are rejected on shape; neither is
-  // touchable by confidence, since 33% clears even the un-lowered 0.20 floor.
+  // Master switch for the three bounds above. OFF — user's call, 2026-08-12,
+  // after live-testing it on. Catching real phones is worth more here than
+  // rejecting props: in-use phones score ~38-44%, i.e. INSIDE the band the
+  // gate screens, so a phone tilted enough to square its axis-aligned box
+  // below minAspect was being missed outright.
   //
-  // It was OFF from 2026-08-09 on the reasoning that catching real phones beat
-  // rejecting props — but during that window the gate could not actually
-  // reject anything that sat still, because near-miss escalation promoted
-  // shape rejections into counting soft hits ~2s later. Fixing that (see
-  // rejectedBy in yoloWorker) is what makes this switch mean something.
+  // ACCEPTED COST: shape is the only screen that can reject a phone-shaped
+  // prop the model is merely lukewarm about. With the gate off, the hand
+  // cupped at the ear (33%, near-square box) and the water bottle (tall
+  // sliver) both count again — neither is touchable by confidence, since 33%
+  // clears even the un-lowered 0.20 floor. Turn this back on if that becomes
+  // the bigger problem; try loosening minAspect first so real tilted phones
+  // survive the gate.
   //
-  // The gate only ever screened the amber band (bypassConf and up pass on the
-  // model's word alone). KNOWN COST: in-use phones score ~38-44%, i.e. inside
-  // the screened band, so a phone tilted enough to square its axis-aligned box
-  // below minAspect is now missed outright rather than escalating. If real
-  // phones start slipping, loosen minAspect before turning this back off.
-  geometryGate: true,
+  // Note the gate is now honest in both positions: near-miss escalation used
+  // to promote shape rejections into counting soft hits ~2s later, so ON
+  // never actually rejected anything that sat still. That's fixed (see
+  // rejectedBy in yoloWorker) — while OFF the worker emits no shape
+  // rejections at all, so that fix simply lies dormant until this flips back.
+  geometryGate: false,
   confirmFrames: 2,     // hard hits to confirm (~1.6s at the 800ms cadence)
   softConfirmFrames: 3, // soft frames to confirm (~2.4s). Was 4 (~3.2s);
                         // 3 keeps one extra frame of flicker protection over

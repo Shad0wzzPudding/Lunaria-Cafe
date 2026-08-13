@@ -93,11 +93,12 @@ const LOW_CONF_SOFT = 0.10;     // counting floor when enabled
 const LOW_CONF_NEARMISS = 0.05; // near-miss floor, kept below softConf
 let lowConfFloorEnabled = true;
 
-// The worker's shape screen (area + aspect bounds). ON by default, per
-// POLICY.geometryGate — the debug panel can turn it off to compare. It is the
-// only filter that rejects a phone-labelled prop the model is merely lukewarm
-// about (a hand at the ear, a watch, a bottle), since those score well above
-// any floor worth setting.
+// The worker's shape screen (area + aspect bounds). OFF by default, per
+// POLICY.geometryGate — the debug panel can turn it on. It is the only filter
+// that rejects a phone-labelled prop the model is merely lukewarm about (a
+// hand at the ear, a watch, a bottle), since those score well above any floor
+// worth setting; with it off they count. That is the accepted trade for not
+// missing real phones, which score inside the same band.
 let geometryGateEnabled = POLICY.geometryGate;
 
 // Always posted WHOLE. The worker reads an absent floor as "restore the policy
