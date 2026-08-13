@@ -234,14 +234,24 @@ export default function DebugPanel({ onClose }) {
         {/* Above the panel's own z-[200] so the celebration isn't hidden behind
             the thing that triggered it. Dismisses on click/Enter/Escape. */}
         {showReveal && (
-          <div className="fixed inset-0 z-[300]">
+          // motion.div with a key, not a plain div: AnimatePresence can only
+          // animate an exit for a motion child, so a bare wrapper made the
+          // celebration vanish instantly instead of fading.
+          <motion.div
+            key="starter-pack-reveal"
+            className="fixed inset-0 z-[300]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <StarterPackReveal
               audio={state.audio}
               onDone={() => setShowReveal(false)}
               className="absolute inset-0"
             />
-          </div>
+          </motion.div>
         )}
 
         {!collapsed && (
