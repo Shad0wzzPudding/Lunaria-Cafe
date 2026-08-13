@@ -34,7 +34,6 @@ import FocusModePrompt from '@/components/cafe/FocusModePrompt';
 import ExitSessionPrompt from '@/components/cafe/ExitSessionPrompt';
 import ZenFocusView from '@/components/cafe/ZenFocusView';
 import RoundOverlay from '@/components/liveRound/RoundOverlay';
-import RoundSelfProgress from '@/components/liveRound/RoundSelfProgress';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { ZEN_PICTURES } from '@/components/cafe/zenPictures';
 import { Sounds } from '@/lib/sounds';
@@ -1249,11 +1248,6 @@ export default function CafeView() {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CafeHUD />
-          {/* The student's own round progress. In the footer rather than
-              inside RoundOverlay so that dismissing the leaderboard doesn't
-              also hide the evidence that time banked before a rejoin counts.
-              Renders nothing outside a live round. */}
-          <RoundSelfProgress />
           <div className="flex flex-wrap gap-2 ml-auto">
             {isManagement && !state.cafe.decorateMode && (
               <>
