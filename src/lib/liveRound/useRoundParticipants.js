@@ -9,7 +9,7 @@ async function fetchParticipants(roundId) {
     // left_at + updated_at drive the "didn't finish" tag (see
     // scoreRoundEntries) — one marks an explicit leave, the other
     // catches a student who simply stopped reporting.
-    .select('student_id, display_name, joined_at, focus_seconds, coins, rep, avg_focus, distractions, left_at, left_count, absent_seconds, paused_seconds, updated_at')
+    .select('student_id, display_name, joined_at, focus_seconds, coins, rep, avg_focus, distractions, left_at, left_count, absent_seconds, paused_seconds, is_paused, updated_at')
     .eq('round_id', roundId);
   if (error) throw error;
   return data ?? [];

@@ -482,7 +482,7 @@ export function LiveRoundProvider({ children }) {
         lastHeartbeatRef.current = now;
         await supabase
           .from('round_participants')
-          .update({ updated_at: new Date().toISOString() })
+          .update({ updated_at: new Date().toISOString(), is_paused: false })
           .eq('round_id', roundId)
           .eq('student_id', userId);
         return;
@@ -512,7 +512,8 @@ export function LiveRoundProvider({ children }) {
       // while paused — sample it. One tick's worth per tick; the only thing
       // it feeds is a "more than half the session" test, so tick-level
       // resolution is ample.
-      if (st.focus?.status === 'paused') {
+      const isPaused = st.focus?.status === 'paused';
+      if (isPaused) {
         pausedRef.current += REPORT_INTERVAL / 1000;
       }
       const pausedSeconds = accumulatedRef.current.paused + pausedRef.current;
@@ -529,6 +530,7 @@ export function LiveRoundProvider({ children }) {
           rep,
           distractions,
           paused_seconds: pausedSeconds,
+          is_paused: isPaused,
           avg_focus: avg,
           updated_at: new Date().toISOString(),
         })

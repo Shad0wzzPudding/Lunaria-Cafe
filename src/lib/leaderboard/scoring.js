@@ -282,6 +282,9 @@ export function scoreRoundEntries(rows, endedAt = null, roundSeconds = null) {
       leftCount: nonNeg(num(r.left_count)),
       absentSeconds: nonNeg(num(r.absent_seconds)),
       pausedSeconds: nonNeg(num(r.paused_seconds)),
+      // Live-only: history judges attendance from pausedSeconds instead, so a
+      // value left over from a finished session's last tick is never shown.
+      isPaused: !!r.is_paused,
       // When they came into the session. Already on the table since the
       // original class_rounds migration — it just was never surfaced.
       joinedAt: r.joined_at ?? null,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trophy, Clock, Target, Coins, Crown, Star, ZapOff } from 'lucide-react';
+import { Trophy, Clock, Target, Coins, Crown, Star, ZapOff, PauseCircle } from 'lucide-react';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
 import {
   ROUND_MODES,
@@ -12,6 +12,7 @@ const MODE_ICON = { overall: Trophy, time: Clock, focus: Target, reputation: Sta
 
 // Spelled out on hover — the chip itself has room for a word, not a sentence.
 const ATTENDANCE_HINT = {
+  full: 'Present for the whole session',
   'left early': 'Left the session and did not come back',
   'went quiet': 'Stopped reporting before the session ended',
   rejoined: 'Left at least once during the session, then came back',
@@ -90,19 +91,38 @@ export default function RoundLeaderboard({ roundId, currentUserId, live = true, 
                     <p className="truncate text-sm font-medium text-foreground" title={entry.displayName}>
                       {entry.displayName}
                     </p>
-                    {/* They still rank on what they earned — this only says
-                        they weren't there for the whole session. */}
-                    {entry.partial && (
+                    {/* Live state, not a verdict: says a student is sitting
+                        paused RIGHT NOW. Only while the round is running —
+                        on an ended session is_paused is just whatever the
+                        last tick wrote, and attendance answers it properly. */}
+                    {live && entry.isPaused && (
                       <span
-                        className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] text-amber-600"
-                        title={ATTENDANCE_HINT[entry.attendance] ?? ''}
+                        className="flex shrink-0 items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] text-sky-500"
+                        title="This student has their focus session paused right now"
                       >
-                        {entry.attendance}
-                        {entry.attendance === 'rejoined' && entry.leftCount > 1
-                          ? ` ${entry.leftCount}×`
-                          : ''}
+                        <PauseCircle className="h-2.5 w-2.5" />
+                        paused
                       </span>
                     )}
+                    {/* Every student gets an attendance chip, not just the
+                        ones who fell short. A missing chip is ambiguous — it
+                        could mean "attended fully" or "this row predates the
+                        tracking" — whereas an explicit "full" is an answer.
+                        Green for full, amber for everything else; they still
+                        rank on what they earned either way. */}
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] ${
+                        entry.partial
+                          ? 'bg-amber-500/15 text-amber-600'
+                          : 'bg-emerald-500/15 text-emerald-600'
+                      }`}
+                      title={ATTENDANCE_HINT[entry.attendance] ?? ''}
+                    >
+                      {entry.attendance}
+                      {entry.attendance === 'rejoined' && entry.leftCount > 1
+                        ? ` ${entry.leftCount}×`
+                        : ''}
+                    </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDuration(entry.focus_seconds)}</span>
