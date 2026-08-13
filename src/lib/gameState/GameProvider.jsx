@@ -191,6 +191,31 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
     return () => clearInterval(interval);
   }, [userId, ready, loadError]);
 
+  // Persist a spent boost potion immediately.
+  //
+  // Tickets are consumed at session START and never refunded, so losing the
+  // decrement hands back a resource the player already used. Waiting for the
+  // 30s autosave is not safe enough: the unload save below is an async request
+  // with no keepalive, and browsers routinely kill it, so joining a session and
+  // reloading inside the autosave window silently restores the potion — which
+  // reads as "potions never run out" across a run of short tests.
+  //
+  // Deliberately uses `state` from this render, NOT stateRef: that ref is
+  // assigned in an effect (see above), so anything firing closer to the
+  // dispatch would persist the pre-spend value and write the old count back.
+  const prevTicketsRef = useRef(null);
+  useEffect(() => {
+    const tickets = state.boosts?.focusTickets ?? 0;
+    const previous = prevTicketsRef.current;
+    prevTicketsRef.current = tickets;
+    if (!userId || !ready || loadError) return;
+    // Only a DECREASE — a grant (starter pack) can wait for the autosave.
+    if (previous === null || tickets >= previous) return;
+    savePlayerSave(userId, state).catch((err) => {
+      console.error('Boost-spend save failed:', err);
+    });
+  }, [state, userId, ready, loadError]);
+
   useEffect(() => {
     if (!userId || !ready || loadError) return;
 

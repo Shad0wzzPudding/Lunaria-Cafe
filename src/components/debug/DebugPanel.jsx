@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getDateString } from '@/lib/gameState/gameHelpers';
 import { isDetectionZoneVisible, setDetectionZoneVisible, isLowConfFloor, setLowConfFloor, isGeometryGate, setGeometryGate } from '@/lib/ai/browserAI';
 import { CAFE_UPGRADES, maxCustomersFor } from '@/lib/cafe/upgrades.js';
+import StarterPackReveal from '@/components/cafe/StarterPackReveal';
 
 const CHAOS_LEVELS = [
   { label: 'Calm',              score: 85, color: 'text-emerald-400' },
@@ -105,6 +106,14 @@ export default function DebugPanel({ onClose }) {
   const toggleGeometryGate = () => {
     setGeometryGate(!geometryGate);
     setGeometryGateUi(!geometryGate);
+  };
+
+  // Granting silently made the reward impossible to eyeball, so the debug gift
+  // plays the same celebration the welcome letter does.
+  const [showReveal, setShowReveal] = useState(false);
+  const giftStarterPack = () => {
+    dispatch({ type: 'DEBUG_GRANT_STARTER_PACK' });
+    setShowReveal(true);
   };
 
   // Left column state
@@ -222,6 +231,19 @@ export default function DebugPanel({ onClose }) {
       </AnimatePresence>
 
       <AnimatePresence>
+        {/* Above the panel's own z-[200] so the celebration isn't hidden behind
+            the thing that triggered it. Dismisses on click/Enter/Escape. */}
+        {showReveal && (
+          <div className="fixed inset-0 z-[300]">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <StarterPackReveal
+              audio={state.audio}
+              onDone={() => setShowReveal(false)}
+              className="absolute inset-0"
+            />
+          </div>
+        )}
+
         {!collapsed && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCollapsed(true)} />
@@ -300,6 +322,20 @@ export default function DebugPanel({ onClose }) {
                     </div>
                   </Group>
 
+                  <Group title={`Starter Pack (${state.boosts?.focusTickets ?? 0} potions held)`}>
+                    <Button
+                      size="sm"
+                      onClick={giftStarterPack}
+                      className="font-pixel text-[10px] w-full"
+                    >
+                      Gift +500 coins, +3 potions
+                    </Button>
+                    <p className="text-[9px] leading-tight text-muted-foreground">
+                      Adds to what you hold. Potions are spent on joining a live
+                      session and never refunded.
+                    </p>
+                  </Group>
+
                   <Group title="Focus Time (Today)">
                     {hmsInput(focusH, setFocusH, focusM, setFocusM, focusS, setFocusS, applyFocusTime)}
                   </Group>
@@ -314,6 +350,12 @@ export default function DebugPanel({ onClose }) {
                     </div>
                   </Group>
 
+
+
+                </div>
+
+                {/* ── Right column — Stats Cards ── */}
+                <div className="space-y-3">
                   <Group title={`Cafe Upgrades (${maxCustomersFor(state.cafe.upgrades)} seats)`}>
                     <div className="space-y-1.5">
                       {CAFE_UPGRADES.map((upg) => {
@@ -365,10 +407,6 @@ export default function DebugPanel({ onClose }) {
                     </p>
                   </Group>
 
-                </div>
-
-                {/* ── Right column — Stats Cards ── */}
-                <div className="space-y-3">
                   <Group
                     title="Stats Cards"
                     note={(
