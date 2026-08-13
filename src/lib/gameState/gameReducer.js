@@ -119,6 +119,27 @@ export function gameReducer(state, action) {
       };
     }
 
+    case 'DEBUG_GRANT_STARTER_PACK': {
+      // Re-grants the starter pack reward regardless of starterPackClaimed.
+      // CLAIM_STARTER_PACK is deliberately idempotent (the welcome letter is
+      // re-openable), which makes it useless for topping up during testing —
+      // and boost tickets are consumed at session start and never refunded,
+      // so testing live rounds burns through them with no way back.
+      //
+      // ADDS to the current ticket count rather than setting it to 3, so
+      // repeated grants accumulate and this can't quietly REMOVE tickets from
+      // someone who already has more than the pack gives.
+      return {
+        ...state,
+        coins: state.coins + 500,
+        boosts: {
+          ...state.boosts,
+          starterPackClaimed: true,
+          focusTickets: (state.boosts?.focusTickets ?? 0) + 3,
+        },
+      };
+    }
+
     case 'DEBUG_SET_DATE': {
       const newDate = action.payload;
       const prevDate = state.ui.debugDate ?? state.stats.todayDate ?? getDateString();
@@ -184,9 +205,30 @@ export function gameReducer(state, action) {
       // `boostsAllowed` (live rounds): the instructor's per-session toggle —
       // when off, joining neither spends a ticket nor applies the ×1.15.
       const tickets  = state.boosts?.focusTickets ?? 0;
+      // `resuming` blocks a spend so a reload or auto-rejoin can't charge twice
+      // for one participation. But a student who deliberately REJOINS after
+      // leaving gets no boost either — the first potion's window is long gone
+      // — and previously had no way to start another. `useBoostOnResume` is
+      // that explicit choice, made in a prompt at rejoin time; it is the only
+      // thing that may override `resuming`, so an automatic resume still
+      // never spends.
       const useBoost = tickets > 0
-        && !(action.payload?.resuming ?? false)
-        && (action.payload?.boostsAllowed ?? true);
+        && (action.payload?.boostsAllowed ?? true)
+        && (!(action.payload?.resuming ?? false)
+            || (action.payload?.useBoostOnResume ?? false));
+      // `resume` (live rounds): a student rejoining a round they were already
+      // in. Their round-scoped counters must pick up where they left off —
+      // otherwise the HUD reads 0 rep / 0 coins / 0 distractions and it looks
+      // as though leaving threw the session away. The live board and the
+      // instructor already carried the real totals; this is what makes the
+      // student's own view agree with them.
+      //
+      // The provider zeroes its matching accumulators when it sends these, so
+      // the progress is counted once, not twice — see beginParticipation.
+      const resume = action.payload?.resume ?? null;
+      const resumeRep = Number(resume?.sessionRep) || 0;
+      const resumeCoins = Math.max(0, Number(resume?.coins) || 0);
+      const resumeDistractions = Math.max(0, Number(resume?.distractions) || 0);
       return {
         ...state,
         focus: {
@@ -196,8 +238,11 @@ export function gameReducer(state, action) {
           duration: action.payload?.durationSeconds ?? state.focus.duration,
           roundControlled: action.payload?.roundControlled ?? false,
           endsAt: action.payload?.endsAt ?? null,
-          sessionRep: 0,
-          coinsAtStart: state.coins,
+          sessionRep: resumeRep,
+          // Shifted back by the coins already banked this ROUND, so the HUD's
+          // "coins this session" (state.coins - coinsAtStart) resumes at the
+          // pre-leave figure instead of restarting at zero.
+          coinsAtStart: state.coins - resumeCoins,
           reputationAtStart: state.reputation,
           repPenaltyLastAt: null,
           boostActive: useBoost,
@@ -206,7 +251,7 @@ export function gameReducer(state, action) {
         // score/rawScore reset to the engine's starting point so the boost's
         // gain-delta math starts from a shared baseline (browserAI opens at
         // ATTN_START = 70 = initialState.attention.score).
-        attention: { ...state.attention, score: initialState.attention.score, rawScore: initialState.attention.rawScore, chaosEvents: [], sessionDistractions: 0, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
+        attention: { ...state.attention, score: initialState.attention.score, rawScore: initialState.attention.rawScore, chaosEvents: [], sessionDistractions: resumeDistractions, absenceCounted: false, userAbsentSince: null, userPresentSince: null, debugAttentionLock: false },
       };
     }
 

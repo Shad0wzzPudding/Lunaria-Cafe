@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { Trophy, Clock, Target, Coins, Crown, Star } from 'lucide-react';
+import { Trophy, Clock, Target, Coins, Crown, Star, ZapOff } from 'lucide-react';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
 import {
   ROUND_MODES,
-  rankByMode,
+  rankRoundByMode,
   formatRoundValue,
   formatDuration,
 } from '@/lib/leaderboard/scoring';
 
 const MODE_ICON = { overall: Trophy, time: Clock, focus: Target, reputation: Star, coins: Coins };
+
+// Spelled out on hover — the chip itself has room for a word, not a sentence.
+const ATTENDANCE_HINT = {
+  'left early': 'Left the session and did not come back',
+  'went quiet': 'Stopped reporting before the session ended',
+  rejoined: 'Left at least once during the session, then came back',
+  'paused >50%': 'Paused for more than half the session',
+};
 const MEDAL = ['text-amber-400', 'text-slate-300', 'text-amber-700'];
 
 function RankBadge({ rank }) {
@@ -16,11 +24,16 @@ function RankBadge({ rank }) {
   return <span className="text-xs font-semibold text-muted-foreground tabular-nums">{rank}</span>;
 }
 
-/** Full realtime round board — used on the instructor side. */
-export default function RoundLeaderboard({ roundId, currentUserId }) {
+/**
+ * Full round board — the live instructor view, and (with live={false})
+ * the final standings of an ended round in the history tab. The flag is
+ * forwarded rather than assumed, so history doesn't silently re-open a
+ * realtime channel the caller asked not to have.
+ */
+export default function RoundLeaderboard({ roundId, currentUserId, live = true, endedAt = null, roundSeconds = null }) {
   const [mode, setMode] = useState('overall');
-  const { entries, isLoading, error } = useRoundParticipants(roundId);
-  const ranked = rankByMode(entries, mode);
+  const { entries, isLoading, error } = useRoundParticipants(roundId, { live, endedAt, roundSeconds });
+  const ranked = rankRoundByMode(entries, mode);
   const ModeIcon = MODE_ICON[mode] ?? Trophy;
 
   return (
@@ -52,7 +65,9 @@ export default function RoundLeaderboard({ roundId, currentUserId }) {
 
       {!isLoading && !error && ranked.length === 0 && (
         <div className="rounded-xl border border-dashed border-border/40 p-8 text-center text-sm text-muted-foreground">
-          Waiting for students to join…
+          {/* An ended round is never going to fill up, so don't tell the
+              instructor to keep waiting for it. */}
+          {live ? 'Waiting for students to join…' : 'Nobody joined this session.'}
         </div>
       )}
 
@@ -71,12 +86,38 @@ export default function RoundLeaderboard({ roundId, currentUserId }) {
                   <RankBadge rank={entry.rank} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{entry.displayName}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium text-foreground" title={entry.displayName}>
+                      {entry.displayName}
+                    </p>
+                    {/* They still rank on what they earned — this only says
+                        they weren't there for the whole session. */}
+                    {entry.partial && (
+                      <span
+                        className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] text-amber-600"
+                        title={ATTENDANCE_HINT[entry.attendance] ?? ''}
+                      >
+                        {entry.attendance}
+                        {entry.attendance === 'rejoined' && entry.leftCount > 1
+                          ? ` ${entry.leftCount}×`
+                          : ''}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDuration(entry.focus_seconds)}</span>
                     <span className="flex items-center gap-1"><Target className="h-3 w-3" />{entry.avg_focus === null ? '—' : entry.avg_focus}</span>
                     <span className="flex items-center gap-1"><Star className="h-3 w-3" />{entry.rep > 0 ? '+' : ''}{entry.rep}</span>
                     <span className="flex items-center gap-1"><Coins className="h-3 w-3" />{entry.coins}</span>
+                    {/* Amber once it's non-zero — a count of 0 shouldn't read
+                        as a warning, but any distraction should stand out.
+                        Reported only; it doesn't affect Overall. */}
+                    <span
+                      className={`flex items-center gap-1 ${entry.distractions > 0 ? 'text-orange-400' : ''}`}
+                      title={`${entry.distractions} distraction${entry.distractions === 1 ? '' : 's'} this session`}
+                    >
+                      <ZapOff className="h-3 w-3" />{entry.distractions}
+                    </span>
                   </div>
                 </div>
                 <p className="flex shrink-0 items-center gap-1 text-base font-semibold text-foreground tabular-nums">

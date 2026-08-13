@@ -1,12 +1,23 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy, Radio } from 'lucide-react';
+import SearchInput from '@/components/ui/SearchInput';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy, Radio, Hash, MailOpen, Lock, Plus } from 'lucide-react';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
+import { ROOM_GRID } from '@/lib/ui/cardGrid';
 
 async function fetchClassrooms() {
   const { data, error } = await supabase.rpc('list_classrooms');
@@ -14,13 +25,27 @@ async function fetchClassrooms() {
   return data ?? [];
 }
 
+
 function RoomCard({ room, children }) {
   return (
     <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-display text-sm text-foreground truncate">{room.name}</p>
-          <p className="text-xs text-muted-foreground truncate">by {room.instructor_name}</p>
+          <div className="flex items-center gap-1.5">
+            {/* Long names are truncated to keep the card tidy, so hovering
+                has to be able to reveal the rest. */}
+            <p className="font-display text-sm text-foreground truncate" title={room.name}>
+              {room.name}
+            </p>
+            {/* Only ever seen on an enrolled room — private rooms are
+                filtered out of the browse list server-side. */}
+            {room.is_public === false && (
+              <Lock className="w-3 h-3 shrink-0 text-amber-500" aria-label="Private classroom" />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground truncate" title={room.instructor_name}>
+            by {room.instructor_name}
+          </p>
         </div>
         <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
           <Users className="w-3.5 h-3.5" />
@@ -45,13 +70,64 @@ export default function MyClassrooms() {
   const [pin, setPin] = useState('');
   const [joinError, setJoinError] = useState('');
   const [leavingId, setLeavingId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [codePin, setCodePin] = useState('');
+  const [codeMsg, setCodeMsg] = useState(null); // { ok, text }
+  const [joinOpen, setJoinOpen] = useState(false);
 
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['classrooms'],
     queryFn: fetchClassrooms,
   });
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+  const { data: invites } = useQuery({
+    queryKey: ['my-invites'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('my_invites');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['classrooms'] });
+    queryClient.invalidateQueries({ queryKey: ['my-invites'] });
+  };
+
+  const respondMutation = useMutation({
+    mutationFn: async ({ inviteId, accept }) => {
+      const { error } = await supabase.rpc('respond_to_invite', {
+        _invite_id: inviteId,
+        _accept: accept,
+      });
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  const codeMutation = useMutation({
+    mutationFn: async ({ code, pin }) => {
+      const { data, error } = await supabase.rpc('join_classroom_by_code', {
+        _code: code,
+        _pin: pin,
+      });
+      if (error) throw error;
+      // The RPC returns a one-row table, so unwrap it for the message.
+      return Array.isArray(data) ? data[0] : data;
+    },
+    onSuccess: (room) => {
+      // Close the dialog and confirm outside it — the new room is now on the
+      // page behind, which is the real confirmation.
+      setJoinCode('');
+      setCodePin('');
+      setCodeMsg(null);
+      setJoinOpen(false);
+      toast.success(`Joined ${room?.classroom_name ?? 'the classroom'}!`);
+      refresh();
+    },
+    onError: (err) => setCodeMsg({ ok: false, text: err.message || 'Could not join.' }),
+  });
 
   const joinMutation = useMutation({
     mutationFn: async ({ classroomId, pin }) => {
@@ -65,6 +141,8 @@ export default function MyClassrooms() {
       setJoiningId(null);
       setPin('');
       setJoinError('');
+      setJoinOpen(false);
+      toast.success('Joined the classroom!');
       refresh();
     },
     onError: (err) => setJoinError(err.message || 'Could not join.'),
@@ -85,8 +163,19 @@ export default function MyClassrooms() {
     },
   });
 
+  // Search filters the AVAILABLE list only — the enrolled list is short by
+  // nature, while list_classrooms() returns every room in the database, so
+  // that's the one that becomes unbrowsable.
   const enrolled = (rooms ?? []).filter((r) => r.is_member);
-  const available = (rooms ?? []).filter((r) => !r.is_member);
+  const available = useMemo(() => {
+    const list = (rooms ?? []).filter((r) => !r.is_member);
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((r) =>
+      `${r.name} ${r.instructor_name ?? ''}`.toLowerCase().includes(q),
+    );
+  }, [rooms, search]);
+  const availableTotal = (rooms ?? []).filter((r) => !r.is_member).length;
 
   const startJoin = (roomId) => {
     setJoiningId(roomId);
@@ -109,9 +198,167 @@ export default function MyClassrooms() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <h1 className="font-display text-lg text-foreground">My Classrooms</h1>
+
+        {/* Joining lives behind this, so the page itself is only the rooms
+            you're actually in. mr-auto on the title would fight the gap, so
+            the spacer does the pushing. */}
+        <div className="flex-1" />
+        <Dialog
+          open={joinOpen}
+          onOpenChange={(open) => {
+            setJoinOpen(open);
+            // Reset on close, or reopening shows a stale "Wrong PIN" from
+            // last time and whichever room's PIN form was left expanded.
+            if (!open) {
+              setCodeMsg(null);
+              setJoiningId(null);
+              setJoinError('');
+              setSearch('');
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Join a classroom"
+              aria-label="Join a classroom"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[85vh] overflow-y-auto border-border bg-card sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl text-foreground">Join a classroom</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Enter a class code from your instructor, or pick a listed room below.
+                Private classrooms never appear in the list — they need a code or an invitation.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-2 space-y-6">
+              <section className="space-y-3">
+                <h3 className="flex items-center gap-2 font-display text-sm text-foreground">
+                  <Hash className="h-4 w-4 text-primary" /> Join with a class code
+                </h3>
+                <form
+                  className="flex flex-wrap items-start gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setCodeMsg(null);
+                    codeMutation.mutate({ code: joinCode.trim(), pin: codePin.trim() });
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Class code"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    maxLength={12}
+                    className="w-36 rounded-md border border-border/40 bg-background px-3 py-1.5 text-sm uppercase tracking-widest"
+                    required
+                  />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="PIN"
+                    value={codePin}
+                    onChange={(e) => setCodePin(e.target.value)}
+                    maxLength={6}
+                    className="w-24 rounded-md border border-border/40 bg-background px-3 py-1.5 text-sm tracking-widest"
+                    required
+                  />
+                  <Button type="submit" size="sm" className="h-8 text-xs" disabled={codeMutation.isPending}>
+                    {codeMutation.isPending ? 'Joining…' : 'Join'}
+                  </Button>
+                </form>
+                {codeMsg && (
+                  <p className={`text-xs ${codeMsg.ok ? 'text-emerald-500' : 'text-amber-400'}`}>{codeMsg.text}</p>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="flex items-center gap-2 font-display text-sm text-foreground">
+                  <KeyRound className="h-4 w-4 text-primary" /> Available rooms
+                </h3>
+
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search rooms by name or instructor…"
+                />
+
+                {availableTotal === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No other public classrooms right now. Private rooms don't appear here — use a class code above.
+                  </p>
+                ) : available.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No rooms match "{search}".</p>
+                ) : (
+                  <div className={ROOM_GRID}>
+                    {available.map((room) => (
+                      <RoomCard key={room.id} room={room}>
+                        {joiningId === room.id ? (
+                          <form
+                            className="space-y-2"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              joinMutation.mutate({ classroomId: room.id, pin: pin.trim() });
+                            }}
+                          >
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="6-digit PIN"
+                                value={pin}
+                                onChange={(e) => setPin(e.target.value)}
+                                maxLength={6}
+                                className="flex-1 rounded-md border border-border/40 bg-background px-3 py-1.5 text-sm tracking-widest"
+                                autoFocus
+                                required
+                              />
+                              <Button type="submit" size="sm" className="h-8 text-xs" disabled={joinMutation.isPending}>
+                                {joinMutation.isPending ? 'Joining…' : 'Join'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() => setJoiningId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                            {joinError && <p className="text-xs text-amber-400">{joinError}</p>}
+                          </form>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => startJoin(room.id)}
+                          >
+                            <KeyRound className="mr-1 h-3 w-3" />
+                            Join with PIN
+                          </Button>
+                        )}
+                      </RoomCard>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </DialogContent>
+        </Dialog>
       </header>
 
-      <main className="max-w-lg mx-auto p-6 space-y-8">
+      {/* Left-aligned and wide, rather than a narrow centred column: the
+          cards lay out into the space instead of stacking in a ribbon down
+          the middle of a big screen. */}
+      <main className="max-w-5xl p-6 space-y-8">
         {isLoading && (
           <p className="text-sm text-muted-foreground text-center py-10">Loading classrooms…</p>
         )}
@@ -123,16 +370,66 @@ export default function MyClassrooms() {
 
         {!isLoading && !error && (
           <>
+            {/* Invitations first — they're the only thing here that's
+                waiting on the student to act. */}
+            {(invites?.length ?? 0) > 0 && (
+              <section className="space-y-3">
+                <h2 className="font-display text-base text-foreground flex items-center gap-2">
+                  <MailOpen className="w-4 h-4 text-primary" /> Invitations
+                </h2>
+                <div className={ROOM_GRID}>
+                  {invites.map((inv) => (
+                    <div
+                      key={inv.invite_id}
+                      className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3"
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className="font-display text-sm text-foreground truncate"
+                          title={inv.classroom_name}
+                        >
+                          {inv.classroom_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate" title={inv.instructor_name}>
+                          invited by {inv.instructor_name}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="h-7 flex-1 text-xs"
+                          disabled={respondMutation.isPending}
+                          onClick={() => respondMutation.mutate({ inviteId: inv.invite_id, accept: true })}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={respondMutation.isPending}
+                          onClick={() => respondMutation.mutate({ inviteId: inv.invite_id, accept: false })}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="space-y-4">
               <h2 className="font-display text-base text-foreground flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-primary" /> Enrolled
               </h2>
               {enrolled.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  You're not in any classroom yet — join one below, or ask your instructor to invite you by email.
+                  You're not in any classroom yet — use the + button above to join with a class code, or ask your instructor to invite you.
                 </p>
               ) : (
-                enrolled.map((room) => (
+                <div className={ROOM_GRID}>
+                {enrolled.map((room) => (
                   <RoomCard key={room.id} room={room}>
                     {leavingId === room.id ? (
                       <div className="flex items-center gap-2">
@@ -164,6 +461,9 @@ export default function MyClassrooms() {
                             liveRound.joined || currentRound?.round_id === liveRound.round_id;
                           // Already in a different session → can't join this one.
                           const inOther = currentRound && currentRound.round_id !== liveRound.round_id;
+                          // Named sessions say their name, so a student can
+                          // tell which class activity they're joining.
+                          const sessionName = liveRound.title?.trim();
                           return (
                             <Button
                               size="sm"
@@ -171,13 +471,16 @@ export default function MyClassrooms() {
                               className="h-8 w-full text-xs"
                               disabled={inThis || inOther}
                               onClick={() => join(liveRound)}
+                              title={sessionName || undefined}
                             >
-                              <Radio className="w-3 h-3 mr-1" />
-                              {inThis
-                                ? 'In live session'
-                                : inOther
-                                  ? 'In another session'
-                                  : 'Join live session'}
+                              <Radio className="w-3 h-3 mr-1 shrink-0" />
+                              <span className="truncate">
+                                {inThis
+                                  ? sessionName ? `In "${sessionName}"` : 'In live session'
+                                  : inOther
+                                    ? 'In another session'
+                                    : sessionName ? `Join "${sessionName}"` : 'Join live session'}
+                              </span>
                             </Button>
                           );
                         })()}
@@ -207,67 +510,8 @@ export default function MyClassrooms() {
                       </div>
                     )}
                   </RoomCard>
-                ))
-              )}
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="font-display text-base text-foreground flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-primary" /> Available rooms
-              </h2>
-              {available.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No other classrooms right now.</p>
-              ) : (
-                available.map((room) => (
-                  <RoomCard key={room.id} room={room}>
-                    {joiningId === room.id ? (
-                      <form
-                        className="space-y-2"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          joinMutation.mutate({ classroomId: room.id, pin: pin.trim() });
-                        }}
-                      >
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="6-digit PIN"
-                            value={pin}
-                            onChange={(e) => setPin(e.target.value)}
-                            maxLength={6}
-                            className="flex-1 rounded-md border border-border/40 bg-background px-3 py-1.5 text-sm tracking-widest"
-                            autoFocus
-                            required
-                          />
-                          <Button type="submit" size="sm" className="h-8 text-xs" disabled={joinMutation.isPending}>
-                            {joinMutation.isPending ? 'Joining…' : 'Join'}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs"
-                            onClick={() => setJoiningId(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                        {joinError && <p className="text-xs text-amber-400">{joinError}</p>}
-                      </form>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => startJoin(room.id)}
-                      >
-                        <KeyRound className="w-3 h-3 mr-1" />
-                        Join with PIN
-                      </Button>
-                    )}
-                  </RoomCard>
-                ))
+                ))}
+                </div>
               )}
             </section>
           </>

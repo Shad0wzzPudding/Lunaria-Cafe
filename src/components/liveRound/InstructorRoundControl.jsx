@@ -17,7 +17,7 @@ function formatClock(seconds) {
 async function fetchActiveRound(roomId) {
   const { data, error } = await supabase
     .from('class_rounds')
-    .select('id, started_at, duration_seconds, ends_at, allow_boosts')
+    .select('id, title, started_at, duration_seconds, ends_at, allow_boosts')
     .eq('classroom_id', roomId)
     .eq('status', 'active')
     .maybeSingle();
@@ -31,6 +31,9 @@ export default function InstructorRoundControl({ roomId }) {
   const queryKey = ['class-round', roomId];
   const [timed, setTimed] = useState(true);
   const [minutes, setMinutes] = useState(25);
+  // Optional name for this session — what history and the students' join
+  // toast will call it. Blank is fine; history falls back to the date.
+  const [title, setTitle] = useState('');
   // Whether students' focus boosts (ticket ×1.15 and future modifiers)
   // apply during this session. Decided at start; shown while live.
   const [allowBoosts, setAllowBoosts] = useState(true);
@@ -88,10 +91,17 @@ export default function InstructorRoundControl({ roomId }) {
         _classroom_id: roomId,
         _duration_seconds: durationSeconds,
         _allow_boosts: allowBoosts,
+        _title: title.trim() || null,
       });
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      // Clear the name so the next session doesn't silently inherit it.
+      setTitle('');
+      invalidate();
+      // The history tab lists live rounds too — keep it in step.
+      queryClient.invalidateQueries({ queryKey: ['class-round-history', roomId] });
+    },
   });
 
   const endMutation = useMutation({
@@ -99,7 +109,11 @@ export default function InstructorRoundControl({ roomId }) {
       const { error } = await supabase.rpc('end_round', { _round_id: roundId });
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // The session just became history — refresh the tab that shows it.
+      queryClient.invalidateQueries({ queryKey: ['class-round-history', roomId] });
+    },
   });
 
   return (
@@ -108,7 +122,9 @@ export default function InstructorRoundControl({ roomId }) {
         <div className="flex items-center gap-2">
           <Radio className={`h-4 w-4 ${round ? 'text-emerald-500' : 'text-muted-foreground'}`} />
           <span className="text-sm font-medium text-foreground">
-            {round ? 'Live session running' : 'Live session'}
+            {/* Name the running session if it has one — with several a week,
+                "Live session running" doesn't say which. */}
+            {round ? round.title?.trim() || 'Live session running' : 'Live session'}
           </span>
           {round && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
@@ -151,7 +167,19 @@ export default function InstructorRoundControl({ roomId }) {
             {endMutation.isPending ? 'Ending…' : 'End session'}
           </Button>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Optional session name. Blank is valid — history labels an
+                unnamed session by its start time. */}
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={60}
+              placeholder="Session name (optional)"
+              aria-label="Session name"
+              className="w-44 rounded-md border border-border/40 bg-background px-2.5 py-1 text-xs"
+              style={{ fontFamily: "'Inter Variable', sans-serif" }}
+            />
             {/* Timed vs open-ended */}
             <div className="flex rounded-md border border-border/40 overflow-hidden">
               <button
@@ -210,7 +238,14 @@ export default function InstructorRoundControl({ roomId }) {
         )}
       </div>
 
-      {round && <RoundLeaderboard roundId={round.id} />}
+      {round && (
+        <RoundLeaderboard
+          roundId={round.id}
+          /* Planned length for a timed round; for an open-ended one the
+             session so far is the only meaningful denominator. */
+          roundSeconds={round.duration_seconds ?? elapsedSec}
+        />
+      )}
     </div>
   );
 }

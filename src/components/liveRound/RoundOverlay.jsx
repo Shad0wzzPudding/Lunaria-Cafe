@@ -6,7 +6,7 @@ import { useAuth } from '@/auth/useAuth';
 import { useGame } from '@/lib/gameState/useGame';
 import { BOOST_LABEL, BOOST_WINDOW_SECONDS } from '@/lib/gameState/constants';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
-import { rankByMode, formatRoundValue } from '@/lib/leaderboard/scoring';
+import { rankRoundByMode, formatRoundValue } from '@/lib/leaderboard/scoring';
 
 const MEDAL = ['text-amber-400', 'text-slate-300', 'text-amber-700'];
 
@@ -20,7 +20,8 @@ function Row({ entry, isMe }) {
           <span className="text-[10px] font-semibold text-white/60 tabular-nums">{entry.rank}</span>
         )}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[11px] text-white/90">
+      {/* The overlay is only w-52, so names truncate early — hover reveals. */}
+      <span className="min-w-0 flex-1 truncate text-[11px] text-white/90" title={entry.displayName}>
         {entry.displayName}
         {isMe && <span className="ml-1 text-[9px] text-white/60">(you)</span>}
       </span>
@@ -52,7 +53,7 @@ export default function RoundOverlay() {
 
   if (!currentRound) return null;
 
-  const ranked = rankByMode(entries, 'overall');
+  const ranked = rankRoundByMode(entries, 'overall');
   const me = ranked.find((e) => e.studentId === user?.id);
   const top = ranked.slice(0, 3);
   const showMeSeparately = me && me.rank > 3;
@@ -66,8 +67,18 @@ export default function RoundOverlay() {
         <div className="ro-drag mb-1.5 flex cursor-move items-center gap-1.5" title="Drag to move">
           <GripVertical className="h-3.5 w-3.5 text-white/30" />
           <Trophy className="h-3.5 w-3.5 text-amber-300" />
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white">
-            {currentRound.classroom_name}
+          {/* The session name is the more specific label when there is one;
+              the classroom stays reachable on hover, since the board is only
+              w-52 and two lines of header would crowd the ranking out. */}
+          <span
+            className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white"
+            title={
+              currentRound.title?.trim()
+                ? `${currentRound.title.trim()} — ${currentRound.classroom_name}`
+                : currentRound.classroom_name
+            }
+          >
+            {currentRound.title?.trim() || currentRound.classroom_name}
           </span>
         </div>
 
@@ -96,6 +107,7 @@ export default function RoundOverlay() {
             )}
           </div>
         )}
+
       </div>
     </Draggable>
   );

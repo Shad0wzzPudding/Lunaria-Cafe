@@ -125,7 +125,10 @@ export default function Leaderboard({ roomId, roomName, currentUserId }) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+                  <p
+                    className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground"
+                    title={entry.displayName}
+                  >
                     {entry.displayName}
                     {isMe && <span className="text-[10px] font-normal text-primary">(you)</span>}
                   </p>

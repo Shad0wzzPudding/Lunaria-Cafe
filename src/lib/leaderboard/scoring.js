@@ -67,8 +67,16 @@ export function scoreEntries(rows) {
 }
 
 /** Sort scored entries for one mode, best first, and stamp each rank. */
-export function rankByMode(entries, modeKey) {
-  const mode = MODES.find((m) => m.key === modeKey) ?? MODES[0];
+// Shared ranker. The mode TABLE is a parameter because the classroom
+// and round leaderboards use the same mode KEYS ('time', 'focus',
+// 'reputation') for different underlying fields — classroom entries
+// carry total_focus_seconds/last_focus_score/reputation, round entries
+// carry focus_seconds/avg_focus/rep. Resolving a round mode against
+// MODES therefore reads undefined for every student, scores them all 0,
+// and silently falls through to the Overall tiebreak. Keep the two
+// resolvers separate.
+function rankBy(modes, entries, modeKey) {
+  const mode = modes.find((m) => m.key === modeKey) ?? modes[0];
   const sorted = [...entries].sort((a, b) => {
     const av = mode.metric === 'overall' ? a.overall : num(a[mode.metric]);
     const bv = mode.metric === 'overall' ? b.overall : num(b[mode.metric]);
@@ -76,6 +84,10 @@ export function rankByMode(entries, modeKey) {
     return b.overall - a.overall; // stable-ish tiebreak on the composite
   });
   return sorted.map((e, i) => ({ ...e, rank: i + 1 }));
+}
+
+export function rankByMode(entries, modeKey) {
+  return rankBy(MODES, entries, modeKey);
 }
 
 /** The headline value shown for a given mode. */
@@ -109,7 +121,8 @@ export function formatDuration(seconds) {
 // Live-round scoring
 //
 // A round ranks only what a student does DURING the round. Metrics
-// come from round_participants (focus_seconds, coins, avg_focus).
+// come from round_participants (focus_seconds, coins, avg_focus, rep,
+// distractions).
 //
 // Scoring is ABSOLUTE and UNCAPPED: each sub-score depends only on the
 // student's own metrics (measured against fixed targets), NOT on the
@@ -117,6 +130,10 @@ export function formatDuration(seconds) {
 // others pull ahead — and with no ceiling, more effort always means a
 // higher number, so top performers separate instead of tying at 100.
 // Overall is an open-ended points total (not 0-100).
+//
+// Distractions are carried on each entry and shown on the board, but do
+// NOT enter the score — they are reported to the instructor, not charged
+// to the student.
 // ============================================================
 
 export const ROUND_WEIGHTS = {
@@ -138,12 +155,91 @@ export const ROUND_MODES = [
   { key: 'focus',      label: 'Avg Focus',  metric: 'avg_focus' },
   { key: 'reputation', label: 'Reputation', metric: 'rep' },
   { key: 'coins',      label: 'Coins',      metric: 'coins' },
+  // Deliberately NOT a mode: rankBy sorts descending and the board crowns
+  // ranks 1-3, so a Distractions tab would put a gold crown on the most
+  // distracted student. It's shown as a per-row metric instead.
 ];
 
-/** Turn raw round_participants rows into scored, sortable entries. */
-export function scoreRoundEntries(rows) {
+// How stale a participant's last report may be before we treat them as
+// having drifted out of the session. Progress is written every 5s, so
+// this is generous — a backgrounded tab or a slow write must not tag
+// someone who is still sitting there.
+const PARTICIPANT_STALE_MS = 90_000;
+
+// Pausing keeps the participation row alive and the heartbeat ticking, so a
+// student can sit out most of a class without ever pressing Leave or going
+// quiet. Past this share of the session, being paused is treated as not
+// having attended.
+const PAUSE_LEAVE_FRACTION = 0.5;
+
+/** Has this student stopped reporting for longer than we tolerate? */
+function hasGoneQuiet(row, referenceMs) {
+  if (!referenceMs) return false;
+  const last = new Date(row.updated_at ?? 0).getTime();
+  if (!Number.isFinite(last) || last === 0) return false;
+  return referenceMs - last > PARTICIPANT_STALE_MS;
+}
+
+/**
+ * How long this student was actually IN the session: from when they joined
+ * to the reference point, less any time they were away after leaving.
+ *
+ * Used as the denominator for the pause rule so it is judged per student
+ * rather than against the whole round — someone who joins at minute 20 of a
+ * 25-minute session and pauses 4 minutes has paused most of THEIR session,
+ * even though it is a small share of everyone else's.
+ *
+ * Falls back to the round length when joined_at is missing or the maths
+ * comes out non-positive, so the rule still has a denominator rather than
+ * silently switching itself off.
+ */
+function participationSeconds(row, referenceMs, roundSeconds) {
+  const joinedMs = row.joined_at ? new Date(row.joined_at).getTime() : NaN;
+  if (Number.isFinite(joinedMs) && referenceMs && referenceMs > joinedMs) {
+    // Paused time still counts as being present — only a Leave removes it.
+    const window =
+      Math.round((referenceMs - joinedMs) / 1000) - Math.max(0, num(row.absent_seconds));
+    if (window > 0) return window;
+  }
+  return num(roundSeconds) > 0 ? num(roundSeconds) : null;
+}
+
+/**
+ * How this student attended the session. One of:
+ *   'full'       — present throughout
+ *   'left early' — pressed Leave and never came back
+ *   'went quiet' — stopped reporting before the end (closed the app)
+ *   'paused >50%'— paused for more than half of THEIR time in it
+ *   'rejoined'   — left at least once but returned
+ *
+ * Order matters: it reports the WORST outcome, so a student who rejoined
+ * and then vanished reads as 'went quiet', not 'rejoined'.
+ *
+ * left_count is what makes 'rejoined' possible at all. left_at answers
+ * "are they out right now" and gets cleared on return — using it alone
+ * meant a rejoin erased the absence and the student reported as 'full'.
+ */
+export function attendanceOf(row, referenceMs, roundSeconds = null) {
+  if (row.left_at) return 'left early';
+  if (hasGoneQuiet(row, referenceMs)) return 'went quiet';
+  const window = participationSeconds(row, referenceMs, roundSeconds);
+  if (num(window) > 0 && num(row.paused_seconds) > num(window) * PAUSE_LEAVE_FRACTION) {
+    return 'paused >50%';
+  }
+  if (num(row.left_count) > 0) return 'rejoined';
+  return 'full';
+}
+
+/**
+ * Turn raw round_participants rows into scored, sortable entries.
+ *
+ * `endedAt` is the round's end time (null while it's still running) —
+ * needed to judge who stopped reporting before the finish.
+ */
+export function scoreRoundEntries(rows, endedAt = null, roundSeconds = null) {
   const list = Array.isArray(rows) ? rows : [];
   const nonNeg = (v) => Math.max(0, v);
+  const referenceMs = endedAt ? new Date(endedAt).getTime() : Date.now();
 
   return list.map((r) => {
     const hasFocus = r.avg_focus !== null && r.avg_focus !== undefined;
@@ -161,16 +257,47 @@ export function scoreRoundEntries(rows) {
       ROUND_WEIGHTS.rep * repSub +
       ROUND_WEIGHTS.coins * coinSub;
 
+    const attendance = attendanceOf(r, referenceMs, roundSeconds);
+
     return {
       studentId: r.student_id,
       displayName: r.display_name || 'Unknown',
       focus_seconds: num(r.focus_seconds),
       coins: num(r.coins),
       rep: num(r.rep),
+      // Reported alongside the ranking metrics but deliberately NOT part of
+      // `overall` — the count is context for the instructor, not a penalty
+      // applied to the student's score. nonNeg only so a corrupt row can't
+      // display a negative count.
+      distractions: nonNeg(num(r.distractions)),
       avg_focus: hasFocus ? num(r.avg_focus) : null,
       overall: Math.round(overall * 10) / 10,
+      // Deliberately does NOT affect the score. A student who fell short of
+      // full attendance keeps exactly what they earned and ranks on it; this
+      // is context for the instructor, not a penalty applied behind their
+      // back.
+      attendance,
+      partial: attendance !== 'full',
+      leftAt: r.left_at ?? null,
+      leftCount: nonNeg(num(r.left_count)),
+      absentSeconds: nonNeg(num(r.absent_seconds)),
+      pausedSeconds: nonNeg(num(r.paused_seconds)),
+      // When they came into the session. Already on the table since the
+      // original class_rounds migration — it just was never surfaced.
+      joinedAt: r.joined_at ?? null,
+      // The denominator behind the attendance verdict, exported so the
+      // judgement can be checked rather than taken on trust.
+      participationSeconds: nonNeg(num(participationSeconds(r, referenceMs, roundSeconds))),
     };
   });
+}
+
+/**
+ * Rank round entries. Must be used instead of rankByMode for anything
+ * reading round_participants — see the note on rankBy above.
+ */
+export function rankRoundByMode(entries, modeKey) {
+  return rankBy(ROUND_MODES, entries, modeKey);
 }
 
 /** The headline value shown for a given round mode. */

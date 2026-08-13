@@ -233,6 +233,11 @@ function AppShell() {
       return (
         <QueryClientProvider client={queryClientInstance}>
           <InstructorDashboard />
+          {/* The instructor branch returns before the student tree below, so
+              it needs its own Toaster — without one, any toast() from here (or
+              from RoundHistory / RoundLeaderboard / InstructorRoundControl,
+              which are shared with the student side) silently goes nowhere. */}
+          <div className="dark"><Toaster theme="dark" expand /></div>
         </QueryClientProvider>
       )
     }
