@@ -109,8 +109,16 @@ export default function RoundLeaderboard({ roundId, currentUserId, live = true, 
                         could mean "attended fully" or "this row predates the
                         tracking" — whereas an explicit "full" is an answer.
                         Green for full, amber for everything else; they still
-                        rank on what they earned either way. */}
-                    <span
+                        rank on what they earned either way.
+
+                        ENDED sessions only. Attendance is a verdict on a whole
+                        session, and there is no such verdict while one is still
+                        running: mid-round it labelled a student who joined
+                        thirty seconds ago as "full", tooltip "Present for the
+                        whole session", which is a claim the board cannot make
+                        yet. The live view already says who is here and who has
+                        gone quiet. */}
+                    {!live && <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] ${
                         entry.partial
                           ? 'bg-amber-500/15 text-amber-600'
@@ -122,7 +130,7 @@ export default function RoundLeaderboard({ roundId, currentUserId, live = true, 
                       {entry.attendance === 'rejoined' && entry.leftCount > 1
                         ? ` ${entry.leftCount}×`
                         : ''}
-                    </span>
+                    </span>}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDuration(entry.focus_seconds)}</span>

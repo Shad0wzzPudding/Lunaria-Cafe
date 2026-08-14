@@ -319,7 +319,7 @@ export default function GameSettings() {
               <ToggleSetting
                 icon={DoorOpen}
                 label="Let friends visit my cafe"
-                description="Friends can walk through your cafe as you last left it. They see your furniture and pets \u2014 never your journal, coins or stats. Turn this off and nobody can come in."
+                description="Friends can walk through your cafe as you last left it. They see your furniture and pets — never your journal, coins or stats. Turn this off and nobody can come in."
                 checked={cafeOpen}
                 onCheckedChange={handleCafeVisibility}
               />

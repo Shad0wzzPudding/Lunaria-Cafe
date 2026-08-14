@@ -226,7 +226,13 @@ export default function Friends() {
 
   const dismissLetter = async () => {
     setDismissed(true);
-    const { error: err } = await supabase.rpc('mark_friend_results_seen');
+    // Only the batch that was actually on screen. Stamping every unseen result
+    // would silently consume any acceptance that landed while the letter was
+    // open — its letter and its bubble count both lost, with nothing to show
+    // a notification had gone missing.
+    const { error: err } = await supabase.rpc('mark_friend_results_seen', {
+      _ids: (letter ?? []).map((r) => r.friendship_id),
+    });
     // A failure here is invisible by nature: the letter simply arrives again
     // next visit, looking like the intermittency bug rather than a server
     // error. Say so in the console at least — it is the difference between
@@ -241,11 +247,17 @@ export default function Friends() {
 
   // Seeing the page is what stops the menu nagging about incoming requests.
   // The cards themselves stay until they're actually answered.
-  const incomingCount = incoming.length;
+  // The ids currently rendered, as a stable string so the effect fires when the
+  // SET of visible requests changes rather than on every refetch of the same
+  // ones. Only these get stamped: a request arriving after this fetch has not
+  // been shown to anybody yet, and must still be able to raise the bubble.
+  const incomingIdsKey = incoming.map((r) => r.request_id).sort().join(',');
   useEffect(() => {
-    if (!incomingCount) return;
+    if (!incomingIdsKey) return;
     let cancelled = false;
-    supabase.rpc('mark_friend_requests_seen').then(({ error: err }) => {
+    supabase.rpc('mark_friend_requests_seen', {
+      _ids: incomingIdsKey.split(','),
+    }).then(({ error: err }) => {
       if (cancelled) return;
       // Same reasoning as dismissLetter: a silent failure here just leaves the
       // menu bubble nagging forever with no clue why.
@@ -256,7 +268,7 @@ export default function Friends() {
       queryClient.invalidateQueries({ queryKey: FRIEND_NOTICES_KEY });
     });
     return () => { cancelled = true; };
-  }, [incomingCount, queryClient]);
+  }, [incomingIdsKey, queryClient]);
 
   const addMutation = useMutation({
     mutationFn: async (code) => {
