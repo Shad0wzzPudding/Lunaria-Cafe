@@ -64,8 +64,13 @@ export default function MainMenu() {
   const { currentRound } = useLiveRound();
   const [editingName, setEditingName] = useState(false);
   const canSwitchToInstructor = !isGuest && profile?.is_student && profile?.is_instructor;
-  const canUseClassrooms = !isGuest && Boolean(profile?.is_student);
-  const canEditName = !isGuest && Boolean(profile?.is_student);
+  // Classrooms, friends and renaming are all student-account features, and a
+  // guest has no account at all — so they share one condition rather than
+  // three copies of it that could drift apart.
+  const isStudentAccount = !isGuest && Boolean(profile?.is_student);
+  const canUseClassrooms = isStudentAccount;
+  const canUseFriends = isStudentAccount;
+  const canEditName = isStudentAccount;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -121,24 +126,55 @@ export default function MainMenu() {
         </button>
       </motion.div>
 
-      {/* Help button — bottom-right, out of the menu column's way */}
-      <motion.button
-        type="button"
-        onClick={() => dispatch({ type: 'SET_PHASE', payload: 'help' })}
-        className="absolute bottom-6 right-6 z-20 w-14 h-14 select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
-        title="Info, credits & tutorial"
-        aria-label="Info, credits & tutorial"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2, delay: 0.5 }}
-      >
-        <img
-          src="/assets/button/help.png"
-          alt=""
-          className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-          draggable={false}
-        />
-      </motion.button>
+      {/* Icon buttons — bottom-right, out of the menu column's way. One flex
+          row rather than two absolutely-placed buttons, so Friends sits beside
+          Help without either having to know the other's width, and Help keeps
+          its corner when Friends isn't there (guests, instructor-only). */}
+      <div className="absolute bottom-6 right-6 z-20 flex items-center gap-3">
+        {/* 3.43rem is 98% of Help's w-14 (3.5rem). The friends plaque fills
+            more of its canvas than the help one does — 71% against 64% — so
+            equal boxes make it read as the larger of the pair; this trims it
+            back. Keep it a LITERAL class string: Tailwind emits arbitrary
+            values by scanning source text, so one assembled from a variable
+            never reaches the CSS (see lib/ui/cardGrid.js). */}
+        {canUseFriends && (
+          <motion.button
+            type="button"
+            onClick={() => dispatch({ type: 'SET_PHASE', payload: 'friends' })}
+            className="w-[3.43rem] h-[3.43rem] select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
+            title="Friends"
+            aria-label="Friends"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.2, delay: 0.5 }}
+          >
+            <img
+              src="/assets/button/friends.png"
+              alt=""
+              className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+              draggable={false}
+            />
+          </motion.button>
+        )}
+
+        <motion.button
+          type="button"
+          onClick={() => dispatch({ type: 'SET_PHASE', payload: 'help' })}
+          className="w-14 h-14 select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
+          title="Info, credits & tutorial"
+          aria-label="Info, credits & tutorial"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.5 }}
+        >
+          <img
+            src="/assets/button/help.png"
+            alt=""
+            className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+            draggable={false}
+          />
+        </motion.button>
+      </div>
 
       {/* Menu content — anchored to bottom-left */}
       <motion.div

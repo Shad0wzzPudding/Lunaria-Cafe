@@ -14,6 +14,7 @@ import MainMenu from '@/pages/MainMenu'
 import CafeView from '@/pages/CafeView'
 import Statistics from '@/pages/Statistics'
 import MyClassrooms from '@/pages/MyClassrooms'
+import Friends from '@/pages/Friends'
 import LeaderboardPage from '@/pages/LeaderboardPage'
 import { LiveRoundProvider } from '@/lib/liveRound/LiveRoundProvider'
 import GameSettings from '@/pages/GameSettings'
@@ -162,6 +163,7 @@ function GameRouter() {
       {phase === 'menu'       && <MainMenu />}
       {phase === 'stats'      && <Statistics />}
       {phase === 'classrooms' && <MyClassrooms />}
+      {phase === 'friends'    && <Friends />}
       {phase === 'leaderboard' && <LeaderboardPage />}
       {phase === 'settings' && <GameSettings />}
       {phase === 'help'     && <Help />}
