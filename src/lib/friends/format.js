@@ -1,26 +1,10 @@
 /**
  * Presentation helpers for the Friends page.
  *
- * Kept out of the page component because the friend code is shown in two
- * places on it (your own, and echoed back in errors) and will be shown in
- * more once friends unlock anything.
+ * The account-code helpers used to live here; they moved to
+ * lib/account/accountCode.js when friend_code became account_code, since the
+ * code belongs to the account rather than to friendship.
  */
-
-/**
- * Friend codes are stored as 8 unbroken characters but read by a human off
- * a screen, so they're printed in two groups. Anything shorter or longer is
- * passed through unchanged rather than grouped at a wrong boundary.
- */
-export function formatFriendCode(code) {
-  const c = (code ?? '').trim();
-  if (c.length !== 8) return c;
-  return `${c.slice(0, 4)}-${c.slice(4)}`;
-}
-
-/** Strip the grouping (and anything else typed by hand) back to the stored form. */
-export function normalizeFriendCode(code) {
-  return (code ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-}
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;

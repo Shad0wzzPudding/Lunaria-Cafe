@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Play, BarChart3, Settings, BookOpen, Users, Radio, Pencil, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNameDraft, MAX_DISPLAY_NAME } from '@/lib/account/useNameDraft';
+import FriendNoticeBubble from '@/components/friends/FriendNoticeBubble';
+import { useFriendNotices, noticeMessage } from '@/lib/friends/notices';
 
 // Inline name editor that pops out of the greeting when the pencil is pressed.
 // Mounted only while editing, so each open starts fresh from the current name.
@@ -71,6 +73,7 @@ export default function MainMenu() {
   const canUseClassrooms = isStudentAccount;
   const canUseFriends = isStudentAccount;
   const canEditName = isStudentAccount;
+  const { newRequests, newResults } = useFriendNotices(canUseFriends);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -138,23 +141,31 @@ export default function MainMenu() {
             values by scanning source text, so one assembled from a variable
             never reaches the CSS (see lib/ui/cardGrid.js). */}
         {canUseFriends && (
-          <motion.button
-            type="button"
-            onClick={() => dispatch({ type: 'SET_PHASE', payload: 'friends' })}
-            className="w-[3.43rem] h-[3.43rem] select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
-            title="Friends"
-            aria-label="Friends"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, delay: 0.5 }}
-          >
-            <img
-              src="/assets/button/friends.png"
-              alt=""
-              className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-              draggable={false}
+          // relative: the notice bubble anchors to THIS button rather than to
+          // the screen, so it keeps its aim if the button moves or resizes.
+          <div className="relative">
+            <FriendNoticeBubble
+              message={noticeMessage(newRequests, newResults)}
+              onClick={() => dispatch({ type: 'SET_PHASE', payload: 'friends' })}
             />
-          </motion.button>
+            <motion.button
+              type="button"
+              onClick={() => dispatch({ type: 'SET_PHASE', payload: 'friends' })}
+              className="block w-[3.43rem] h-[3.43rem] select-none transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg"
+              title="Friends"
+              aria-label="Friends"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1.2, delay: 0.5 }}
+            >
+              <img
+                src="/assets/button/friends.png"
+                alt=""
+                className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+                draggable={false}
+              />
+            </motion.button>
+          </div>
         )}
 
         <motion.button

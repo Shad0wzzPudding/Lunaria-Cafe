@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGame } from '@/lib/gameState/useGame';
 import { useAuth } from '@/auth/useAuth';
@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 import { ROOM_GRID } from '@/lib/ui/cardGrid';
-import { formatFriendCode, normalizeFriendCode, fmtLastSeen } from '@/lib/friends/format';
+import { fmtLastSeen } from '@/lib/friends/format';
+import { formatAccountCode, normalizeAccountCode } from '@/lib/account/accountCode';
+import { FRIEND_NOTICES_KEY } from '@/lib/friends/notices';
+import SentLetterFlight from '@/components/friends/SentLetterFlight';
+import ArrivedFriendLetter from '@/components/friends/ArrivedFriendLetter';
+import { AnimatePresence } from 'framer-motion';
 
 // The online flag is derived from a 30s heartbeat, so a page left open goes
 // stale within a minute. Refetching on this cadence keeps the dots honest
@@ -39,7 +44,7 @@ async function fetchRequests() {
 }
 
 /** Your own code, with a copy button that only confirms on a real success. */
-function MyFriendCode({ code }) {
+function MyAccountCode({ code }) {
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -63,13 +68,13 @@ function MyFriendCode({ code }) {
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
         <span className="font-semibold tracking-[0.2em] text-foreground select-all">
-          {formatFriendCode(code)}
+          {formatAccountCode(code)}
         </span>
         <button
           type="button"
           onClick={copy}
-          title="Copy your friend code"
-          aria-label="Copy your friend code"
+          title="Copy your account code"
+          aria-label="Copy your account code"
           className="text-muted-foreground/60 transition-colors hover:text-foreground"
         >
           {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -155,6 +160,9 @@ export default function Friends() {
   const [addOpen, setAddOpen] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [addError, setAddError] = useState('');
+  // Who the flying envelope is addressed to; null when nothing is in flight.
+  const [sentTo, setSentTo] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
 
   const { data: friends, isLoading, error } = useQuery({
     queryKey: ['friends'],
@@ -167,10 +175,76 @@ export default function Friends() {
     queryFn: fetchRequests,
   });
 
+  const incoming = (requests ?? []).filter((r) => r.direction === 'incoming');
+  const outgoing = (requests ?? []).filter((r) => r.direction === 'outgoing');
+
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['friends'] });
     queryClient.invalidateQueries({ queryKey: ['friend-requests'] });
+    queryClient.invalidateQueries({ queryKey: FRIEND_NOTICES_KEY });
   };
+
+  // Accepted replies the player hasn't been shown. Fetched once per VISIT:
+  // a letter dropping in mid-visit would interrupt whatever they came to do,
+  // but every fresh entry to the page has to ask the server again.
+  //
+  // gcTime 0 is what makes that true. This page unmounts whenever the player
+  // goes back to the menu, and react-query keeps a cached answer for gcTime
+  // (5 min by default) after the last observer leaves — so a return visit
+  // inside that window was being handed the PREVIOUS visit's empty list and
+  // never refetching. A reply that arrived in between produced no letter until
+  // the cache aged out, which is what made it look intermittent.
+  const { data: unseenResults } = useQuery({
+    queryKey: ['friend-results-unseen'],
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error: err } = await supabase.rpc('my_unseen_friend_results');
+      if (err) throw err;
+      return data ?? [];
+    },
+  });
+
+  // Derived, not copied into state: a local mirror would need an effect to
+  // stay in step with the query, and setState-in-effect cascades a render.
+  // `dismissed` takes the letter down the instant it's closed, without waiting
+  // for the round-trip that marks it seen.
+  const letter = dismissed ? null : unseenResults;
+
+  const dismissLetter = async () => {
+    setDismissed(true);
+    const { error: err } = await supabase.rpc('mark_friend_results_seen');
+    // A failure here is invisible by nature: the letter simply arrives again
+    // next visit, looking like the intermittency bug rather than a server
+    // error. Say so in the console at least — it is the difference between
+    // "this is broken" and "this one call failed".
+    if (err) {
+      console.error('[friends] could not mark results seen:', err);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['friend-results-unseen'] });
+    queryClient.invalidateQueries({ queryKey: FRIEND_NOTICES_KEY });
+  };
+
+  // Seeing the page is what stops the menu nagging about incoming requests.
+  // The cards themselves stay until they're actually answered.
+  const incomingCount = incoming.length;
+  useEffect(() => {
+    if (!incomingCount) return;
+    let cancelled = false;
+    supabase.rpc('mark_friend_requests_seen').then(({ error: err }) => {
+      if (cancelled) return;
+      // Same reasoning as dismissLetter: a silent failure here just leaves the
+      // menu bubble nagging forever with no clue why.
+      if (err) {
+        console.error('[friends] could not mark requests seen:', err);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: FRIEND_NOTICES_KEY });
+    });
+    return () => { cancelled = true; };
+  }, [incomingCount, queryClient]);
 
   const addMutation = useMutation({
     mutationFn: async (code) => {
@@ -184,12 +258,14 @@ export default function Friends() {
       setAddError('');
       setAddOpen(false);
       // Sending to someone who had already asked YOU completes the friendship
-      // outright, so the confirmation has to say which of the two happened.
-      toast.success(
-        result?.status === 'accepted'
-          ? `You and ${result.display_name} are now friends!`
-          : `Friend request sent to ${result?.display_name ?? 'them'}.`,
-      );
+      // outright, so the confirmation has to say which of the two happened —
+      // and an "on its way" envelope would be a lie for that case, since
+      // nothing is in flight and there is no reply to wait for.
+      if (result?.status === 'accepted') {
+        toast.success(`You and ${result.display_name} are now friends!`);
+      } else {
+        setSentTo(result?.display_name ?? 'them');
+      }
       refresh();
     },
     onError: (err) => setAddError(err.message || 'Could not send the request.'),
@@ -217,9 +293,6 @@ export default function Friends() {
     onSuccess: refresh,
     onError: (err) => toast.error(err.message || 'Could not remove that.'),
   });
-
-  const incoming = (requests ?? []).filter((r) => r.direction === 'incoming');
-  const outgoing = (requests ?? []).filter((r) => r.direction === 'outgoing');
 
   // The filter box only appears once the list is long enough to need it. That
   // gate has to drive the FILTERING too, not just the rendering: `search`
@@ -280,7 +353,7 @@ export default function Friends() {
             <DialogHeader>
               <DialogTitle className="font-display text-xl text-foreground">Add a friend</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Swap friend codes with a classmate. They'll get a request to accept
+                Swap account codes with a classmate. They'll get a request to accept
                 before either of you appears on the other's list.
               </DialogDescription>
             </DialogHeader>
@@ -288,10 +361,10 @@ export default function Friends() {
             <div className="mt-2 space-y-6">
               <section className="space-y-2">
                 <h3 className="flex items-center gap-2 font-display text-sm text-foreground">
-                  <Hash className="h-4 w-4 text-primary" /> Your friend code
+                  <Hash className="h-4 w-4 text-primary" /> Your account code
                 </h3>
-                {profile?.friend_code ? (
-                  <MyFriendCode code={profile.friend_code} />
+                {profile?.account_code ? (
+                  <MyAccountCode code={profile.account_code} />
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Your code isn't loaded yet — reload the page once you're back online.
@@ -301,19 +374,19 @@ export default function Friends() {
 
               <section className="space-y-3">
                 <h3 className="flex items-center gap-2 font-display text-sm text-foreground">
-                  <UserPlus className="h-4 w-4 text-primary" /> Add by friend code
+                  <UserPlus className="h-4 w-4 text-primary" /> Add by account code
                 </h3>
                 <form
                   className="flex flex-wrap items-start gap-2"
                   onSubmit={(e) => {
                     e.preventDefault();
                     setAddError('');
-                    addMutation.mutate(normalizeFriendCode(codeInput));
+                    addMutation.mutate(normalizeAccountCode(codeInput));
                   }}
                 >
                   <input
                     type="text"
-                    placeholder="Friend code"
+                    placeholder="Account code"
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
                     // 8 characters plus room for the dash people copy along with it.
@@ -445,7 +518,7 @@ export default function Friends() {
 
               {(friends?.length ?? 0) === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No friends yet — use the + button above to share your friend code
+                  No friends yet — use the + button above to share your account code
                   with a classmate, or add theirs.
                 </p>
               ) : visibleFriends.length === 0 ? (
@@ -466,6 +539,20 @@ export default function Friends() {
           </>
         )}
       </main>
+
+      {/* Both letters live outside <main> so neither is affected by the page's
+          scroll position — they are fixed to the viewport, not to the list. */}
+      <AnimatePresence>
+        {sentTo && (
+          <SentLetterFlight key="sent" toName={sentTo} onDone={() => setSentTo(null)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {letter?.length > 0 && (
+          <ArrivedFriendLetter key="arrived" results={letter} onDismiss={dismissLetter} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

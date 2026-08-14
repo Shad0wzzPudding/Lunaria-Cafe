@@ -6,32 +6,17 @@ import { useGame } from '@/lib/gameState/useGame';
 import { consentStatement, licenseParagraphs, privacyStatement } from '@/lib/nsc/licenseText';
 import PrivacyNoticeBody from '@/components/PrivacyNoticeBody';
 import StarterPackReveal from '@/components/cafe/StarterPackReveal';
+import { PixelBox } from '@/components/letter/pixelBox';
+import EnvelopeFace from '@/components/letter/EnvelopeFace';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
 // glyphs, so the letter body uses the same real font as form inputs.
 const LETTER_FONT = "'Inter Variable', system-ui, sans-serif";
 
-// Single-notch stepped corners — the pixel-art silhouette. Border is faked by
-// nesting two clipped layers (clip-path cuts real CSS borders off).
-const PIXEL_CORNERS = (s) =>
-  `polygon(0 ${s}, ${s} ${s}, ${s} 0, calc(100% - ${s}) 0, calc(100% - ${s}) ${s}, 100% ${s}, 100% calc(100% - ${s}), calc(100% - ${s}) calc(100% - ${s}), calc(100% - ${s}) 100%, ${s} 100%, ${s} calc(100% - ${s}), 0 calc(100% - ${s}))`;
-
 // The filled-in fields (campus, advisor, project) render in a faint purplish
 // ink against the letter's brown print — like a form completed by hand, with
 // each developer signing in their own color.
 const LICENSE_PARAGRAPHS = licenseParagraphs({ ink: '#6b5a9c', teamInk: true });
-
-function PixelBox({ size = '6px', border = '#7a5230', fill = '#e8cf9e', className = '', style = {}, innerStyle = {}, innerProps = {}, children }) {
-  return (
-    <div className={className} style={{ clipPath: PIXEL_CORNERS(size), background: border, padding: '4px', ...style }}>
-      {/* innerProps reaches the SCROLLING element — the privacy notice needs a
-          scroll handler on exactly this div, not on the outer frame. */}
-      <div style={{ clipPath: PIXEL_CORNERS(size), background: fill, width: '100%', height: '100%', ...innerStyle }} {...innerProps}>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /* The closed envelope: kraft body, darker flap triangle, wax seal. */
 function ClosedEnvelope({ onOpen, autoFocus = false }) {
@@ -49,27 +34,10 @@ function ClosedEnvelope({ onOpen, autoFocus = false }) {
       whileTap={{ scale: 0.97 }}
       aria-label="Open the letter"
     >
-      <PixelBox size="8px" style={{ width: 'min(30rem, 86vw)', aspectRatio: '30 / 19' }} innerStyle={{ position: 'relative', overflow: 'hidden' }}>
-        {/* Bottom V fold lines of the envelope front */}
-        <div className="absolute inset-0" aria-hidden="true">
-          <div className="absolute left-0 bottom-0 w-1/2 h-full" style={{ background: '#dfc28c', clipPath: 'polygon(0 100%, 100% 100%, 0 18%)' }} />
-          <div className="absolute right-0 bottom-0 w-1/2 h-full" style={{ background: '#dfc28c', clipPath: 'polygon(100% 100%, 0 100%, 100% 18%)' }} />
-          {/* Top flap */}
-          <div className="absolute left-0 top-0 w-full h-[58%]" style={{ background: '#caa365', clipPath: 'polygon(0 0, 100% 0, 50% 100%)' }} />
-          <div className="absolute left-0 top-0 w-full h-[58%]" style={{ background: '#b28950', clipPath: 'polygon(0 0, 100% 0, 50% 100%, 50% calc(100% - 6px), calc(100% - 8px) 4px, 8px 4px, 50% calc(100% - 6px), 50% 100%)' }} />
-        </div>
-        {/* Wax seal */}
-        <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2" aria-hidden="true">
-          <PixelBox size="6px" border="#4c3572" fill="#7d5fde" style={{ width: '3.4rem', height: '3.4rem' }} innerStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="text-xl select-none">🌙</span>
-          </PixelBox>
-        </div>
-        {/* Address lines */}
-        <div className="absolute left-0 right-0 bottom-[8%] text-center space-y-0.5">
-          <p className="font-pixel text-[11px]" style={{ color: '#6b4a26' }}>To: our beloved cafe owner</p>
-          <p className="font-pixel text-[10px]" style={{ color: '#8a6a42' }}>From: Lulyssia & the development team</p>
-        </div>
-      </PixelBox>
+      <EnvelopeFace
+        to="To: our beloved cafe owner"
+        from="From: Lulyssia & the development team"
+      />
       <motion.p
         className="font-pixel text-xs text-white/80 text-center mt-4 drop-shadow-md"
         animate={{ opacity: [0.5, 1, 0.5] }}
