@@ -30,6 +30,16 @@ export function gameReducer(state, action) {
         ui: { ...state.ui, leaderboardRoom: action.payload },
       };
 
+    // Who we are off to visit. The friend's cafe is NOT loaded into this state
+    // — VisitProvider holds it in a separate, unsaveable one — so all that is
+    // recorded here is the destination.
+    case 'VISIT_CAFE':
+      return {
+        ...state,
+        phase: 'visiting',
+        ui: { ...state.ui, visitingFriend: action.payload },
+      };
+
     case 'SET_FOCUS_VIEW_MODE':
       return { ...state, settings: { ...state.settings, focusViewMode: action.payload } };
 

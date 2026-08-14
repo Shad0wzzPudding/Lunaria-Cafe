@@ -3,7 +3,7 @@ import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette, Mail, CloudRain, Flame, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Volume2, Music, Sparkles, LogOut, Camera, Cpu, Play, CheckCircle, XCircle, ShoppingBag, BookOpen, AlertTriangle, ChevronDown, Coins, Zap, Palette, Mail, CloudRain, Flame, MessageSquare, DoorOpen } from 'lucide-react';
 import ThemePicker from '@/components/settings/ThemePicker';
 import {
   setAIConfig,
@@ -102,11 +102,27 @@ function ToggleSetting({ icon: Icon, label, description, checked, onCheckedChang
 
 export default function GameSettings() {
   const { state, dispatch, saveError, logout } = useGame();
-  const { user, isGuest, profile, updateDisplayName, resetDisplayName } = useAuth();
+  const { user, isGuest, profile, updateDisplayName, resetDisplayName, setCafeVisibility } = useAuth();
   const { audio } = state;
   const [aiStatus, setAiStatus] = useState({ status: 'offline', detail: '' });
+  const [cafeVisibilityError, setCafeVisibilityError] = useState('');
 
   useEffect(() => onConnectionStatus(setAiStatus), []);
+
+  const isStudentAccount = !isGuest && Boolean(profile?.is_student);
+  // The profile is the source of truth; `?? true` matches the column default,
+  // so the switch reads correctly for accounts created before this shipped and
+  // for the moment before the profile has loaded.
+  const cafeOpen = profile?.cafe_open_to_friends ?? true;
+
+  const handleCafeVisibility = async (next) => {
+    setCafeVisibilityError('');
+    const { error } = await setCafeVisibility(next);
+    // The switch is driven off the profile, which is only patched on success —
+    // so a failure leaves it where it was rather than showing a state the
+    // server does not agree with.
+    if (error) setCafeVisibilityError(error.message || 'Could not change that.');
+  };
 
   const setAudio = (updates) => dispatch({ type: 'SET_AUDIO', payload: updates });
   const [sfxOpen, setSfxOpen] = useState(false);
@@ -291,6 +307,28 @@ export default function GameSettings() {
           </div>
         </section>
         */}
+
+        {/* Students only: guests have no account to be visited, and an
+            instructor has no cafe. */}
+        {isStudentAccount && (
+          <section className="space-y-4">
+            <h2 className="font-display text-base text-foreground flex items-center gap-2">
+              <DoorOpen className="w-4 h-4 text-primary" /> Visitors
+            </h2>
+            <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-5">
+              <ToggleSetting
+                icon={DoorOpen}
+                label="Let friends visit my cafe"
+                description="Friends can walk through your cafe as you last left it. They see your furniture and pets \u2014 never your journal, coins or stats. Turn this off and nobody can come in."
+                checked={cafeOpen}
+                onCheckedChange={handleCafeVisibility}
+              />
+              {cafeVisibilityError && (
+                <p className="mt-2 text-xs text-amber-400">{cafeVisibilityError}</p>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4">
           <h2 className="font-display text-base text-foreground flex items-center gap-2">

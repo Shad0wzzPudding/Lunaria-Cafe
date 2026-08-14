@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, UserPlus, Users, Copy, Check, MailOpen, Send, UserMinus, Hash,
+  ArrowLeft, UserPlus, Users, Copy, Check, MailOpen, Send, UserMinus, Hash, Coffee,
 } from 'lucide-react';
 import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
 import { ROOM_GRID } from '@/lib/ui/cardGrid';
@@ -101,7 +101,7 @@ function PresenceDot({ online }) {
   );
 }
 
-function FriendCard({ friend, onRemove, removePending }) {
+function FriendCard({ friend, onRemove, removePending, onVisit }) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -138,14 +138,26 @@ function FriendCard({ friend, onRemove, removePending }) {
           </Button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-        >
-          <UserMinus className="h-3 w-3" />
-          Remove
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          {/* cafe_open already folds in "and they have a save", so the button
+              only appears when there is actually a room to walk into. */}
+          {friend.cafe_open ? (
+            <Button size="sm" className="h-7 text-xs" onClick={() => onVisit(friend)}>
+              <Coffee className="mr-1 h-3 w-3" />
+              Visit cafe
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground/50">Cafe closed</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+          >
+            <UserMinus className="h-3 w-3" />
+            Remove
+          </button>
+        </div>
       )}
     </div>
   );
@@ -531,6 +543,12 @@ export default function Friends() {
                       friend={friend}
                       onRemove={removeMutation.mutate}
                       removePending={removeMutation.isPending}
+                      onVisit={(f) =>
+                        dispatch({
+                          type: 'VISIT_CAFE',
+                          payload: { id: f.friend_id, name: f.display_name },
+                        })
+                      }
                     />
                   ))}
                 </div>

@@ -141,6 +141,19 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
+  // Open or close the cafe to friend visits. Server-side via RPC, because the
+  // gate that matters is the one visit_friend_cafe() checks — this only decides
+  // what the switch in Settings shows. Patch the local profile on success so
+  // the switch moves immediately rather than after a refetch.
+  const setCafeVisibility = async (open) => {
+    if (!supabase || !user) return { error: new Error('Not signed in') };
+    const { data, error } = await supabase.rpc('set_cafe_visibility', { _open: open });
+    if (!error) {
+      setProfile((p) => (p && p.id === user.id ? { ...p, cafe_open_to_friends: data } : p));
+    }
+    return { data, error };
+  };
+
   // Clear the custom name so the app falls back to the email-derived default.
   const resetDisplayName = async () => {
     if (!supabase || !user) return { error: new Error('Not signed in') };
@@ -157,7 +170,7 @@ export function AuthProvider({ children }) {
         user, profile: freshProfile, loading, profileLoading, isGuest, authError,
         activeRole, chooseRole,
         signUp, signIn, signOut, signInAsGuest, updateDisplayName, resetDisplayName,
-        acceptNscNotice,
+        acceptNscNotice, setCafeVisibility,
       }}
     >
       {children}
