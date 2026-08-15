@@ -15,6 +15,11 @@ export function useLiveRound() {
       join: async () => {},
       leave: () => {},
       hideOverlay: () => {},
+      // Must mirror the provider's value exactly. StudyRoomPanel calls
+      // refreshActive() unconditionally, so an omission here is a crash the
+      // moment anything renders outside the provider — today only App.jsx's
+      // wrapping keeps that from happening.
+      refreshActive: () => {},
     }
   );
 }

@@ -1,11 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { useGame } from '@/lib/gameState/useGame';
-import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Coffee } from 'lucide-react';
 import CafeCanvas from '@/components/cafe/CafeCanvas';
 import { VisitProvider } from '@/lib/gameState/VisitProvider';
 import { fmtLastSeen } from '@/lib/friends/format';
+import { useCafeSnapshot } from '@/lib/friends/cafeSnapshot';
 
 /**
  * A friend's cafe, drawn from a snapshot of their save.
@@ -85,24 +84,7 @@ export default function VisitCafe() {
   const target = state.ui?.visitingFriend ?? null;
   const leave = () => dispatch({ type: 'SET_PHASE', payload: 'friends' });
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['visit-cafe', target?.id],
-    enabled: Boolean(target?.id),
-    // A visit is a moment, not a subscription — one fetch on entry, and a
-    // fresh one next time rather than a cached room from an earlier visit.
-    gcTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const { data: rows, error: err } = await supabase.rpc('visit_friend_cafe', {
-        _friend_id: target.id,
-      });
-      if (err) throw err;
-      const row = Array.isArray(rows) ? rows[0] : rows;
-      if (!row) throw new Error('That cafe could not be found.');
-      return row;
-    },
-  });
+  const { data, isLoading, error } = useCafeSnapshot(target?.id);
 
   if (!target) {
     return (

@@ -1,16 +1,18 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import Draggable from 'react-draggable';
-import { Trophy, Crown, GripVertical } from 'lucide-react';
+import { Trophy, Crown, GripVertical, Eye } from 'lucide-react';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
 import { useAuth } from '@/auth/useAuth';
 import { useGame } from '@/lib/gameState/useGame';
 import { BOOST_LABEL, BOOST_WINDOW_SECONDS } from '@/lib/gameState/constants';
 import { useRoundParticipants } from '@/lib/liveRound/useRoundParticipants';
 import { rankRoundByMode, formatRoundValue } from '@/lib/leaderboard/scoring';
+import CafePeekOverlay from '@/components/friends/CafePeekOverlay';
+import { AnimatePresence } from 'framer-motion';
 
 const MEDAL = ['text-amber-400', 'text-slate-300', 'text-amber-700'];
 
-function Row({ entry, isMe }) {
+function Row({ entry, isMe, onPeek }) {
   return (
     <div className={`flex items-center gap-2 rounded-md px-2 py-1 ${isMe ? 'bg-primary/20' : ''}`}>
       <span className="flex w-4 shrink-0 justify-center">
@@ -28,6 +30,21 @@ function Row({ entry, isMe }) {
       <span className="shrink-0 text-[11px] font-semibold text-white tabular-nums">
         {formatRoundValue(entry, 'overall')}
       </span>
+      {/* Only for other people, and only in a study room — a classroom round
+          does not make classmates into visitors. A refusal (their cafe is
+          closed, or they left the room) surfaces inside the overlay rather
+          than hiding the button, so the reason is readable. */}
+      {!isMe && onPeek && (
+        <button
+          type="button"
+          onClick={() => onPeek(entry)}
+          title={`Look in on ${entry.displayName}'s cafe`}
+          aria-label={`Look in on ${entry.displayName}'s cafe`}
+          className="shrink-0 text-white/40 transition-colors hover:text-white"
+        >
+          <Eye className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -50,15 +67,40 @@ export default function RoundOverlay() {
   const { entries } = useRoundParticipants(currentRound?.round_id);
   // react-draggable needs a nodeRef under React 19 (findDOMNode is gone).
   const nodeRef = useRef(null);
+  const [peek, setPeek] = useState(null);
+
+  // This component hides by returning null rather than unmounting, so `peek`
+  // outlives the round it was opened from. Without this, a peek left open when
+  // a room ended would reappear over a completely unrelated later round —
+  // still showing whoever was clicked in the old one.
+  const roundId = currentRound?.round_id ?? null;
+  const [peekRoundId, setPeekRoundId] = useState(roundId);
+  if (peekRoundId !== roundId) {
+    setPeekRoundId(roundId);
+    if (peek) setPeek(null);
+  }
 
   if (!currentRound) return null;
 
+  // Peeking is a study-room affordance: it rests on shares_active_study_room(),
+  // which is deliberately study-only.
+  const canPeek = currentRound.owner_kind === 'study';
   const ranked = rankRoundByMode(entries, 'overall');
   const me = ranked.find((e) => e.studentId === user?.id);
   const top = ranked.slice(0, 3);
   const showMeSeparately = me && me.rank > 3;
 
   return (
+    <>
+    <AnimatePresence>
+      {peek && (
+        <CafePeekOverlay
+          friendId={peek.studentId}
+          name={peek.displayName}
+          onClose={() => setPeek(null)}
+        />
+      )}
+    </AnimatePresence>
     <Draggable nodeRef={nodeRef} handle=".ro-drag" bounds="body">
       <div
         ref={nodeRef}
@@ -97,7 +139,12 @@ export default function RoundOverlay() {
         ) : (
           <div className="space-y-0.5">
             {top.map((entry) => (
-              <Row key={entry.studentId} entry={entry} isMe={entry.studentId === user?.id} />
+              <Row
+                key={entry.studentId}
+                entry={entry}
+                isMe={entry.studentId === user?.id}
+                onPeek={canPeek ? setPeek : undefined}
+              />
             ))}
             {showMeSeparately && (
               <>
@@ -110,5 +157,6 @@ export default function RoundOverlay() {
 
       </div>
     </Draggable>
+    </>
   );
 }
