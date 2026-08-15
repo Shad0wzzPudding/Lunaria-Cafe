@@ -247,6 +247,8 @@ export function gameReducer(state, action) {
           elapsed: 0,
           duration: action.payload?.durationSeconds ?? state.focus.duration,
           roundControlled: action.payload?.roundControlled ?? false,
+          // Only a teacher's round withholds reputation; see initialState.
+          roundScored: action.payload?.roundScored ?? false,
           endsAt: action.payload?.endsAt ?? null,
           sessionRep: resumeRep,
           // Shifted back by the coins already banked this ROUND, so the HUD's
@@ -288,7 +290,7 @@ export function gameReducer(state, action) {
     case 'RESET_FOCUS':
       // boostActive clears but the ticket stays spent — abandoning a session
       // is one of the no-refund paths.
-      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, boostActive: false } };
+      return { ...state, focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, roundScored: false, endsAt: null, boostActive: false } };
 
     case 'END_FOCUS': {
       if (state.focus.status !== 'active' && state.focus.status !== 'paused' && state.focus.status !== 'distracted') return state;
@@ -300,7 +302,7 @@ export function gameReducer(state, action) {
       const sessionMins = calcSessionMins(state.focus.elapsed, false);
       const coinsEarned = Math.max(0, state.coins - (state.focus.coinsAtStart ?? state.coins));
       const failed      = state.focus.status === 'distracted';
-      const isRoundEnd  = state.focus.roundControlled;
+      const isRoundEnd  = state.focus.roundScored;
       // In a live session the fail penalty lands on session rep (not lifetime),
       // then lifetime gets the 10% diligence reward. Solo sessions keep the
       // classic behaviour: a failed session costs 3 lifetime reputation.
@@ -328,7 +330,7 @@ export function gameReducer(state, action) {
           boostUsed:    state.focus.boostActive ?? false,
           ...(isRoundEnd ? { diligenceRep: eDiligenceRep, sessionRep: eSessionRep } : {}),
         },
-        focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, endsAt: null, sessionRep: 0, boostActive: false },
+        focus: { ...state.focus, status: 'idle', elapsed: 0, roundControlled: false, roundScored: false, endsAt: null, sessionRep: 0, boostActive: false },
         stats: {
           ...state.stats,
           // Session counts toward totals, but streak fields are left untouched —
@@ -397,7 +399,7 @@ export function gameReducer(state, action) {
 
       // Live session: lifetime rep gains 10% (floored) of the session rep held.
       const cSessionRep    = state.focus.sessionRep ?? 0;
-      const cDiligenceRep  = state.focus.roundControlled ? Math.max(0, Math.floor(cSessionRep * 0.1)) : 0;
+      const cDiligenceRep  = state.focus.roundScored ? Math.max(0, Math.floor(cSessionRep * 0.1)) : 0;
       const cReputation    = Math.min(100, state.reputation + cDiligenceRep);
 
       return {
@@ -415,11 +417,11 @@ export function gameReducer(state, action) {
           streakBefore:    state.stats.currentStreak,
           streakAfter:     newStreak,
           boostUsed:       state.focus.boostActive ?? false,
-          ...(state.focus.roundControlled
+          ...(state.focus.roundScored
             ? { diligenceRep: cDiligenceRep, sessionRep: cSessionRep }
             : {}),
         },
-        focus: { ...state.focus, status: 'completed', roundControlled: false, endsAt: null, sessionRep: 0, boostActive: false },
+        focus: { ...state.focus, status: 'completed', roundControlled: false, roundScored: false, endsAt: null, sessionRep: 0, boostActive: false },
         stats: {
           ...state.stats,
           totalSessions:   state.stats.totalSessions  + 1,
@@ -973,18 +975,28 @@ export function gameReducer(state, action) {
         }
       }
 
-      // In a live session, reputation is HELD as session rep (out of lifetime);
-      // lifetime only receives a 10% diligence reward when the session ends.
-      const isRoundServe = state.focus.roundControlled;
+      // Two independent questions, and conflating them broke the study-room
+      // leaderboard:
+      //
+      //   holdRep  — is this reputation WITHHELD from lifetime? Only in a
+      //     teacher's round, which pays a 10% diligence reward at the end
+      //     instead. A study room banks it normally, like studying alone.
+      //   inRound  — should this reputation still be MEASURED for the board?
+      //     Yes in either kind. The round leaderboard reports focus.sessionRep
+      //     and ranks on it (ROUND_WEIGHTS.rep = 0.20), so a study room that
+      //     never accumulated it would show every player on zero reputation
+      //     and quietly skew the Overall column too.
+      const holdRep = state.focus.roundScored;
+      const inRound = state.focus.roundControlled;
       let next = {
         ...state,
         npcs:       { ...state.npcs, customers: remaining },
         cafe:       { ...state.cafe, currentCustomers: remaining.length },
         coins:      state.coins + coinsGain,
-        reputation: isRoundServe
+        reputation: holdRep
           ? state.reputation
           : Math.max(0, Math.min(100, state.reputation + repGain)),
-        focus: isRoundServe
+        focus: inRound
           ? { ...state.focus, sessionRep: (state.focus.sessionRep ?? 0) + repGain }
           : state.focus,
         stats: {

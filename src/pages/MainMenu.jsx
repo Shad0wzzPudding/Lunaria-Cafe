@@ -211,7 +211,7 @@ export default function MainMenu() {
             {currentRound && (
               <p className="font-pixel text-xs text-emerald-300 drop-shadow-md flex items-center gap-1.5 pt-1">
                 <Radio className="w-3.5 h-3.5" />
-                You're in the live-session of {currentRound.classroom_name}!
+                You're in the live-session of {currentRound.scope_name}!
               </p>
             )}
           </div>

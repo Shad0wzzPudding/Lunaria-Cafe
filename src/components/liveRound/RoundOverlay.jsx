@@ -74,11 +74,11 @@ export default function RoundOverlay() {
             className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white"
             title={
               currentRound.title?.trim()
-                ? `${currentRound.title.trim()} — ${currentRound.classroom_name}`
-                : currentRound.classroom_name
+                ? `${currentRound.title.trim()} — ${currentRound.scope_name}`
+                : currentRound.scope_name
             }
           >
-            {currentRound.title?.trim() || currentRound.classroom_name}
+            {currentRound.title?.trim() || currentRound.scope_name}
           </span>
         </div>
 

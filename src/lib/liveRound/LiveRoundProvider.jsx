@@ -32,7 +32,8 @@ const titleOf = (round) => round?.title?.trim() || '';
 /**
  * Student-side live-round engine. Mounts inside GameProvider (needs
  * game state to compute round-scoped deltas) and:
- *   • discovers live rounds in the student's classrooms (+ Realtime),
+ *   • discovers live rounds in the student's classrooms and study rooms
+ *     hosted by their friends (+ Realtime),
  *   • pops a global "join" toast for un-joined rounds on any page,
  *   • once joined, reports focus_seconds / coins / avg_focus accrued
  *     DURING the round every few seconds,
@@ -222,6 +223,10 @@ export function LiveRoundProvider({ children }) {
           payload: {
             durationSeconds: remaining ?? OPEN_ENDED_SECONDS,
             roundControlled: true,
+            // A teacher's round withholds reputation from lifetime and reports
+            // it to the round; a friends' study room does not — it is an
+            // ordinary session with a scoreboard over it. See initialState.
+            roundScored: round.owner_kind !== 'study',
             endsAt: endsAtMs,
             resuming,
             boostsAllowed,
@@ -275,8 +280,8 @@ export function LiveRoundProvider({ children }) {
           const name = titleOf(round);
           toast.success(
             name
-              ? `Joined "${name}" in ${round.classroom_name}!`
-              : `Joined ${round.classroom_name}'s live session!`,
+              ? `Joined "${name}" in ${round.scope_name}!`
+              : `Joined ${round.scope_name}'s live session!`,
             {
               description: spentTicket
                 ? `A boost potion was used — ${BOOST_LABEL} for the ${BOOST_WINDOW_LABEL}.`
@@ -391,7 +396,7 @@ export function LiveRoundProvider({ children }) {
   useEffect(() => {
     if (!currentRound) return undefined;
     if (activeRounds.some((r) => r.round_id === currentRound.round_id)) return undefined;
-    const endedName = currentRound.classroom_name;
+    const endedName = currentRound.scope_name;
     const endedTitle = titleOf(currentRound);
     // Defer the clear so it isn't a synchronous setState within the effect.
     const t = setTimeout(() => {
@@ -435,8 +440,8 @@ export function LiveRoundProvider({ children }) {
       const startedTitle = titleOf(round);
       toast(
         startedTitle
-          ? `${round.classroom_name} started "${startedTitle}"!`
-          : `${round.classroom_name} started a live session!`,
+          ? `${round.scope_name} started "${startedTitle}"!`
+          : `${round.scope_name} started a live session!`,
         {
           duration: 10000,
           description: !hasTickets

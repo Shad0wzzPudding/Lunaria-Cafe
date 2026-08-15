@@ -27,7 +27,16 @@ export const initialState = {
     duration: 25 * 60,
     mode: 'pomodoro',
     repPenaltyLastAt: null,
-    roundControlled: false, // true while a teacher's live round drives this session
+    // Two separate things that used to be one flag:
+    //   roundControlled — a round drives this session's timer, overlay and
+    //     end condition. True for BOTH a teacher's live round and a friends'
+    //     study room.
+    //   roundScored — this session's reputation is held out of lifetime and
+    //     reported to the round instead. True ONLY for a teacher's round.
+    //     A study room is an ordinary focus session with a scoreboard over
+    //     it, so it pays reputation exactly as studying alone does.
+    roundControlled: false,
+    roundScored: false,
     endsAt: null,           // wall-clock ms when a timed round ends (null = open-ended)
     sessionRep: 0,          // reputation earned THIS live session (held out of lifetime)
     boostActive: false,     // a focus-boost ticket was spent on THIS session (×1.15 score)
