@@ -1,9 +1,10 @@
 import { useReducer, useCallback, useEffect, useState, useRef } from 'react';
 import { GameContext } from './gameContext';
-import { loadPlayerSave, savePlayerSave, mergeLoadedSave } from './saveService';
+import { loadPlayerSave, savePlayerSave, savePlayerSaveOnExit, mergeLoadedSave } from './saveService';
 import { gameReducer } from './gameReducer';
 import { initialState } from './initialState';
 import { AUTO_SAVE_INTERVAL } from './constants';
+import { useKonamiCode } from '@/lib/ui/useKonamiCode';
 import { applyThemeSettings } from '@/lib/theme/themeDeriver';
 import { setAIConfig } from '@/lib/ai/aiIntegration';
 import { useAuth } from '@/auth/useAuth';
@@ -16,7 +17,44 @@ import { useAuth } from '@/auth/useAuth';
  * no write path exists to overwrite the save that is still sitting safely in
  * the database.
  */
-function SaveLoadFailure({ message, onRetry, onSignOut }) {
+function SaveLoadFailure({ message, onRetry, onSignOut, onBypass }) {
+  // The same cheat sequence that opens the debug panel. No Enter ×3 preamble
+  // here — that exists to stop the settings page reacting to ordinary typing,
+  // and there is nothing to type on this screen.
+  const [asking, setAsking] = useState(false);
+  useKonamiCode(() => setAsking(true), { enabled: !asking });
+
+  if (asking) {
+    return (
+      <div className="dark min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md rounded-xl border border-amber-500/50 bg-card/60 p-6 space-y-4">
+          <h1 className="font-pixel text-sm text-amber-300">Open without your save?</h1>
+          <div className="font-body text-sm text-muted-foreground leading-relaxed space-y-2">
+            <p>
+              This lets you into the app while the server is unreachable, so the rest
+              of it can be shown or tested.
+            </p>
+            <p className="text-amber-300/90">
+              You will be looking at an EMPTY cafe, not yours — and nothing you do will
+              be saved. Your real save stays untouched in the database, which is the
+              whole point: saving is switched off so an empty cafe cannot overwrite it.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-1">
+            <button type="button" onClick={onBypass}
+              className="rounded-md border border-amber-500/50 bg-amber-500/15 px-4 py-2 font-pixel text-xs text-amber-200 hover:bg-amber-500/25 transition-colors">
+              Open anyway — nothing will be saved
+            </button>
+            <button type="button" onClick={() => setAsking(false)}
+              className="rounded-md border border-border/40 px-4 py-2 font-pixel text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dark min-h-screen flex items-center justify-center bg-background p-6">
       <div className="w-full max-w-md rounded-xl border border-amber-500/40 bg-card/60 p-6 text-center space-y-4">
@@ -57,6 +95,12 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   // failed read — it is the blank state that follows it being written back.
   const [loadError, setLoadError] = useState(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  // Admin escape hatch from the save-failure screen (Konami). See below.
+  const [bypassed, setBypassed] = useState(false);
+  // True whenever the save could not be loaded — including while bypassed,
+  // because the bypass never clears loadError. Exposed so other providers can
+  // refuse to write too; the player's save is not the only thing writable.
+  const saveDisabled = Boolean(loadError);
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; });
 
@@ -150,6 +194,10 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   }, [userId, loadAttempt]);
 
   const retryLoad = useCallback(() => {
+    // Clears the bypass as well: a successful reload must take the banner down
+    // and re-enable saving, not leave a read-only session running over a save
+    // that is now perfectly loadable.
+    setBypassed(false);
     setLoadError(null);
     setReady(false);
     setLoadAttempt((n) => n + 1);
@@ -216,22 +264,53 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
     });
   }, [state, userId, ready, loadError]);
 
+  // Saving on the way out. Two changes from what was here before, and both
+  // were needed — either alone still loses saves:
+  //
+  //   1. savePlayerSaveOnExit uses a keepalive fetch. The old handler called
+  //      savePlayerSave, which goes through supabase-js and so issues an
+  //      ordinary fetch; the browser cancels those when the document tears
+  //      down, and beforeunload does not await promises. It was racing
+  //      teardown and usually losing.
+  //
+  //   2. `visibilitychange` → hidden is the event that actually fires.
+  //      beforeunload is skipped entirely when a mobile browser discards a
+  //      backgrounded tab, and is unreliable on iOS in general, so a phone
+  //      user could lose a whole session. pagehide covers the desktop
+  //      close/navigate case including bfcache.
+  //
+  // Hidden is not the same as closing — a tab switch fires it too — so this
+  // runs often by design, and savePlayerSaveOnExit skips writes when nothing
+  // has changed.
   useEffect(() => {
     if (!userId || !ready || loadError) return;
 
-    const handleBeforeUnload = () => {
-      savePlayerSave(userId, stateRef.current).catch(() => {});
+    const flushOnExit = () => {
+      savePlayerSaveOnExit(userId, stateRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushOnExit();
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushOnExit);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flushOnExit);
+    };
   }, [userId, ready, loadError]);
 
-  if (loadError) {
+  // `bypassed` renders the game DESPITE loadError, and deliberately does not
+  // clear it: every write path above is gated on loadError, so leaving it set
+  // is what makes the bypass read-only. Clearing it instead would re-create
+  // exactly the data loss the guard exists to prevent — a blank cafe autosaved
+  // over a real save that was merely unreachable.
+  if (loadError && !bypassed) {
     return (
       <SaveLoadFailure
         message={loadError}
         onRetry={retryLoad}
+        onBypass={() => setBypassed(true)}
         // signOut directly, NOT logout() — logout flushes the save first, which
         // is the one thing that must never happen from this screen.
         onSignOut={async () => {
@@ -251,7 +330,28 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   }
 
   return (
-    <GameContext.Provider value={{ state, dispatch, processAIEvent, saveNow, saveError, logout }}>
+    <GameContext.Provider
+      value={{ state, dispatch, processAIEvent, saveNow, saveError, logout, saveDisabled }}
+    >
+      {/* Impossible to forget you are in this mode. Without a permanent marker
+          somebody plays for an hour in a session that was never going to be
+          written and loses the lot — which would be a worse outcome than the
+          error screen they bypassed. */}
+      {saveDisabled && (
+        <div
+          role="status"
+          className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-amber-500/90 px-3 py-1 text-center font-pixel text-[10px] text-amber-950"
+        >
+          <span>Offline preview — this is not your cafe, and nothing here is being saved.</span>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            Try loading again
+          </button>
+        </div>
+      )}
       {children}
     </GameContext.Provider>
   );

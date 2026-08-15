@@ -32,8 +32,7 @@ import { useSessionLock } from '@/lib/session/useSessionLock'
 import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
 import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
-
-const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter']
+import { KONAMI } from '@/lib/ui/useKonamiCode'
 
 function GameRouter() {
   const { state, dispatch } = useGame()

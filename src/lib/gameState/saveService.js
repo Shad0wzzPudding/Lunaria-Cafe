@@ -244,4 +244,102 @@ export async function savePlayerSave(userId, state) {
     { onConflict: 'user_id' }
   );
   if (error) throw error;
+  lastSentFingerprint = null; // an ordinary save supersedes whatever the beacon sent
+}
+
+// ── Saving while the page is going away ─────────────────────────────────
+//
+// savePlayerSave() cannot do this job. It goes through supabase-js, which
+// issues an ordinary fetch, and the browser CANCELS in-flight requests when a
+// document tears down — `beforeunload` never awaits a promise. So the old
+// unload handler was racing teardown and usually losing: coins, reputation and
+// focus time went backwards on a quick reload, and the welcome letter kept
+// reappearing because its acknowledgement never landed.
+//
+// `keepalive: true` is the fix the platform provides: such a request is
+// explicitly permitted to outlive the document. It cannot go through
+// supabase-js, so the REST call is built by hand.
+
+const REST_URL = import.meta.env.VITE_SUPABASE_URL;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// The access token has to be readable SYNCHRONOUSLY at unload time, and
+// supabase.auth.getSession() is async — awaiting it during teardown is exactly
+// the race being fixed. So it is mirrored here as the session changes.
+let accessToken = null;
+if (supabase) {
+  supabase.auth.getSession().then(({ data }) => {
+    accessToken = data?.session?.access_token ?? null;
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    accessToken = session?.access_token ?? null;
+  });
+}
+
+// Skips a write when nothing has changed since the last one. visibilitychange
+// fires on every tab switch, and without this a player alt-tabbing repeatedly
+// would post an identical row each time.
+//
+// Compares the SAVE CONTENT only. An earlier version fingerprinted the whole
+// request body, which carries a fresh `updated_at` on every call — so no two
+// were ever equal, the check never fired, and closing a page sent two full
+// copies (visibilitychange then pagehide) against the shared keepalive quota.
+let lastSentFingerprint = null;
+
+/** Body limit for keepalive requests, per fetch spec. */
+const KEEPALIVE_MAX_BYTES = 64 * 1024;
+
+/**
+ * Best-effort save that survives the page closing. Returns a string describing
+ * what happened, for tests and logging — never throws, because every caller is
+ * a teardown handler with nowhere to report to.
+ */
+export function savePlayerSaveOnExit(userId, state) {
+  if (!supabase || !REST_URL || !ANON_KEY) return 'no-backend';
+  if (!userId || !accessToken) return 'no-session';
+
+  const save_data = serializeGameState(state);
+  const fingerprint = JSON.stringify({ user_id: userId, save_data });
+  if (fingerprint === lastSentFingerprint) return 'unchanged';
+
+  const body = JSON.stringify({
+    user_id: userId,
+    save_data,
+    updated_at: new Date().toISOString(),
+  });
+
+  // Over the cap the browser rejects the request outright, and at unload there
+  // is no second chance — so say so loudly rather than losing it silently. The
+  // 30s autosave is the safety net for a save this large.
+  // BYTES, not characters. String.length counts UTF-16 code units, so a
+  // journal in Thai, Japanese or emoji measures far short of its encoded size —
+  // it would pass this check, the browser would reject the request, and the
+  // .catch below would swallow it: exactly the silent loss this branch exists
+  // to prevent.
+  const byteLength = new TextEncoder().encode(body).length;
+  if (byteLength > KEEPALIVE_MAX_BYTES) {
+    console.error(
+      `[save] exit save is ${byteLength} bytes, over the ${KEEPALIVE_MAX_BYTES} keepalive limit — relying on the periodic autosave instead.`,
+    );
+    return 'too-large';
+  }
+
+  try {
+    fetch(`${REST_URL}/rest/v1/player_saves`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        // Same upsert semantics as the supabase-js call above.
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body,
+    }).catch(() => {});
+    lastSentFingerprint = fingerprint;
+    return 'sent';
+  } catch {
+    return 'failed';
+  }
 }

@@ -40,7 +40,7 @@ const titleOf = (round) => round?.title?.trim() || '';
  *   • drives the cafe overlay via `currentRound`.
  */
 export function LiveRoundProvider({ children }) {
-  const { state, dispatch } = useGame();
+  const { state, dispatch, saveDisabled } = useGame();
   const { user, profile, isGuest } = useAuth();
   const queryClient = useQueryClient();
   const userId = isGuest ? null : user?.id;
@@ -110,6 +110,20 @@ export function LiveRoundProvider({ children }) {
   const beginParticipation = useCallback(
     async (round, useBoostOnResume = null) => {
       if (!userId || !round) return;
+      // An offline-preview session runs on a BLANK state, so its focus time,
+      // coins and reputation are all meaningless deltas. Writing them into
+      // round_participants would put fiction on a classmate's board — and on
+      // an instructor's, which is a graded surface. The player's own save is
+      // not the only thing worth refusing to write.
+      //
+      // THROWS rather than returning: join()'s caller reports success unless
+      // this rejects, so a silent return told the student "Joined …" for a
+      // round they were never in — and because begunRoundIdRef is still unset,
+      // the "already in this session" guard never engaged, so every repeat
+      // click faked it again.
+      if (saveDisabled) {
+        throw new Error('Offline preview — sessions are unavailable until your save loads.');
+      }
       begunRoundIdRef.current = round.round_id;
       leftRoundIdRef.current = null; // (re)joining clears any prior opt-out
 
@@ -242,7 +256,7 @@ export function LiveRoundProvider({ children }) {
       }
       return spentTicket;
     },
-    [userId, refreshActive, dispatch],
+    [userId, refreshActive, dispatch, saveDisabled],
   );
 
   const hideOverlay = useCallback(() => setOverlayVisible(false), []);
