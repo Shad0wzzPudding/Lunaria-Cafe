@@ -11,9 +11,10 @@ import { initialState } from './initialState';
  *
  * The point of it being a separate provider rather than a flag on GameProvider
  * is that **there is no save code in this file**. GameProvider autosaves
- * `stateRef.current` every 30s, again on beforeunload, and again on session-lock
- * handover; seeding a friend's furniture into that state would write their cafe
- * into the visitor's `player_saves` row and destroy their own. Here that cannot
+ * `stateRef.current` every 30s, again when the page is hidden or closed, and
+ * again on session-lock handover; seeding a friend's furniture into that state
+ * would write their cafe into the visitor's `player_saves` row and destroy
+ * their own. Here that cannot
  * happen by construction, not by a guard someone might later move.
  *
  * The reducer is still live, so the pets and staff wander (CafeCanvas dispatches
@@ -69,6 +70,11 @@ export function VisitProvider({ snapshot, children }) {
       saveNow: async () => false,
       saveError: null,
       logout: () => {},
+      // Mirrors GameProvider's shape. `true` is both the safe value and the
+      // honest one: this context exists precisely because nothing in a visit
+      // may be written. Omitting it handed readers `undefined` — falsy, i.e.
+      // "saving is fine" — in the one place where it categorically is not.
+      saveDisabled: true,
     }),
     [state],
   );

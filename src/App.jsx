@@ -248,7 +248,7 @@ function AppShell() {
 
   // Block BEFORE the game tree mounts. This is the part that actually protects
   // the save: GameProvider is never mounted while another instance owns the
-  // lock, so its 30s autosave and beforeunload save don't exist to overwrite
+  // lock, so its 30s autosave and exit save don't exist to overwrite
   // the active one. It also means the winner mounts fresh and loads the latest
   // save, rather than holding stale state from before the handover.
   if (lockStatus === 'checking') {

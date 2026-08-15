@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/auth/useAuth';
 import { useLiveRound } from '@/lib/liveRound/useLiveRound';
+import { useGame } from '@/lib/gameState/useGame';
 import { Button } from '@/components/ui/button';
 import { Play, Radio, Square, Users } from 'lucide-react';
 
@@ -72,6 +73,7 @@ function RoomCard({ room, mine, joined, blocked, onJoin, onEnd, ending }) {
  */
 export default function StudyRoomPanel() {
   const { user } = useAuth();
+  const { saveDisabled } = useGame();
   const { activeRounds, currentRound, join, refreshActive } = useLiveRound();
   const [minutes, setMinutes] = useState(25);
   const [timed, setTimed] = useState(true);
@@ -146,9 +148,18 @@ export default function StudyRoomPanel() {
         />
       ))}
 
+      {/* Opening a room in an offline preview would notify friends of a room
+          the host can never enter — beginParticipation refuses a blank state,
+          host included. Say why rather than offering a broken button. */}
+      {!myRoom && saveDisabled && (
+        <p className="rounded-xl border border-border/30 bg-card/40 p-4 text-xs text-muted-foreground">
+          Study rooms need your save. They'll be available once your cafe loads.
+        </p>
+      )}
+
       {/* One open room per host is enforced by a unique index, so the opening
           form is simply absent while yours is running. */}
-      {!myRoom && (
+      {!myRoom && !saveDisabled && (
         <div className="rounded-xl border border-border/30 bg-card/40 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">
             Study alongside your friends — everyone runs their own cafe, and the room

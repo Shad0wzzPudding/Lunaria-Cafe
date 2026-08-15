@@ -232,6 +232,22 @@ export async function loadPlayerSave(userId) {
   return data?.save_data ?? null;
 }
 
+/**
+ * The dedupe key: save CONTENT only, never a timestamp.
+ *
+ * `npcs` is excluded because CafeCanvas wanders the rabbits and cats on a
+ * timer, re-dispatching their x/y every few seconds. Including them meant the
+ * fingerprint never repeated while the cafe was open, so the alt-tab de-dupe
+ * never fired there and ten tab switches wrote ten full jsonb upserts. Their
+ * positions still get SAVED — they simply do not, on their own, justify a
+ * write when nothing else about the cafe changed.
+ */
+function fingerprintOf(userId, save_data) {
+  const rest = { ...(save_data ?? {}) };
+  delete rest.npcs;
+  return JSON.stringify({ user_id: userId, save_data: rest });
+}
+
 export async function savePlayerSave(userId, state) {
   if (!supabase) return;
   const save_data = serializeGameState(state);
@@ -244,7 +260,11 @@ export async function savePlayerSave(userId, state) {
     { onConflict: 'user_id' }
   );
   if (error) throw error;
-  lastSentFingerprint = null; // an ordinary save supersedes whatever the beacon sent
+  // Record what was just written, rather than resetting to the "nothing sent
+  // yet" sentinel. Setting null meant the 30s autosave wiped the fingerprint
+  // every interval, so the very next tab switch re-POSTed an identical payload
+  // — the de-dupe almost never fired in practice.
+  lastSentFingerprint = fingerprintOf(userId, save_data);
 }
 
 // ── Saving while the page is going away ─────────────────────────────────
@@ -267,12 +287,31 @@ const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // supabase.auth.getSession() is async — awaiting it during teardown is exactly
 // the race being fixed. So it is mirrored here as the session changes.
 let accessToken = null;
+// Bumped by every authoritative update. An async read that resolves after a
+// newer one has landed is discarded rather than overwriting it — otherwise a
+// TOKEN_REFRESHED arriving mid-flight could be clobbered by the older
+// snapshot, and the next exit save would 401 with a stale JWT.
+let tokenEpoch = 0;
 if (supabase) {
-  supabase.auth.getSession().then(({ data }) => {
-    accessToken = data?.session?.access_token ?? null;
-  });
-  supabase.auth.onAuthStateChange((_event, session) => {
+  const adopt = (session) => {
+    tokenEpoch += 1;
     accessToken = session?.access_token ?? null;
+  };
+  supabase.auth.getSession().then(({ data }) => adopt(data?.session));
+  supabase.auth.onAuthStateChange((_event, session) => adopt(session));
+
+  // supabase-js pauses auto-refresh while a tab is hidden, so a long-
+  // backgrounded tab can hold an expired JWT. Re-reading on the way back
+  // means the NEXT hide sends a valid one. It cannot help a tab that is
+  // hidden, expires and is then closed without ever being looked at again —
+  // nothing can, without a valid token — but it closes the common case.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const epochAtCall = tokenEpoch;
+    supabase.auth.getSession().then(({ data }) => {
+      if (tokenEpoch !== epochAtCall) return; // something fresher already won
+      adopt(data?.session);
+    });
   });
 }
 
@@ -299,7 +338,7 @@ export function savePlayerSaveOnExit(userId, state) {
   if (!userId || !accessToken) return 'no-session';
 
   const save_data = serializeGameState(state);
-  const fingerprint = JSON.stringify({ user_id: userId, save_data });
+  const fingerprint = fingerprintOf(userId, save_data);
   if (fingerprint === lastSentFingerprint) return 'unchanged';
 
   const body = JSON.stringify({
@@ -312,22 +351,31 @@ export function savePlayerSaveOnExit(userId, state) {
   // is no second chance — so say so loudly rather than losing it silently. The
   // 30s autosave is the safety net for a save this large.
   // BYTES, not characters. String.length counts UTF-16 code units, so a
-  // journal in Thai, Japanese or emoji measures far short of its encoded size —
-  // it would pass this check, the browser would reject the request, and the
-  // .catch below would swallow it: exactly the silent loss this branch exists
-  // to prevent.
+  // journal in Thai, Japanese or emoji measures far short of its encoded size:
+  // 30k Thai characters is 90KB. Measuring in characters would sail past this
+  // check and let the browser reject the request instead.
   const byteLength = new TextEncoder().encode(body).length;
-  if (byteLength > KEEPALIVE_MAX_BYTES) {
+  // Over the cap, keepalive is not an option — so fall back to an ORDINARY
+  // fetch rather than giving up. On a tab-hide the page lives on and that
+  // request completes normally; only on a real close is it likely to be
+  // cancelled. Strictly better than dropping the save, which is what an
+  // earlier version did on the false comfort that "the autosave will get it" —
+  // there is no future autosave when the page is closing.
+  const oversized = byteLength > KEEPALIVE_MAX_BYTES;
+  if (oversized) {
     console.error(
-      `[save] exit save is ${byteLength} bytes, over the ${KEEPALIVE_MAX_BYTES} keepalive limit — relying on the periodic autosave instead.`,
+      `[save] exit save is ${byteLength} bytes, over the ${KEEPALIVE_MAX_BYTES} keepalive limit — sending without keepalive, which may not survive a page close.`,
     );
-    return 'too-large';
   }
 
   try {
+    // Assume success so the pagehide that follows a visibilitychange does not
+    // send a second copy; any failure below puts it back.
+    lastSentFingerprint = fingerprint;
+
     fetch(`${REST_URL}/rest/v1/player_saves`, {
       method: 'POST',
-      keepalive: true,
+      keepalive: !oversized,
       headers: {
         'Content-Type': 'application/json',
         apikey: ANON_KEY,
@@ -336,10 +384,24 @@ export function savePlayerSaveOnExit(userId, state) {
         Prefer: 'resolution=merge-duplicates',
       },
       body,
-    }).catch(() => {});
-    lastSentFingerprint = fingerprint;
-    return 'sent';
+    })
+      .then((res) => {
+        // An HTTP error RESOLVES the promise — .catch alone never sees a 401 or
+        // a 413. Without this a stale mirrored token (say, after the machine
+        // slept) would drop the save silently, and the retry on the next hide
+        // would de-dupe to 'unchanged' and drop it again.
+        if (!res.ok) {
+          lastSentFingerprint = null;
+          console.error(`[save] exit save rejected with HTTP ${res.status}.`);
+        }
+      })
+      .catch(() => {
+        lastSentFingerprint = null;
+      });
+
+    return oversized ? 'sent-unreliable' : 'sent';
   } catch {
+    lastSentFingerprint = null;
     return 'failed';
   }
 }

@@ -36,11 +36,12 @@ function VisitStage({ host, onLeave }) {
           <h1 className="font-display text-lg text-foreground truncate">
             {state.cafe.name}
           </h1>
-          {/* The snapshot is only as fresh as their last save. Naming the SAVE
+          {/* The snapshot is only as fresh as their last save — written every
+              30s and again when they hide or close the page. Naming the SAVE
               rather than their visit is the honest version: "as they left it"
               implies the room is how they meant to leave it, when in truth it
-              is whatever last reached the server — which, until the
-              beforeunload save is fixed, may be older than their real exit. */}
+              is whatever last reached the server, which can trail their real
+              exit by up to an autosave interval. */}
           <p className="text-xs text-muted-foreground truncate">
             {host.display_name}'s cafe · from their latest save, {fmtLastSeen(host.saved_at)}
           </p>

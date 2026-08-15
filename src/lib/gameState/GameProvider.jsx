@@ -176,6 +176,12 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
             setAIConfig({ aiMode: hydrated.settings.aiMode });
           }
         }
+        // Only now: the fetch RESOLVING is not the same as the save being
+        // usable. Corrupt save_data throws during hydration and lands in the
+        // catch below — with the bypass already cleared, that ejected the user
+        // to the failure screen and made them re-type the Konami sequence on
+        // every retry, which is the regression this was meant to prevent.
+        setBypassed(false);
       })
       .catch((err) => {
         console.error('Load save failed:', err);
@@ -194,10 +200,10 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   }, [userId, loadAttempt]);
 
   const retryLoad = useCallback(() => {
-    // Clears the bypass as well: a successful reload must take the banner down
-    // and re-enable saving, not leave a read-only session running over a save
-    // that is now perfectly loadable.
-    setBypassed(false);
+    // Deliberately does NOT clear `bypassed` here — only a SUCCESSFUL load
+    // does, in the loader below. Clearing it up front meant a failed retry
+    // dropped the user back to the full failure screen and made them type the
+    // Konami sequence again to get back to where they already were.
     setLoadError(null);
     setReady(false);
     setLoadAttempt((n) => n + 1);
@@ -267,16 +273,14 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
   // Saving on the way out. Two changes from what was here before, and both
   // were needed — either alone still loses saves:
   //
-  //   1. savePlayerSaveOnExit uses a keepalive fetch. The old handler called
-  //      savePlayerSave, which goes through supabase-js and so issues an
-  //      ordinary fetch; the browser cancels those when the document tears
-  //      down, and beforeunload does not await promises. It was racing
-  //      teardown and usually losing.
+  //   1. savePlayerSaveOnExit uses a keepalive fetch, which the platform
+  //      permits to outlive the document. An ordinary fetch (which is what
+  //      supabase-js issues) is cancelled when the document tears down.
   //
-  //   2. `visibilitychange` → hidden is the event that actually fires.
-  //      beforeunload is skipped entirely when a mobile browser discards a
-  //      backgrounded tab, and is unreliable on iOS in general, so a phone
-  //      user could lose a whole session. pagehide covers the desktop
+  //   2. `visibilitychange` → hidden and `pagehide` are the events that
+  //      actually fire. beforeunload is skipped entirely when a mobile browser
+  //      discards a backgrounded tab, and is unreliable on iOS in general, so
+  //      a phone user could lose a whole session. pagehide covers the desktop
   //      close/navigate case including bfcache.
   //
   // Hidden is not the same as closing — a tab switch fires it too — so this
@@ -340,9 +344,18 @@ export function GameProvider({ children, userId, onBeforeSignOut, flushRef }) {
       {saveDisabled && (
         <div
           role="status"
-          className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-amber-500/90 px-3 py-1 text-center font-pixel text-[10px] text-amber-950"
+          // Centred with a max width rather than a full-width strip, and z-40
+          // rather than z-[60]: as a full-width bar at the very top it covered
+          // MainMenu's greeting (top-4 left-4) and drew OVER the z-50 phone and
+          // low-score warnings, which are the last things that should be hidden.
+          className="fixed top-0 left-1/2 z-40 flex max-w-[min(92vw,46rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-b-md bg-amber-500/90 px-3 py-1 text-center font-pixel text-[10px] text-amber-950"
         >
-          <span>Offline preview — this is not your cafe, and nothing here is being saved.</span>
+          {/* Says only what it can back up. saveDisabled gates the cafe save
+              and live-round participation; account-level actions (renaming,
+              friend requests, joining a classroom) go through their own RPCs
+              and DO still persist. "Nothing here is being saved" claimed more
+              than that. */}
+          <span>Offline preview — this empty cafe is not your save and will not be saved.</span>
           <button
             type="button"
             onClick={retryLoad}

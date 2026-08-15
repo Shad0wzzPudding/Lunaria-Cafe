@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase';
  * Keeps ONE running instance of the game per account.
  *
  * Why: a player's save is a single row that GameProvider autosaves every 30s
- * and again on beforeunload. Two instances signed into the same account each
- * hold their own divergent state and write over each other — coins and
+ * and again when the page is hidden or closed. Two instances signed into the
+ * same account each hold their own divergent state and write over each other — coins and
  * reputation go backwards, furniture placement races. So the rule is
  * one account · one device · one tab.
  *

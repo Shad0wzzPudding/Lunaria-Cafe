@@ -5,7 +5,7 @@ import { MonitorSmartphone, Copy, LogIn } from 'lucide-react';
  * Full-screen block shown when this instance does NOT own the session lock.
  *
  * It is not merely cosmetic: App renders this INSTEAD of the game tree, so
- * GameProvider is unmounted and its autosave interval and beforeunload save are
+ * GameProvider is unmounted and its autosave interval and exit save are
  * gone. That is what actually stops two instances overwriting each other — the
  * message just explains why.
  */
