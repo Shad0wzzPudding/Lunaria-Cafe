@@ -432,6 +432,15 @@ export function LiveRoundProvider({ children }) {
     if (!userId || currentRound) return;
     for (const round of activeRounds) {
       if (round.joined || toastedRef.current.has(round.round_id)) continue;
+      // Never announce your own study room back to you. A teacher's round is
+      // always somebody else's, so this never came up before; now that
+      // activeRounds includes rooms you host, the host was being told
+      // "<your name> started a session!" with a Join button, seconds after
+      // pressing Open. Still marked as toasted so it can't fire later either.
+      if (round.host_id && round.host_id === userId) {
+        toastedRef.current.add(round.round_id);
+        continue;
+      }
       toastedRef.current.add(round.round_id);
       // The spend is irreversible, so it's announced BEFORE the click —
       // unless the instructor disabled boosts for this session.
@@ -558,8 +567,13 @@ export function LiveRoundProvider({ children }) {
   }, [currentRound, userId]);
 
   const value = useMemo(
-    () => ({ activeRounds, currentRound, overlayVisible, join, leave, hideOverlay }),
-    [activeRounds, currentRound, overlayVisible, join, leave, hideOverlay],
+    // refreshActive is exposed so callers that CREATE or END a round can pull
+    // the list forward. Realtime normally does it, but it is the only refresh
+    // path here (no interval, no refetch on focus) — a dropped websocket would
+    // otherwise leave a host staring at the "open a room" form with an
+    // invisible, uncloseable room already running.
+    () => ({ activeRounds, currentRound, overlayVisible, join, leave, hideOverlay, refreshActive }),
+    [activeRounds, currentRound, overlayVisible, join, leave, hideOverlay, refreshActive],
   );
 
   return <LiveRoundContext.Provider value={value}>{children}</LiveRoundContext.Provider>;

@@ -988,16 +988,25 @@ export function gameReducer(state, action) {
       //     and quietly skew the Overall column too.
       const holdRep = state.focus.roundScored;
       const inRound = state.focus.roundControlled;
+      const nextLifetimeRep = holdRep
+        ? state.reputation
+        : Math.max(0, Math.min(100, state.reputation + repGain));
+      // What the board is told must be what actually happened. Lifetime
+      // reputation is clamped to [0,100]; session rep was taking the RAW gain,
+      // so a study-room player already at 100 banked nothing and still climbed
+      // the board — and ROUND_WEIGHTS.rep ranks on it, while
+      // lastSession.reputationGain reported the clamped figure, so the summary
+      // and the board disagreed. A class round still measures the raw gain,
+      // because there lifetime is frozen on purpose and raw IS what was earned.
+      const measuredRep = holdRep ? repGain : nextLifetimeRep - state.reputation;
       let next = {
         ...state,
         npcs:       { ...state.npcs, customers: remaining },
         cafe:       { ...state.cafe, currentCustomers: remaining.length },
         coins:      state.coins + coinsGain,
-        reputation: holdRep
-          ? state.reputation
-          : Math.max(0, Math.min(100, state.reputation + repGain)),
+        reputation: nextLifetimeRep,
         focus: inRound
-          ? { ...state.focus, sessionRep: (state.focus.sessionRep ?? 0) + repGain }
+          ? { ...state.focus, sessionRep: (state.focus.sessionRep ?? 0) + measuredRep }
           : state.focus,
         stats: {
           ...state.stats,

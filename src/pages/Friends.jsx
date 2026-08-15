@@ -24,6 +24,7 @@ import { formatAccountCode, normalizeAccountCode } from '@/lib/account/accountCo
 import { FRIEND_NOTICES_KEY } from '@/lib/friends/notices';
 import SentLetterFlight from '@/components/friends/SentLetterFlight';
 import ArrivedFriendLetter from '@/components/friends/ArrivedFriendLetter';
+import StudyRoomPanel from '@/components/friends/StudyRoomPanel';
 import { AnimatePresence } from 'framer-motion';
 
 // The online flag is derived from a 30s heartbeat, so a page left open goes
@@ -448,7 +449,11 @@ export default function Friends() {
               </p>
             )}
 
-            {/* Requests first — the only thing here waiting on the player to act. */}
+            {/* Above the lists: a room is the thing you act on now, where the
+                lists are people you already know about. */}
+            <StudyRoomPanel />
+
+            {/* Requests next — the only other thing waiting on the player. */}
             {incoming.length > 0 && (
               <section className="space-y-3">
                 <h2 className="font-display text-base text-foreground flex items-center gap-2">

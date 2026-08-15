@@ -399,12 +399,17 @@ function BgModePanel({ state, dispatch, onClose, anchorRef }) {
 
 // Message shown when leaving a LIVE session (the Leave button, or back-to-menu
 // mid-round) — the rejoin reassurance sits on its own line.
-const LEAVE_LIVE_MESSAGE = (
+// Where to rejoin from depends on which kind of session this is. A study room
+// never appears in My Classrooms, so the class copy would send its players to
+// a page that cannot show their room.
+const leaveLiveMessage = (isStudyRoom) => (
   <>
-    You&apos;ll leave your class&apos;s live session and won&apos;t earn a streak for it.
+    You&apos;ll leave {isStudyRoom ? 'the study room' : "your class's live session"} and
+    won&apos;t earn a streak for it.
     <br />
     <br />
-    You can rejoin anytime from My Classrooms while it&apos;s still running.
+    You can rejoin anytime from {isStudyRoom ? 'Friends' : 'My Classrooms'} while
+    it&apos;s still running.
   </>
 );
 
@@ -412,10 +417,12 @@ const LEAVE_LIVE_MESSAGE = (
 // paths — the Leave button ('leave') and back-to-menu while in a round
 // ('menu' + inRound) — carry the rejoin reassurance; solo back-to-menu keeps
 // the prompt's plain defaults ("Leave the cafe?" / "Exit").
-function exitPromptCopy(intent, inRound) {
+function exitPromptCopy(intent, inRound, isStudyRoom = false) {
+  const message = leaveLiveMessage(isStudyRoom);
+  const title = isStudyRoom ? 'Leave the study room?' : 'Leave the live session?';
   if (intent === 'stop') return { title: 'End your focus session?', confirmLabel: 'Stop Focus' };
-  if (intent === 'leave') return { title: 'Leave the live session?', confirmLabel: 'Leave session', message: LEAVE_LIVE_MESSAGE };
-  if (inRound) return { title: 'Leave the live session?', message: LEAVE_LIVE_MESSAGE };
+  if (intent === 'leave') return { title, confirmLabel: 'Leave session', message };
+  if (inRound) return { title, message };
   return {};
 }
 
@@ -1445,7 +1452,7 @@ export default function CafeView() {
         {exitIntent && (
           <ExitSessionPrompt
             boostActive={state.focus.boostActive ?? false}
-            {...exitPromptCopy(exitIntent, state.focus.roundControlled)}
+            {...exitPromptCopy(exitIntent, state.focus.roundControlled, currentRound?.owner_kind === 'study')}
             onCancel={() => setExitIntent(null)}
             onConfirm={() => {
               const intent = exitIntent;
