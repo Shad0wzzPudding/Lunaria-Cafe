@@ -148,7 +148,7 @@ export default function GameSettings() {
         <h1 className="font-display text-lg text-foreground">Settings</h1>
       </header>
 
-      <main className="max-w-lg mx-auto p-6 space-y-8">
+      <div className="max-w-lg mx-auto p-6 space-y-8">
         <section className="space-y-4">
           <h2 className="font-display text-base text-foreground flex items-center gap-2">
             <Palette className="w-4 h-4 text-primary" /> Theme
@@ -362,7 +362,7 @@ export default function GameSettings() {
             </p>
           </div>
         </section>
-      </main>
+      </div>
 
     </div>
   );

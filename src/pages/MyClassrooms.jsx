@@ -358,7 +358,7 @@ export default function MyClassrooms() {
       {/* Left-aligned and wide, rather than a narrow centred column: the
           cards lay out into the space instead of stacking in a ribbon down
           the middle of a big screen. */}
-      <main className="max-w-5xl p-6 space-y-8">
+      <div className="max-w-5xl p-6 space-y-8">
         {isLoading && (
           <p className="text-sm text-muted-foreground text-center py-10">Loading classrooms…</p>
         )}
@@ -516,7 +516,7 @@ export default function MyClassrooms() {
             </section>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }

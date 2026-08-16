@@ -430,7 +430,7 @@ export default function Friends() {
         </Dialog>
       </header>
 
-      <main className="max-w-5xl p-6 space-y-8">
+      <div className="max-w-5xl p-6 space-y-8">
         {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Loading friends…</p>}
         {error && (
           <p className="text-sm text-amber-400 text-center py-10">
@@ -573,9 +573,9 @@ export default function Friends() {
             </section>
           </>
         )}
-      </main>
+      </div>
 
-      {/* Both letters live outside <main> so neither is affected by the page's
+      {/* Both letters live outside the scrolling column so neither is affected by the page's
           scroll position — they are fixed to the viewport, not to the list. */}
       <AnimatePresence>
         {sentTo && (

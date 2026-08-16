@@ -27,7 +27,7 @@ export default function LeaderboardPage() {
         <h1 className="font-display text-lg text-foreground">Leaderboard</h1>
       </header>
 
-      <main className="max-w-lg mx-auto p-6">
+      <div className="max-w-lg mx-auto p-6">
         {room ? (
           <Leaderboard roomId={room.id} roomName={room.name} currentUserId={user?.id} />
         ) : (
@@ -35,7 +35,7 @@ export default function LeaderboardPage() {
             No classroom selected.
           </p>
         )}
-      </main>
+      </div>
     </div>
   );
 }

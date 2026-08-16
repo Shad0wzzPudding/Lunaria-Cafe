@@ -53,14 +53,14 @@ function VisitStage({ host, onLeave }) {
         </span>
       </header>
 
-      {/* Same layout as CafeView's <main>: flex-1 min-h-0 with the canvas
+      {/* Same layout as CafeView's stage: flex-1 min-h-0 with the canvas
           centred, so a visited cafe sits where your own one does.
           The backdrop is UNCONDITIONAL here, where CafeView draws it only in
           the immersive theme. A visit is a place you're shown rather than a
           workspace you configure, and it should look its best regardless of
           whichever theme the visitor happens to run. It follows the HOST's
           timeOfDay, so the backdrop and the room agree. */}
-      <main
+      <div
         className="relative flex flex-1 min-h-0 items-center justify-center overflow-auto p-4"
         style={{
           backgroundImage: `url(${
@@ -75,7 +75,7 @@ function VisitStage({ host, onLeave }) {
         <div className="relative shrink-0">
           <CafeCanvas />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

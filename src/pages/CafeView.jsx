@@ -1100,7 +1100,7 @@ export default function CafeView() {
         <PetShopPanel onClose={() => { Sounds.petShopClose(state.audio.sfxVolume, state.audio.masterVolume, state.audio.sfxPetShopClose); setShowPetShop(false); }} />
       )}
 
-      <main
+      <div
         className="relative flex-1 min-h-0 flex items-center justify-center p-4 overflow-auto"
         style={(isImmersive && !isZenMode && !popupOpen)
           ? {
@@ -1242,7 +1242,7 @@ export default function CafeView() {
             muted={soundMuted}
           />
         )}
-      </main>
+      </div>
 
       <footer
         className="shrink-0 z-30 px-4 py-3 border-t-[3px] border-border/30"
