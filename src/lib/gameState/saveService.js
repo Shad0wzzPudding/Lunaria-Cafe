@@ -224,11 +224,27 @@ export async function loadPlayerSave(userId) {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('player_saves')
-    .select('save_data')
+    .select('save_data, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
   if (error) throw error;
+
+  // A stash left by the last exit wins if it is newer than what the server
+  // holds — see the stash helpers below for why one can exist at all.
+  const stash = readStash(userId);
+  if (stash && isNewerThan(stash.updated_at, data?.updated_at)) {
+    console.warn('[save] replaying an exit save that never reached the server.');
+    // Fire-and-forget: the player should not wait on the network to get into
+    // their cafe, and the stash stays put until this lands, so a failure here
+    // simply means the next load tries again.
+    void flushStash(userId, stash);
+    return stash.save_data;
+  }
+
+  // The server is at least as fresh, so the stash is spent. Left in place it
+  // would be compared again on every future load.
+  if (stash) clearStash();
   return data?.save_data ?? null;
 }
 
@@ -260,6 +276,11 @@ export async function savePlayerSave(userId, state) {
     { onConflict: 'user_id' }
   );
   if (error) throw error;
+  // The server now holds something at least as fresh as any stash this account
+  // left behind, so drop it rather than re-comparing it on every future load.
+  // Guarded by user id: a stash belonging to someone else who used this device
+  // is not ours to discard.
+  if (readStash(userId)) clearStash();
   // Record what was just written, rather than resetting to the "nothing sent
   // yet" sentinel. Setting null meant the 30s autosave wiped the fingerprint
   // every interval, so the very next tab switch re-POSTed an identical payload
@@ -328,6 +349,86 @@ let lastSentFingerprint = null;
 /** Body limit for keepalive requests, per fetch spec. */
 const KEEPALIVE_MAX_BYTES = 64 * 1024;
 
+// ── The stash: a save that outlives the page even when the network cannot ──
+//
+// keepalive is capped at 64KB of body, and a journal written in Thai reaches
+// that in about 20k characters — String.length undercounts it threefold. Over
+// the cap the flag has to come off, and an ordinary fetch is cancelled by a
+// real page close, so the largest saves were exactly the ones most likely to
+// be lost.
+//
+// localStorage is the one write that is guaranteed to COMPLETE during
+// teardown: it is synchronous, so it has finished before the handler returns
+// and there is no in-flight request for the browser to kill. It cannot reach
+// the server, but it survives until the next load, which can.
+//
+// This runs on every exit, not only oversized ones — a keepalive request can
+// still fail on a dead network or an expired token, and those failures land
+// after the page is gone, where nothing can react to them.
+const STASH_KEY = 'lunaria.pendingSave';
+
+function writeStash(userId, save_data, updated_at) {
+  try {
+    localStorage.setItem(STASH_KEY, JSON.stringify({ user_id: userId, save_data, updated_at }));
+  } catch {
+    // Quota exceeded, or storage blocked in a private window. The network
+    // attempt below is still made; this is the backup, not the save itself.
+  }
+}
+
+function clearStash() {
+  try {
+    localStorage.removeItem(STASH_KEY);
+  } catch { /* nothing to do at teardown */ }
+}
+
+/**
+ * The stash for this account, or null.
+ *
+ * Keyed by user id because a shared device can hold two accounts: replaying
+ * one player's cafe into another's would be far worse than the lost save this
+ * exists to prevent. `coins` is spot-checked because a truncated or half-
+ * written entry must not be hydrated over a good server row.
+ */
+function readStash(userId) {
+  try {
+    const raw = localStorage.getItem(STASH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.user_id !== userId) return null;
+    if (!parsed.save_data || typeof parsed.save_data !== 'object') return null;
+    if (typeof parsed.save_data.coins !== 'number') return null;
+    if (typeof parsed.updated_at !== 'string') return null;
+    return parsed;
+  } catch {
+    // Unparseable — drop it rather than letting it fail every future load.
+    clearStash();
+    return null;
+  }
+}
+
+/** Strictly newer, so a tie leaves the server's copy in charge. */
+function isNewerThan(stampA, stampB) {
+  const a = new Date(stampA).getTime();
+  if (!Number.isFinite(a)) return false;
+  if (!stampB) return true; // no server row at all
+  const b = new Date(stampB).getTime();
+  return !Number.isFinite(b) || a > b;
+}
+
+async function flushStash(userId, stash) {
+  try {
+    const { error } = await supabase.from('player_saves').upsert(
+      { user_id: userId, save_data: stash.save_data, updated_at: stash.updated_at },
+      { onConflict: 'user_id' },
+    );
+    if (error) throw error;
+    clearStash();
+  } catch (err) {
+    console.error('[save] could not replay the stashed save; keeping it for next time:', err);
+  }
+}
+
 /**
  * Best-effort save that survives the page closing. Returns a string describing
  * what happened, for tests and logging — never throws, because every caller is
@@ -341,11 +442,13 @@ export function savePlayerSaveOnExit(userId, state) {
   const fingerprint = fingerprintOf(userId, save_data);
   if (fingerprint === lastSentFingerprint) return 'unchanged';
 
-  const body = JSON.stringify({
-    user_id: userId,
-    save_data,
-    updated_at: new Date().toISOString(),
-  });
+  const updated_at = new Date().toISOString();
+  const body = JSON.stringify({ user_id: userId, save_data, updated_at });
+
+  // Before the network is touched at all. Synchronous, so it has landed by the
+  // time this function returns — whatever the browser does to the request
+  // below, this much is already on disk.
+  writeStash(userId, save_data, updated_at);
 
   // Over the cap the browser rejects the request outright, and at unload there
   // is no second chance — so say so loudly rather than losing it silently. The
@@ -358,13 +461,11 @@ export function savePlayerSaveOnExit(userId, state) {
   // Over the cap, keepalive is not an option — so fall back to an ORDINARY
   // fetch rather than giving up. On a tab-hide the page lives on and that
   // request completes normally; only on a real close is it likely to be
-  // cancelled. Strictly better than dropping the save, which is what an
-  // earlier version did on the false comfort that "the autosave will get it" —
-  // there is no future autosave when the page is closing.
+  // cancelled — and the stash written above is what covers that case now.
   const oversized = byteLength > KEEPALIVE_MAX_BYTES;
   if (oversized) {
-    console.error(
-      `[save] exit save is ${byteLength} bytes, over the ${KEEPALIVE_MAX_BYTES} keepalive limit — sending without keepalive, which may not survive a page close.`,
+    console.warn(
+      `[save] exit save is ${byteLength} bytes, over the ${KEEPALIVE_MAX_BYTES} keepalive limit — sending without keepalive; the stashed copy will be replayed if it does not land.`,
     );
   }
 
@@ -393,7 +494,12 @@ export function savePlayerSaveOnExit(userId, state) {
         if (!res.ok) {
           lastSentFingerprint = null;
           console.error(`[save] exit save rejected with HTTP ${res.status}.`);
+          return;
         }
+        // It landed, so the stash is spent. On a real page close this never
+        // runs — which is the whole point: the stash outlives the document and
+        // the next load reconciles it against the server.
+        clearStash();
       })
       .catch(() => {
         lastSentFingerprint = null;
