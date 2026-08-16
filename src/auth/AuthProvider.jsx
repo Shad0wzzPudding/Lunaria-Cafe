@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { guestStorage } from '@/lib/guestStorage';
 import { AuthContext } from './authContext';
+import { consentTimestampIsCurrent } from '@/lib/nsc/privacyNotice';
 
 // Session-scoped so a dual-role user re-picks on each new tab/visit.
 const roleStorageKey = (userId) => `lunaria-active-role:${userId}`;
@@ -18,6 +19,12 @@ export function AuthProvider({ children }) {
   // invisible.
   const [authError, setAuthError] = useState(null);
   const [activeRole, setActiveRole] = useState(null); // 'student' | 'instructor' | null
+  // Set when accept_nsc_notice() succeeds but comes back with a timestamp the
+  // gate still rejects — which means the server is running a version of that
+  // RPC that keeps the FIRST acceptance. Without this the instructor accepts,
+  // nothing changes, and NscNotice (which REPLACES the dashboard) loops with
+  // no error and a live-looking button: a hard lockout from a migration lag.
+  const [consentAcceptedThisSession, setConsentAcceptedThisSession] = useState(false);
 
   // Derived: the profile only counts once it belongs to the current user.
   const freshProfile = user && profile?.id === user.id ? profile : null;
@@ -140,6 +147,15 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.rpc('accept_nsc_notice');
     if (!error) {
       setProfile((p) => (p && p.id === user.id ? { ...p, nsc_consent_at: data } : p));
+      setConsentAcceptedThisSession(true);
+      if (!consentTimestampIsCurrent(data)) {
+        console.error(
+          '[consent] accept_nsc_notice() returned a stale timestamp (%s). The database is ' +
+          'missing 20260816120000_consent_reaccept.sql, so re-acceptance cannot be recorded. ' +
+          'Letting this session through rather than looping the notice.',
+          data,
+        );
+      }
     }
     return { data, error };
   };
@@ -174,6 +190,11 @@ export function AuthProvider({ children }) {
         activeRole, chooseRole,
         signUp, signIn, signOut, signInAsGuest, updateDisplayName, resetDisplayName,
         acceptNscNotice, setCafeVisibility,
+        // The gate the app should test, rather than the raw timestamp: it also
+        // honours an acceptance made in this session that the server could not
+        // record. See consentAcceptedThisSession above.
+        nscConsentSatisfied:
+          consentAcceptedThisSession || consentTimestampIsCurrent(freshProfile?.nsc_consent_at),
       }}
     >
       {children}

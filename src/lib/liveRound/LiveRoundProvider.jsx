@@ -191,6 +191,13 @@ export function LiveRoundProvider({ children }) {
           distractions: prior.distractions,
           paused_seconds: prior.paused,
           avg_focus: existing?.avg_focus ?? null,
+          // A BEFORE INSERT/UPDATE trigger overwrites this with server time,
+          // so the presence heartbeat comes from one clock rather than each
+          // student's. Still SENT, deliberately: if the JS ships ahead of the
+          // migration the column would otherwise freeze at insert and the
+          // whole class would read "went quiet" after 90 seconds. Sending a
+          // value the trigger discards costs nothing and makes the two
+          // independently deployable.
           updated_at: new Date().toISOString(),
           // left_at is owned by leave_round / rejoin_round above — writing it
           // here too would let this upsert silently undo an absence record.
@@ -494,8 +501,9 @@ export function LiveRoundProvider({ children }) {
       // final — stop writing those, so a reset sessionRep or a later
       // coin-spend can't corrupt the frozen board row.
       //
-      // But keep touching updated_at, because that column doubles as the
-      // presence heartbeat behind the "went quiet" tag. roundControlled
+      // But keep WRITING, because updated_at doubles as the presence
+      // heartbeat behind the "went quiet" tag and a trigger stamps it on
+      // every write. roundControlled
       // flips false the moment a student COMPLETES their focus (see the
       // completion branch in gameReducer), so returning outright here
       // marked everyone who finished properly as having drifted off —
@@ -510,6 +518,8 @@ export function LiveRoundProvider({ children }) {
         lastHeartbeatRef.current = now;
         await supabase
           .from('round_participants')
+          // The write itself is the heartbeat; the trigger stamps updated_at
+          // server-side. Sent anyway as a fallback — see beginParticipation.
           .update({ updated_at: new Date().toISOString(), is_paused: false })
           .eq('round_id', roundId)
           .eq('student_id', userId);
@@ -560,6 +570,8 @@ export function LiveRoundProvider({ children }) {
           paused_seconds: pausedSeconds,
           is_paused: isPaused,
           avg_focus: avg,
+          // Overwritten server-side by the trigger; sent as a fallback so this
+          // file does not depend on a migration having landed first.
           updated_at: new Date().toISOString(),
         })
         .eq('round_id', roundId)

@@ -33,7 +33,6 @@ import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
 import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
 import { KONAMI } from '@/lib/ui/useKonamiCode'
-import { consentTimestampIsCurrent } from '@/lib/nsc/privacyNotice'
 
 function GameRouter() {
   const { state, dispatch } = useGame()
@@ -176,7 +175,7 @@ function GameRouter() {
 }
 
 function AppShell() {
-  const { user, loading, profileLoading, isGuest, profile, activeRole, signOut } = useAuth()
+  const { user, loading, profileLoading, isGuest, profile, activeRole, signOut, nscConsentSatisfied } = useAuth()
 
   // One running instance per account. Hooks can't sit behind the early returns
   // below, so this always runs — but it is only ACTED on in the game branch,
@@ -236,7 +235,7 @@ function AppShell() {
       // again, the same rule the players' letter follows. Their acceptance is
       // a timestamp rather than a version, so this compares dates and needs no
       // migration; accept_nsc_notice() re-stamps it to now().
-      if (!consentTimestampIsCurrent(profile.nsc_consent_at)) {
+      if (!nscConsentSatisfied) {
         return <NscNotice />
       }
       return (

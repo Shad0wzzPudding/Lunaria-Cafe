@@ -16,16 +16,20 @@ import { CAMPUS, TEAM_MEMBERS } from './licenseText';
  * no notice, because the player agreed to it.
  */
 
-export const PRIVACY_LAST_UPDATED = '15 August 2026';
+export const PRIVACY_LAST_UPDATED = '16 August 2026';
 
 /**
  * The version a player's consent is measured against.
  *
- * A full INSTANT, not a bare date. The instructor check compares this against
- * their acceptance timestamp, and a date alone means UTC midnight — so anyone
- * who accepted the OLD notice earlier on the day it changed would compare as
- * up to date and never be re-prompted. The instant is when the wording
- * actually changed.
+ * A full INSTANT, not a bare date, and it must be AT OR AFTER the moment the
+ * wording actually changed. Two ways to get this wrong, both of which let
+ * someone keep an agreement to text they never saw:
+ *   • a bare date means UTC midnight, so anyone who accepted the OLD notice
+ *     earlier that same day compares as up to date;
+ *   • an instant set before the edit actually landed leaves the same window,
+ *     just a narrower one.
+ * The students' gate uses string equality and re-asks regardless, so an
+ * instant that is too early makes the two gates silently disagree.
  *
  * BUMP THIS whenever the privacy notice or the NSC license text changes in a
  * way that alters what a player is agreeing to — new data leaving the device,
@@ -37,7 +41,7 @@ export const PRIVACY_LAST_UPDATED = '15 August 2026';
  * CONSENT_CHANGE_SUMMARY — the last is shown to returning players and silently
  * becomes a lie if it is left describing the previous change.
  */
-export const CONSENT_VERSION = '2026-08-15T16:00:00Z';
+export const CONSENT_VERSION = '2026-08-16T04:30:00Z';
 
 /**
  * What changed, in one clause, for the returning-player line in the letter.
