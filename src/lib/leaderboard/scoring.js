@@ -284,7 +284,18 @@ export function scoreRoundEntries(rows, endedAt = null, roundSeconds = null) {
       pausedSeconds: nonNeg(num(r.paused_seconds)),
       // Live-only: history judges attendance from pausedSeconds instead, so a
       // value left over from a finished session's last tick is never shown.
-      isPaused: !!r.is_paused,
+      //
+      // Gated on the student still REPORTING. `is_paused` is written by the
+      // report loop and cleared only by that loop or leave_round(), so a
+      // student who pauses and then closes the tab does neither — the flag
+      // stays true for the rest of the session and the instructor's board
+      // shows them "paused right now" indefinitely, while the very same row
+      // is simultaneously tagged "went quiet". "Paused" is a claim about the
+      // present moment, and it can only be true if we have heard from them.
+      //
+      // Fixed here rather than at the chip so every consumer of isPaused gets
+      // the honest value, not just the one that happened to be wrong.
+      isPaused: !!r.is_paused && !hasGoneQuiet(r, referenceMs),
       // When they came into the session. Already on the table since the
       // original class_rounds migration — it just was never surfaced.
       joinedAt: r.joined_at ?? null,

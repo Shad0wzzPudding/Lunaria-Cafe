@@ -33,6 +33,7 @@ import { playDancePadNote } from '@/lib/audio/cafeAudioEngine'
 import { Sounds } from '@/lib/sounds'
 import { applyThemeForTimeOfDay } from '@/lib/theme/themeDeriver'
 import { KONAMI } from '@/lib/ui/useKonamiCode'
+import { consentTimestampIsCurrent } from '@/lib/nsc/privacyNotice'
 
 function GameRouter() {
   const { state, dispatch } = useGame()
@@ -230,7 +231,12 @@ function AppShell() {
       // players' letter is also the starter-pack ceremony, so it cannot be
       // skipped on the strength of this stamp. The two also say different
       // things (whose device the camera runs on).
-      if (!profile.nsc_consent_at) {
+      // Not merely "have they ever accepted" — accepted the notice AS IT
+      // STANDS. An instructor who agreed before the notice changed is shown it
+      // again, the same rule the players' letter follows. Their acceptance is
+      // a timestamp rather than a version, so this compares dates and needs no
+      // migration; accept_nsc_notice() re-stamps it to now().
+      if (!consentTimestampIsCurrent(profile.nsc_consent_at)) {
         return <NscNotice />
       }
       return (

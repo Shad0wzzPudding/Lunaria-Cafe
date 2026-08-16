@@ -4,6 +4,7 @@ import { Check, X } from 'lucide-react';
 import { Sounds } from '@/lib/sounds';
 import { useGame } from '@/lib/gameState/useGame';
 import { consentStatement, licenseParagraphs, privacyStatement } from '@/lib/nsc/licenseText';
+import { CONSENT_VERSION, CONSENT_CHANGE_SUMMARY, PRIVACY_LAST_UPDATED } from '@/lib/nsc/privacyNotice';
 import PrivacyNoticeBody from '@/components/PrivacyNoticeBody';
 import StarterPackReveal from '@/components/cafe/StarterPackReveal';
 import { PixelBox } from '@/components/letter/pixelBox';
@@ -76,7 +77,7 @@ function ConsentCheckbox({ checked }) {
    `gate` turns the letter from a re-readable keepsake into the acknowledgement
    the player must pass before entering: no X, no click-outside, and a consent
    checkbox that unlocks the only way onward. */
-function OpenLetter({ onClose, gate = false, onAgree, showPrivacy, setShowPrivacy }) {
+function OpenLetter({ onClose, gate = false, onAgree, showPrivacy, setShowPrivacy, isReconsent = false }) {
   const [agreed, setAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   // The privacy box stays locked until the notice has actually been scrolled to
@@ -179,6 +180,18 @@ function OpenLetter({ onClose, gate = false, onAgree, showPrivacy, setShowPrivac
             <p className="font-pixel text-[10px] mt-1" style={{ color: '#8a6a42' }}>
               A letter from Lulyssia & the development team
             </p>
+            {/* A returning player has passed this gate before, so without a
+                reason they would think it was a bug. Say what changed, and
+                when — the words they agreed to are not the words here now. */}
+            {isReconsent && (
+              <p
+                className="mt-2 font-pixel text-[10px] leading-relaxed"
+                style={{ color: '#8a4a2f' }}
+              >
+                Our Privacy Notice was updated on {PRIVACY_LAST_UPDATED} — it now{' '}
+                {CONSENT_CHANGE_SUMMARY}. Please read it again before continuing.
+              </p>
+            )}
           </div>
           {!gate && (
             <button
@@ -321,6 +334,10 @@ export default function LicenseEnvelope({ onClose, gate = false }) {
   const [reveal, setReveal] = useState(false);
   const [revealPending, setRevealPending] = useState(false);
 
+  // They agreed once, to an older version — the gate is open again only
+  // because the notice changed. Worth saying so rather than looking broken.
+  const isReconsent = gate && Boolean(state.settings?.nscConsentAccepted);
+
   const openLetter = () => {
     // `?? true`: saves created before this toggle existed have no
     // sfxLetterOpen key — default them to on, like a fresh game.
@@ -354,7 +371,11 @@ export default function LicenseEnvelope({ onClose, gate = false }) {
   // this branches on a local rather than going through requestClose — a state
   // setter queued here would not be visible to a read in the same tick.
   const agreeAndClose = () => {
-    dispatch({ type: 'SET_SETTINGS', payload: { nscConsentAccepted: true } });
+    // The VERSION is what the gate tests; the boolean stays for older saves.
+    dispatch({
+      type: 'SET_SETTINGS',
+      payload: { nscConsentAccepted: true, nscConsentVersion: CONSENT_VERSION },
+    });
     const granting = !state.boosts?.starterPackClaimed;
     dispatch({ type: 'CLAIM_STARTER_PACK' });
     if (granting) setReveal(true);
@@ -388,7 +409,7 @@ export default function LicenseEnvelope({ onClose, gate = false }) {
         <div className="relative z-10">
           <AnimatePresence mode="wait">
             {opened
-              ? <OpenLetter key="letter" onClose={requestClose} gate={gate} onAgree={agreeAndClose} showPrivacy={showPrivacy} setShowPrivacy={setShowPrivacy} />
+              ? <OpenLetter key="letter" onClose={requestClose} gate={gate} onAgree={agreeAndClose} showPrivacy={showPrivacy} setShowPrivacy={setShowPrivacy} isReconsent={isReconsent} />
               : <ClosedEnvelope key="envelope" onOpen={openLetter} autoFocus={gate} />}
           </AnimatePresence>
 

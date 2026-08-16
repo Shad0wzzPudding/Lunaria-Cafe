@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/useAuth';
 import { consentStatement, licenseParagraphs, privacyStatement } from '@/lib/nsc/licenseText';
 import PrivacyNoticeBody from '@/components/PrivacyNoticeBody';
 import { INSTRUCTOR_PAGE_BG, INSTRUCTOR_PAGE_INK as PAGE_INK } from '@/lib/theme/themeDeriver';
+import { CONSENT_CHANGE_SUMMARY, PRIVACY_LAST_UPDATED } from '@/lib/nsc/privacyNotice';
 
 // Legal text must stay readable — Silkscreen renders lowercase as caps-like
 // glyphs, so the document body uses the same real font as form inputs.
@@ -149,6 +150,17 @@ export default function NscNotice() {
             Signed in as {profile?.display_name || user?.email}. Please read and acknowledge
             the following.
           </p>
+          {/* An instructor who has accepted before is here only because the
+              notice changed. Without saying so, a gate they already passed
+              reads as a bug — the same reason the players' letter explains
+              itself. profile.nsc_consent_at is non-null exactly when they
+              have accepted some earlier version. */}
+          {profile?.nsc_consent_at && (
+            <p className="font-body text-sm text-[#8a4a2f]">
+              Our Privacy Notice was updated on {PRIVACY_LAST_UPDATED} — it now{' '}
+              {CONSENT_CHANGE_SUMMARY}. Please read it again before continuing.
+            </p>
+          )}
         </header>
 
         <section className="rounded-xl border border-black/10 bg-white/70 p-6">

@@ -130,8 +130,11 @@ export function AuthProvider({ children }) {
 
   // Record that this account has read the NSC notice. Stamped on the profile
   // rather than in a save, because instructors never mount the game. The RPC
-  // keeps the first acceptance, so calling it twice is harmless; on success we
-  // patch the local profile to take the notice down without a refetch.
+  // now moves nsc_consent_at to now() on EVERY acceptance — the gate compares
+  // it against CONSENT_VERSION, so a re-acceptance has to move it forward or
+  // the notice would loop. The first-ever acceptance is preserved separately
+  // in nsc_consent_first_at. On success we patch the local profile so the
+  // notice comes down without a refetch.
   const acceptNscNotice = async () => {
     if (!supabase || !user) return { error: new Error('Not signed in') };
     const { data, error } = await supabase.rpc('accept_nsc_notice');

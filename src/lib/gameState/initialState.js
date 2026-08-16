@@ -185,6 +185,10 @@ export const initialState = {
     // nobody reaches the cafe without passing it. Guests are asked every
     // session by construction — their save lives in memory and never persists.
     nscConsentAccepted: false,
+    // Which version of the notice was agreed to. The boolean above is kept for
+    // older saves, but the VERSION is what the gate tests — a player who
+    // accepted an earlier notice has not agreed to the current one.
+    nscConsentVersion: null,
     focusViewMode: null, // null = not chosen yet | 'game' | 'zen'
     performanceMode: false,
     aiMode: 'browser',

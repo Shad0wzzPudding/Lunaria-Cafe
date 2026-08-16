@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import LicenseEnvelope from '@/components/LicenseEnvelope';
 import { useGame } from '@/lib/gameState/useGame';
+import { hasCurrentConsent } from '@/lib/nsc/privacyNotice';
 
 /**
  * The welcome letter, presented as the door into the cafe — and the app behind
  * it, held shut until the letter is passed.
  *
- * The gate shows whenever the save carries no NSC acknowledgement, which covers
- * both cases the letter has to serve: a brand-new player (the flag starts false
- * and is written once they agree) and every guest session (guest saves live in
- * memory, so the flag is back to false on each visit).
+ * The gate shows whenever the save carries no acknowledgement of the CURRENT
+ * notice, which covers three cases: a brand-new player, every guest session
+ * (guest saves live in memory, so nothing is remembered between visits), and a
+ * returning player whose agreement was to an earlier version of the notice.
+ * That last one is the point of versioning it — when the notice changes what
+ * leaves their device, the old agreement no longer covers it.
  *
  * Mounted inside GameProvider, which holds its children until the save has
  * loaded — so the gate never flashes at a returning player who already agreed.
@@ -21,7 +24,7 @@ export default function WelcomeGate({ children }) {
   // Decided once, at mount. Reading the flag live would tear the envelope down
   // the instant consent is dispatched — taking the starter-pack reveal, which
   // plays *after* agreeing, with it. Only the envelope's own onClose ends it.
-  const [gated, setGated] = useState(() => !state.settings?.nscConsentAccepted);
+  const [gated, setGated] = useState(() => !hasCurrentConsent(state.settings));
 
   return (
     <>
