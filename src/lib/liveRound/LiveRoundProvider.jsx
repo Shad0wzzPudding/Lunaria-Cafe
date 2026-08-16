@@ -431,17 +431,35 @@ export function LiveRoundProvider({ children }) {
   }, [activeRounds, currentRound, dispatch]);
 
   // ── Complete a timed round when its clock runs out (survives pause) ──
+  //
+  // 'distracted' used to be excluded here, which left anyone in that state
+  // when the clock expired sitting at 0:00 — still nominally in the round,
+  // cafe running, still on the leaderboard — until they gave up and left or
+  // the host ended it for everyone. Nothing resolved the session for them.
+  //
+  // The rule is that the clock running out always ENDS the session; only the
+  // verdict differs. Being mid-warning does not fail anyone: the status is
+  // still 'active' throughout the 30s countdown, so those students go through
+  // COMPLETE_FOCUS and succeed exactly as before. Only a FINISHED countdown —
+  // which is what 'distracted' means — fails.
+  //
+  // That failure routes through END_FOCUS rather than a new flag on
+  // COMPLETE_FOCUS, because END_FOCUS already is the failure path: it derives
+  // `failed` from this same status, stamps endReason 'distracted', applies the
+  // -3 (to session rep in a round, lifetime when solo) and withholds the
+  // streak. COMPLETE_FOCUS has no notion of failure at all — sending them
+  // there would have handed a distracted student a full success, streak and
+  // diligence rep included.
   useEffect(() => {
     if (!currentRound) return undefined;
     const id = setInterval(() => {
       const f = stateRef.current.focus;
-      if (
-        f.roundControlled &&
-        f.endsAt &&
-        Date.now() >= f.endsAt &&
-        (f.status === 'active' || f.status === 'paused')
-      ) {
+      if (!f.roundControlled || !f.endsAt || Date.now() < f.endsAt) return;
+
+      if (f.status === 'active' || f.status === 'paused') {
         dispatch({ type: 'COMPLETE_FOCUS' });
+      } else if (f.status === 'distracted') {
+        dispatch({ type: 'END_FOCUS' });
       }
     }, 1000);
     return () => clearInterval(id);
