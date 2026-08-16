@@ -136,7 +136,7 @@ const INFO_SECTIONS = [
     emoji: '🧪',
     title: 'Version',
     body: [
-      'v.2 (Second round) — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
+      'v.3 (Final round) — "Focus & Flourish". Things may shift, break, or get cozier without warning.',
     ],
     // Source link intentionally withheld while the contest entry is under review.
     //footer: 'Source on GitHub: https://github.com/Shad0wzzPudding/Lunaria-Cafe/tree/v2-First-round',

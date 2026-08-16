@@ -79,7 +79,7 @@ export default function MainMenu() {
     <div className="relative min-h-screen overflow-hidden">
       {/* Wallpaper */}
       <img
-        src="/assets/mainmenu_wallpaper"
+        src="/assets/Backdrop/mainmenu_wallpaper"
         alt=""
         className="absolute inset-0 w-full h-full object-cover object-center select-none"
         draggable={false}
@@ -268,7 +268,7 @@ export default function MainMenu() {
           </div>
 
           <p className="font-body text-[11px] text-white/30">
-            v.2 (Second round) — Focus & Flourish
+            v.3 (Final round) — Focus & Flourish
           </p>
         </motion.div>
       </motion.div>
