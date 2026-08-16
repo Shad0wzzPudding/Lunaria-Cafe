@@ -19,12 +19,18 @@ export function AuthProvider({ children }) {
   // invisible.
   const [authError, setAuthError] = useState(null);
   const [activeRole, setActiveRole] = useState(null); // 'student' | 'instructor' | null
-  // Set when accept_nsc_notice() succeeds but comes back with a timestamp the
-  // gate still rejects — which means the server is running a version of that
-  // RPC that keeps the FIRST acceptance. Without this the instructor accepts,
-  // nothing changes, and NscNotice (which REPLACES the dashboard) loops with
-  // no error and a live-looking button: a hard lockout from a migration lag.
-  const [consentAcceptedThisSession, setConsentAcceptedThisSession] = useState(false);
+  // WHICH ACCOUNT accepted the notice in this browser session — not merely
+  // "somebody did". Set when accept_nsc_notice() succeeds, so a server still
+  // running the old coalescing RPC cannot lock an instructor out of a
+  // dashboard that NscNotice replaces.
+  //
+  // Holds a user id rather than a boolean, because AuthProvider sits at the
+  // app root and survives sign-out: as a boolean, instructor A accepting made
+  // it true for instructor B signing in next in the same tab, who then skipped
+  // the notice entirely and never had nsc_consent_at stamped. That is a worse
+  // failure than the lockout this exists to prevent, and it is on the ordinary
+  // path, not the migration-lag one.
+  const [consentAcceptedBy, setConsentAcceptedBy] = useState(null);
 
   // Derived: the profile only counts once it belongs to the current user.
   const freshProfile = user && profile?.id === user.id ? profile : null;
@@ -147,7 +153,7 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.rpc('accept_nsc_notice');
     if (!error) {
       setProfile((p) => (p && p.id === user.id ? { ...p, nsc_consent_at: data } : p));
-      setConsentAcceptedThisSession(true);
+      setConsentAcceptedBy(user.id);
       if (!consentTimestampIsCurrent(data)) {
         console.error(
           '[consent] accept_nsc_notice() returned a stale timestamp (%s). The database is ' +
@@ -194,7 +200,8 @@ export function AuthProvider({ children }) {
         // honours an acceptance made in this session that the server could not
         // record. See consentAcceptedThisSession above.
         nscConsentSatisfied:
-          consentAcceptedThisSession || consentTimestampIsCurrent(freshProfile?.nsc_consent_at),
+          (Boolean(freshProfile) && consentAcceptedBy === freshProfile.id) ||
+          consentTimestampIsCurrent(freshProfile?.nsc_consent_at),
       }}
     >
       {children}

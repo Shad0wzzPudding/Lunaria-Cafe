@@ -2,6 +2,7 @@ import { useEffect, useId } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { scoreRoundEntries } from '@/lib/leaderboard/scoring';
+import { serverNow, useServerClock } from '@/lib/time/serverClock';
 
 async function fetchParticipants(roundId) {
   const { data, error } = await supabase
@@ -33,6 +34,10 @@ export function useRoundParticipants(
   { live = true, endedAt = null, roundSeconds = null } = {},
 ) {
   const queryClient = useQueryClient();
+  // Presence is judged against the SERVER's clock, because that is what
+  // stamped the rows. Without this the reader's device decides who has gone
+  // quiet, and a badly-set one condemns everybody.
+  useServerClock();
   // Per-instance suffix. Two components can legitimately watch the SAME
   // round at once — the instructor's live board and the history row for
   // that still-running session — and supabase.channel() hands back the
@@ -75,7 +80,7 @@ export function useRoundParticipants(
   }, [roundId, queryClient, live, instanceId]);
 
   return {
-    entries: scoreRoundEntries(data ?? [], endedAt, roundSeconds),
+    entries: scoreRoundEntries(data ?? [], endedAt, roundSeconds, serverNow()),
     isLoading,
     error,
   };

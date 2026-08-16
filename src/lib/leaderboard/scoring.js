@@ -236,10 +236,21 @@ export function attendanceOf(row, referenceMs, roundSeconds = null) {
  * `endedAt` is the round's end time (null while it's still running) —
  * needed to judge who stopped reporting before the finish.
  */
-export function scoreRoundEntries(rows, endedAt = null, roundSeconds = null) {
+/**
+ * `nowMs` is the reference point for a LIVE round — what "now" means when
+ * deciding who has gone quiet and how long each student has been in. It is a
+ * parameter rather than a call to Date.now() here because the rows carry
+ * SERVER timestamps: comparing them against the reader's device clock let a
+ * badly-set laptop mark a whole class absent. Callers pass serverNow();
+ * Date.now() remains the default so anything scoring an ended round, or a
+ * test, behaves as before.
+ */
+export function scoreRoundEntries(rows, endedAt = null, roundSeconds = null, nowMs = null) {
   const list = Array.isArray(rows) ? rows : [];
   const nonNeg = (v) => Math.max(0, v);
-  const referenceMs = endedAt ? new Date(endedAt).getTime() : Date.now();
+  const referenceMs = endedAt
+    ? new Date(endedAt).getTime()
+    : (Number.isFinite(nowMs) ? nowMs : Date.now());
 
   return list.map((r) => {
     const hasFocus = r.avg_focus !== null && r.avg_focus !== undefined;
