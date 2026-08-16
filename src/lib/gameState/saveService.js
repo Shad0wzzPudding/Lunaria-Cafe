@@ -235,16 +235,20 @@ export async function loadPlayerSave(userId) {
   const stash = readStash(userId);
   if (stash && isNewerThan(stash.updated_at, data?.updated_at)) {
     console.warn('[save] replaying an exit save that never reached the server.');
-    // Fire-and-forget: the player should not wait on the network to get into
-    // their cafe, and the stash stays put until this lands, so a failure here
-    // simply means the next load tries again.
-    void flushStash(userId, stash);
+    // AWAITED, not fire-and-forget. The game mounts the moment this resolves
+    // and starts writing immediately — spending a boost ticket saves on the
+    // spot, and the autosave runs every 30s. A replay still in flight would
+    // land its older snapshot on top of those writes and roll the account
+    // back, refunding the spent ticket and losing everything since load.
+    // Waiting costs one round trip, and only in the rare case where an exit
+    // save never made it.
+    await flushStash(userId, stash);
     return stash.save_data;
   }
 
   // The server is at least as fresh, so the stash is spent. Left in place it
   // would be compared again on every future load.
-  if (stash) clearStash();
+  if (stash) clearStash(userId, stash.updated_at);
   return data?.save_data ?? null;
 }
 
@@ -267,20 +271,17 @@ function fingerprintOf(userId, save_data) {
 export async function savePlayerSave(userId, state) {
   if (!supabase) return;
   const save_data = serializeGameState(state);
+  const updated_at = new Date().toISOString();
   const { error } = await supabase.from('player_saves').upsert(
-    {
-      user_id: userId,
-      save_data,
-      updated_at: new Date().toISOString(),
-    },
+    { user_id: userId, save_data, updated_at },
     { onConflict: 'user_id' }
   );
   if (error) throw error;
-  // The server now holds something at least as fresh as any stash this account
-  // left behind, so drop it rather than re-comparing it on every future load.
-  // Guarded by user id: a stash belonging to someone else who used this device
-  // is not ours to discard.
-  if (readStash(userId)) clearStash();
+  // The server now holds this write, so any stash at or before it is spent —
+  // left in place it would be re-compared on every future load. Not a blanket
+  // clear: the tab can be hidden while this request is in flight, and that
+  // exit save's stash is NEWER than what just landed, so it has to survive.
+  clearStash(userId, updated_at);
   // Record what was just written, rather than resetting to the "nothing sent
   // yet" sentinel. Setting null meant the 30s autosave wiped the fingerprint
   // every interval, so the very next tab switch re-POSTed an identical payload
@@ -365,20 +366,40 @@ const KEEPALIVE_MAX_BYTES = 64 * 1024;
 // This runs on every exit, not only oversized ones — a keepalive request can
 // still fail on a dead network or an expired token, and those failures land
 // after the page is gone, where nothing can react to them.
-const STASH_KEY = 'lunaria.pendingSave';
+// Keyed PER ACCOUNT. A single shared slot meant a school machine where two
+// students use one browser could destroy each other's unreplayed saves: the
+// read side was user-guarded, but the WRITE side overwrote whatever was there,
+// so B hiding the tab wiped A's stash before A ever got it back.
+const STASH_PREFIX = 'lunaria.pendingSave.';
+const stashKey = (userId) => `${STASH_PREFIX}${userId}`;
 
 function writeStash(userId, save_data, updated_at) {
   try {
-    localStorage.setItem(STASH_KEY, JSON.stringify({ user_id: userId, save_data, updated_at }));
+    localStorage.setItem(stashKey(userId), JSON.stringify({ user_id: userId, save_data, updated_at }));
   } catch {
     // Quota exceeded, or storage blocked in a private window. The network
     // attempt below is still made; this is the backup, not the save itself.
   }
 }
 
-function clearStash() {
+/**
+ * Drop this account's stash.
+ *
+ * `notNewerThan` is what stops a slow request deleting someone else's work.
+ * Exit saves overlap: hide the tab, the POST stalls, come back, play, hide
+ * again — now stash S2 is on disk and the FIRST request finally resolves. An
+ * unconditional clear would remove S2, and if the second POST then died on a
+ * real page close (which is likely: no keepalive above 64KB) the save would be
+ * gone. So a clear only removes the entry it was told about, never a fresher
+ * one that arrived in the meantime.
+ */
+function clearStash(userId, notNewerThan = null) {
   try {
-    localStorage.removeItem(STASH_KEY);
+    if (notNewerThan) {
+      const current = readStash(userId);
+      if (current && isNewerThan(current.updated_at, notNewerThan)) return;
+    }
+    localStorage.removeItem(stashKey(userId));
   } catch { /* nothing to do at teardown */ }
 }
 
@@ -392,7 +413,7 @@ function clearStash() {
  */
 function readStash(userId) {
   try {
-    const raw = localStorage.getItem(STASH_KEY);
+    const raw = localStorage.getItem(stashKey(userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.user_id !== userId) return null;
@@ -402,7 +423,9 @@ function readStash(userId) {
     return parsed;
   } catch {
     // Unparseable — drop it rather than letting it fail every future load.
-    clearStash();
+    // Removed directly: clearStash() calls back into here to evaluate its
+    // guard, and this is the one path where reading is what failed.
+    try { localStorage.removeItem(stashKey(userId)); } catch { /* ignore */ }
     return null;
   }
 }
@@ -423,7 +446,7 @@ async function flushStash(userId, stash) {
       { onConflict: 'user_id' },
     );
     if (error) throw error;
-    clearStash();
+    clearStash(userId, stash.updated_at);
   } catch (err) {
     console.error('[save] could not replay the stashed save; keeping it for next time:', err);
   }
@@ -499,7 +522,10 @@ export function savePlayerSaveOnExit(userId, state) {
         // It landed, so the stash is spent. On a real page close this never
         // runs — which is the whole point: the stash outlives the document and
         // the next load reconciles it against the server.
-        clearStash();
+        //
+        // Scoped to the entry THIS request wrote: a later hide may already
+        // have replaced it, and that one is still waiting on its own POST.
+        clearStash(userId, updated_at);
       })
       .catch(() => {
         lastSentFingerprint = null;
