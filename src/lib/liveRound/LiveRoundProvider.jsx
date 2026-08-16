@@ -460,6 +460,59 @@ export function LiveRoundProvider({ children }) {
     return () => clearInterval(id);
   }, [currentRound, dispatch]);
 
+  // ── Land the FINAL session rep on the board ──────────────────────────
+  //
+  // END_FOCUS applies the -3 fail penalty to a local, hands it to
+  // lastSession for the result screen, then zeroes focus.sessionRep and
+  // flips roundControlled false in the SAME commit. The report loop reads
+  // focus.sessionRep and drops to heartbeat-only once roundControlled is
+  // false, so the penalty never reached the board: the student was shown -3
+  // while the leaderboard, session history and CSV export all kept the
+  // pre-penalty score, and a teacher comparing the two got no explanation.
+  //
+  // lastSession.sessionRep is present only for a round-scored session and
+  // already holds the final figure for BOTH endings — penalised on a
+  // distracted end, plain on a completed one — so one write covers both and
+  // no penalty arithmetic is duplicated out here.
+  //
+  // It also has to land before any later session in the same round, because
+  // beginParticipation seeds the next session's sessionRep from this row.
+  //
+  // The round id comes from a ref that OUTLIVES currentRound, because the two
+  // paths that clear it — the student leaving, and the host ending the round —
+  // dispatch END_FOCUS and setCurrentRound(null) in the same batch. React
+  // commits both together, so this effect would see lastSession set and
+  // currentRound already null, and skip the write in exactly the cases where a
+  // penalty is most likely. Writing to a round the student has just left is
+  // correct: they took part, and this is their final tally.
+  const reportedSessionRef = useRef(null);
+  const lastRoundIdRef = useRef(null);
+  // Declared BEFORE the write below so it runs first in the same commit:
+  // effects fire in declaration order, so the id is already current when the
+  // write reads it, and a null currentRound leaves the previous one standing.
+  useEffect(() => {
+    if (currentRound?.round_id) lastRoundIdRef.current = currentRound.round_id;
+  }, [currentRound]);
+  useEffect(() => {
+    const roundId = currentRound?.round_id ?? lastRoundIdRef.current;
+    const last = state.lastSession;
+    if (!supabase || saveDisabled || !roundId || !userId || !last) return;
+    // Absent on a solo session: nothing to reconcile with a board.
+    if (last.sessionRep == null) return;
+    // A fresh object per session end, so identity is the dedupe key.
+    if (reportedSessionRef.current === last) return;
+    reportedSessionRef.current = last;
+
+    supabase
+      .from('round_participants')
+      .update({ rep: last.sessionRep })
+      .eq('round_id', roundId)
+      .eq('student_id', userId)
+      .then(({ error }) => {
+        if (error) console.error('[round] could not land the final session rep:', error);
+      });
+  }, [state.lastSession, currentRound, userId, saveDisabled]);
+
   // ── Global "join" toast for un-joined live rounds ────────────
   useEffect(() => {
     // While already in a session, don't prompt to join any other round.
