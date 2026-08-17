@@ -211,28 +211,30 @@ export default function MyClassrooms() {
           className="w-full h-full object-cover object-center select-none"
           draggable={false}
         />
-        {/* The two themes need opposite numbers, because --background is a
-            near-black purple in Focus and a light warm tone in Immersive. The
-            SAME opacity therefore darkens one and merely washes the other:
-            90/70/95 reads as gentle sepia in Immersive but buried the room in
-            Focus, twice over — the first pass at this was still shadowed.
+        {/* The two branches veil the art from OPPOSITE ends, which is the
+            whole reason they cannot share numbers.
 
-            Focus settled at 60/30/70 after walking both ways past it: 90/70/95
-            and 70/40/80 were still shadowed, 40/12/50 was too bright and the
-            art started competing with the page. This is a touch lighter than
-            the second, which is where it wanted to be. Immersive keeps the
-            heavier values. All picked by eye against the real page.
+            Focus washes toward WHITE. Its --background is a near-black purple,
+            so every token-based scrim darkened the room — the long way round
+            through 90/70/95, 70/40/80, 40/12/50 and 60/30/70 was really an
+            argument about how much shadow was tolerable, when what the page
+            wanted was light. White lifts the art instead of dimming it and
+            reads as daylight through the window, which is what the art shows.
 
-            If these ever go lower, the first thing to give is a section
-            heading crossing the bright window — give the headings their own
-            backing before trying it.
+            Immersive stays on --background, because there it IS the light
+            tone: the same values give a warm sepia wash rather than a shadow.
+
+            White has one cost, and it is paid next to this: the section
+            headings are light text with nothing behind them, so a pale
+            backdrop erases them. They carry their own bg-card/70 pill now,
+            which is why the scrim is free to go this bright.
 
             Both strings are written out in full rather than composed, so
             Tailwind's scanner can see the class names. */}
         <div
           className={
             isFocusTheme
-              ? 'absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70'
+              ? 'absolute inset-0 bg-gradient-to-b from-white/60 via-white/30 to-white/70'
               : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
           }
         />
@@ -431,7 +433,11 @@ export default function MyClassrooms() {
                 waiting on the student to act. */}
             {(invites?.length ?? 0) > 0 && (
               <section className="space-y-3">
-                <h2 className="font-display text-base text-foreground flex items-center gap-2">
+                {/* The pill is not decoration: this is light text sitting
+                    directly on the backdrop, and the white scrim above is
+                    bright enough to erase it. Carrying its own background
+                    means the heading reads whatever the art is doing behind. */}
+                <h2 className="font-display text-base text-foreground flex w-fit items-center gap-2 rounded-lg bg-card/70 px-2.5 py-1 backdrop-blur-sm">
                   <MailOpen className="w-4 h-4 text-primary" /> Invitations
                 </h2>
                 <div className={ROOM_GRID}>
@@ -485,7 +491,8 @@ export default function MyClassrooms() {
             )}
 
             <section className="space-y-4">
-              <h2 className="font-display text-base text-foreground flex items-center gap-2">
+              {/* Same reason as the Invitations heading above. */}
+              <h2 className="font-display text-base text-foreground flex w-fit items-center gap-2 rounded-lg bg-card/70 px-2.5 py-1 backdrop-blur-sm">
                 <GraduationCap className="w-4 h-4 text-primary" /> Enrolled
               </h2>
               {enrolled.length === 0 ? (
