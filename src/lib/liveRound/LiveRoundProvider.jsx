@@ -73,6 +73,7 @@ export function LiveRoundProvider({ children }) {
   const begunRoundIdRef = useRef(null); // guards double-begin
   const leftRoundIdRef = useRef(null); // a round the student opted out of
   const lastHeartbeatRef = useRef(0); // throttles the presence-only write
+  const reportInFlightRef = useRef(null); // the report-loop write currently out
   const reportFailedRef = useRef(false); // so a rejected write is logged once
   const toastedRef = useRef(new Set()); // round ids we've already prompted
 
@@ -515,11 +516,36 @@ export function LiveRoundProvider({ children }) {
     if (reportedSessionRef.current === last) return;
     reportedSessionRef.current = last;
 
-    supabase
-      .rpc('report_final_session_rep', { _round_id: roundId, _rep: last.sessionRep })
-      .then(({ error }) => {
-        if (error) console.error('[round] could not land the final session rep:', error);
+    const rep = last.sessionRep;
+    (async () => {
+      // Wait out any report-loop write already in flight. On the LEAVE path the
+      // round stays active, so a full-row PATCH carrying the pre-penalty rep is
+      // not rejected by RLS and would otherwise land after this one and undo
+      // it. (The instructor-end path is immune only by accident — RLS happens
+      // to reject that stale PATCH — which is not a thing to rely on.)
+      try { await reportInFlightRef.current; } catch { /* its own handler logged it */ }
+
+      const { error } = await supabase.rpc('report_final_session_rep', {
+        _round_id: roundId,
+        _rep: rep,
       });
+      if (!error) return;
+
+      // The RPC arrives by hand-applied migration, so the JS can ship first.
+      // Without a fallback the penalty would be lost on EVERY path until the
+      // SQL lands — worse than before this write existed. The direct update
+      // still works while the round is active, which is the common case; it is
+      // only the instructor-end path that needs the RPC.
+      console.error('[round] final session rep RPC failed, trying a direct write:', error);
+      const { error: fallbackError } = await supabase
+        .from('round_participants')
+        .update({ rep })
+        .eq('round_id', roundId)
+        .eq('student_id', userId);
+      if (fallbackError) {
+        console.error('[round] could not land the final session rep:', fallbackError);
+      }
+    })();
   }, [state.lastSession, currentRound, userId, saveDisabled]);
 
   // ── Global "join" toast for un-joined live rounds ────────────
@@ -663,7 +689,12 @@ export function LiveRoundProvider({ children }) {
       }
     };
 
-    const id = setInterval(() => report().catch(() => {}), REPORT_INTERVAL);
+    // Tracked so the final-rep write can wait for an in-flight tick: on the
+    // leave path the round is still active, so a full-row write carrying the
+    // pre-penalty rep would be accepted and could land after it.
+    const id = setInterval(() => {
+      reportInFlightRef.current = report().catch(() => {});
+    }, REPORT_INTERVAL);
     return () => clearInterval(id);
   }, [currentRound, userId]);
 
