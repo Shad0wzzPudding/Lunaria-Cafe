@@ -8,6 +8,11 @@ import { LiveRoundContext } from './liveRoundContext';
 import { BOOST_LABEL, BOOST_WINDOW_LABEL } from '@/lib/gameState/constants';
 
 const REPORT_INTERVAL = 5000; // ms — throttle live progress writes
+// How long the final-rep write will wait for in-flight progress writes before
+// going anyway. Generous next to a PATCH that normally takes tens of ms, and
+// short enough that a hung request delays the result screen's board update
+// rather than cancelling it.
+const REPORT_SETTLE_TIMEOUT = 3000;
 // Presence-only heartbeat, used once a student's metrics are final. Much rarer
 // than REPORT_INTERVAL on purpose: round_participants is in the Realtime
 // publication, so EVERY write fans out to the instructor board and to every
@@ -73,7 +78,10 @@ export function LiveRoundProvider({ children }) {
   const begunRoundIdRef = useRef(null); // guards double-begin
   const leftRoundIdRef = useRef(null); // a round the student opted out of
   const lastHeartbeatRef = useRef(0); // throttles the presence-only write
-  const reportInFlightRef = useRef(null); // the report-loop write currently out
+  // Every report-loop write currently out, not just the newest — the final-rep
+  // write waits on all of them. Entries remove themselves when they settle, so
+  // this cannot grow.
+  const reportInFlightRef = useRef(new Set());
   const reportFailedRef = useRef(false); // so a rejected write is logged once
   const toastedRef = useRef(new Set()); // round ids we've already prompted
 
@@ -518,12 +526,27 @@ export function LiveRoundProvider({ children }) {
 
     const rep = last.sessionRep;
     (async () => {
-      // Wait out any report-loop write already in flight. On the LEAVE path the
+      // Wait out report-loop writes already in flight. On the LEAVE path the
       // round stays active, so a full-row PATCH carrying the pre-penalty rep is
       // not rejected by RLS and would otherwise land after this one and undo
       // it. (The instructor-end path is immune only by accident — RLS happens
       // to reject that stale PATCH — which is not a thing to rely on.)
-      try { await reportInFlightRef.current; } catch { /* its own handler logged it */ }
+      //
+      // ALL of them, not just the newest: a slow earlier tick is the one most
+      // likely to land late, and a single-slot ref made it invisible.
+      //
+      // And never wait forever. This sits in front of the write it exists to
+      // protect, so a request that never settles would silently suppress the
+      // penalty — and, since the tracking outlives the round, every later
+      // round's too. A stale write landing is a wrong number; never writing is
+      // a missing one, which is worse. The timeout picks the lesser failure.
+      const pending = [...reportInFlightRef.current];
+      if (pending.length) {
+        await Promise.race([
+          Promise.allSettled(pending),
+          new Promise((resolve) => setTimeout(resolve, REPORT_SETTLE_TIMEOUT)),
+        ]);
+      }
 
       const { error } = await supabase.rpc('report_final_session_rep', {
         _round_id: roundId,
@@ -536,6 +559,14 @@ export function LiveRoundProvider({ children }) {
       // SQL lands — worse than before this write existed. The direct update
       // still works while the round is active, which is the common case; it is
       // only the instructor-end path that needs the RPC.
+      //
+      // This one DOES re-stamp updated_at, having no way to ask the trigger
+      // not to. That is acceptable here and only here: it can succeed only
+      // while the round is active, and the student reached this line by
+      // actively finishing or leaving a session, so they demonstrably were
+      // present at that moment. It is a truthful heartbeat, not a laundered
+      // one. On an ended round RLS rejects it, which is the case where the
+      // stamp WOULD be a lie.
       console.error('[round] final session rep RPC failed, trying a direct write:', error);
       const { error: fallbackError } = await supabase
         .from('round_participants')
@@ -689,11 +720,15 @@ export function LiveRoundProvider({ children }) {
       }
     };
 
-    // Tracked so the final-rep write can wait for an in-flight tick: on the
+    // Tracked so the final-rep write can wait for in-flight ticks: on the
     // leave path the round is still active, so a full-row write carrying the
     // pre-penalty rep would be accepted and could land after it.
+    const inFlight = reportInFlightRef.current;
     const id = setInterval(() => {
-      reportInFlightRef.current = report().catch(() => {});
+      const p = report().catch(() => {});
+      inFlight.add(p);
+      // Drop it once settled, so waiting on the set never waits on the past.
+      p.finally(() => inFlight.delete(p));
     }, REPORT_INTERVAL);
     return () => clearInterval(id);
   }, [currentRound, userId]);
