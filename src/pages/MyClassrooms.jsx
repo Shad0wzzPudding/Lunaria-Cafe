@@ -188,6 +188,13 @@ export default function MyClassrooms() {
   // Immersive is left alone: its palette is the player's own, and stamping a
   // primary-coloured badge into it would fight whatever they picked.
   // Defined once so the two headings cannot drift apart.
+  // Bare status text needs the same protection the headings got. Everything
+  // else on this page is a card with its own background; these paragraphs sit
+  // straight on the backdrop, and the Focus scrim is now near-white, so light
+  // muted text on top of it is barely there. The empty state in particular is
+  // what EVERY new student sees before they have joined anything.
+  const ON_BACKDROP_TEXT = 'rounded-lg bg-card/70 px-3 py-2 backdrop-blur-sm';
+
   const HEADING_ICON_CHIP = isFocusTheme
     ? 'inline-flex items-center justify-center rounded-md bg-primary/25 p-1 ring-1 ring-primary/40'
     : 'inline-flex items-center justify-center';
@@ -442,10 +449,12 @@ export default function MyClassrooms() {
           the middle of a big screen. */}
       <div className="max-w-5xl p-6 space-y-8">
         {isLoading && (
-          <p className="text-sm text-muted-foreground text-center py-10">Loading classrooms…</p>
+          <p className={`mx-auto w-fit text-sm text-muted-foreground ${ON_BACKDROP_TEXT}`}>
+            Loading classrooms…
+          </p>
         )}
         {error && (
-          <p className="text-sm text-amber-400 text-center py-10">
+          <p className={`mx-auto w-fit text-sm text-amber-400 ${ON_BACKDROP_TEXT}`}>
             Could not load classrooms: {error.message}
           </p>
         )}
@@ -525,7 +534,7 @@ export default function MyClassrooms() {
                 Enrolled
               </h2>
               {enrolled.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
+                <p className={`w-fit text-xs text-muted-foreground ${ON_BACKDROP_TEXT}`}>
                   You're not in any classroom yet — use the + button above to join with a class code, or ask your instructor to invite you.
                 </p>
               ) : (

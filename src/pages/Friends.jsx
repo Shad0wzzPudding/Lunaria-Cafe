@@ -379,26 +379,40 @@ export default function Friends() {
         exit={{ x: '100%', opacity: 0, transition: { duration: 0.45, ease: 'easeIn' } }}
         transition={{ type: 'spring', stiffness: 55, damping: 14, delay: 0.1 }}
       >
-        <button
-          type="button"
-          onClick={() => {
-            const a = state.audio ?? {};
-            Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
-            setLulysHere(false);
-          }}
-          // pointer-events-auto only HERE: the wrapper stays transparent to
-          // clicks so the bubble above her never eats one meant for a card.
-          className="pointer-events-auto block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          aria-label="Lulyssia is presenting your friends. Click to send her away."
-        >
+        <div className="relative">
           <img
             src="/assets/Character/lulys_presenting.webp"
             alt=""
             aria-hidden="true"
             draggable={false}
-            className="h-[50vh] w-auto"
+            // Click-through. She is drawn on top of the page, but her PICTURE
+            // must not be what receives clicks: her bounding box is a rectangle
+            // and she is not, so the transparent corners — her outstretched
+            // hand, the sweep of her hair — would swallow clicks meant for
+            // whatever is behind them.
+            className="pointer-events-none h-[50vh] w-auto"
           />
-        </button>
+          {/* The real target: her body, not her box.
+              Measured, not guessed — with the whole image clickable she covered
+              two Remove buttons at 1024px, one at 1280px, and one even at
+              1400px, so a friend card's own control silently dismissed her
+              instead of firing. Her figure sits to the RIGHT of that overlap
+              (she presents with her left hand, which is what reaches into the
+              page), so a hotspot anchored right keeps every card clickable
+              while still covering the part of her anyone would aim at.
+              Inset from the bottom too: the very bottom strip is skirt and
+              empty air, and it is the band most likely to sit over a card. */}
+          <button
+            type="button"
+            onClick={() => {
+              const a = state.audio ?? {};
+              Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
+              setLulysHere(false);
+            }}
+            className="pointer-events-auto absolute bottom-[6%] right-0 top-[10%] w-[52%] cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            aria-label="Lulyssia is presenting your friends. Click to send her away."
+          />
+        </div>
 
         {/* Her line, in the same pixel bubble the welcome letter and the
             friends plaque use — same gesture, so it reads as the game
@@ -415,8 +429,11 @@ export default function Friends() {
           // row of friends — the one element here with something to say is
           // the one that must never be behind anything. Percentages of her
           // box rather than fixed offsets, so it keeps its aim at any height.
+          // No clipPath on THIS element: clip-path clips descendants, and the
+          // tail hangs below it at top-full, so an outer clip cut the tail off
+          // entirely — it has been invisible since it was written. The inner
+          // span carries its own identical clip, so the corners are unchanged.
           className="absolute right-[13%] top-[-8%] whitespace-nowrap"
-          style={{ clipPath: PIXEL_CORNERS('6px') }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.75 }}

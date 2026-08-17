@@ -25,6 +25,10 @@ function getAudio(filename) {
   return cache[filename];
 }
 
+// Elements a real play() has claimed. The unlock priming below must not tidy
+// up after itself on one of these, or it stops a sound the player asked for.
+const claimed = new WeakSet();
+
 let unlocked = false;
 function unlock() {
   if (unlocked) return;
@@ -32,7 +36,17 @@ function unlock() {
   FILES.forEach((f) => {
     const a = getAudio(f);
     a.muted = true;
-    a.play().then(() => { a.pause(); a.muted = false; a.currentTime = 0; }).catch(() => {});
+    a.play().then(() => {
+      // The priming play resolves ASYNCHRONOUSLY, once the file has buffered.
+      // If a genuine play() claimed this element while that was in flight, the
+      // cleanup below would pause it, rewind it, and leave the player hearing
+      // nothing — which is exactly what happened on a cold load whose first
+      // click opens a page that greets you. Leave claimed elements alone.
+      if (claimed.has(a)) return;
+      a.pause();
+      a.muted = false;
+      a.currentTime = 0;
+    }).catch(() => {});
   });
 }
 if (typeof window !== 'undefined') {
@@ -43,13 +57,11 @@ function play(filename, sfxVolume = 0.7, masterVolume = 0.8, enabled = true) {
   if (!enabled) return;
   try {
     const audio = getAudio(filename);
-    // Unmute explicitly. unlock() above mutes every cached element, plays it,
-    // and only unmutes again when that promise resolves — so any sound fired
-    // inside that window plays silently. It is a narrow window but a reachable
-    // one: unlock runs on the first pointerdown of a page load, so a player
-    // whose first click IS the thing that makes a noise (opening the friends
-    // page, for one) hears nothing at all. An intentional play should never
-    // inherit the unlock trick's muting.
+    // Take this element back off unlock(): it mutes every cached element and
+    // primes it, then pauses and rewinds when that resolves. Both halves have
+    // to be undone — unmuting alone still leaves the sound to be paused a
+    // moment later, which is what made this look fixed when it was not.
+    claimed.add(audio);
     audio.muted = false;
     audio.volume = Math.min(1, sfxVolume * masterVolume);
     audio.currentTime = 0;
