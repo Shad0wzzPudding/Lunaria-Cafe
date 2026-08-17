@@ -475,8 +475,20 @@ export function LiveRoundProvider({ children }) {
   // distracted end, plain on a completed one — so one write covers both and
   // no penalty arithmetic is duplicated out here.
   //
-  // It also has to land before any later session in the same round, because
-  // beginParticipation seeds the next session's sessionRep from this row.
+  // Goes through report_final_session_rep() rather than a direct update. The
+  // "student updates own participation" policy has
+  // `with check (... can_join_round(round_id))`, and can_join_round() requires
+  // status = 'active' — so when the INSTRUCTOR ends a round the write is
+  // rejected 42501, because the client only learns the session is over BY the
+  // round leaving the active list. That is the case a penalty is most likely
+  // to be in, and it failed silently. The RPC touches rep alone, on a row the
+  // caller already owns.
+  //
+  // Fire-and-forget, so a leave→immediate-rejoin can in principle have
+  // beginParticipation read the row before this lands and seed the next
+  // session from the pre-penalty figure. Left as is: awaiting it would block
+  // the result screen on the network, and the window is a few hundred ms
+  // against a student who must leave and rejoin inside it.
   //
   // The round id comes from a ref that OUTLIVES currentRound, because the two
   // paths that clear it — the student leaving, and the host ending the round —
@@ -504,10 +516,7 @@ export function LiveRoundProvider({ children }) {
     reportedSessionRef.current = last;
 
     supabase
-      .from('round_participants')
-      .update({ rep: last.sessionRep })
-      .eq('round_id', roundId)
-      .eq('student_id', userId)
+      .rpc('report_final_session_rep', { _round_id: roundId, _rep: last.sessionRep })
       .then(({ error }) => {
         if (error) console.error('[round] could not land the final session rep:', error);
       });
