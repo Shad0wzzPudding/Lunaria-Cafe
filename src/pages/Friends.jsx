@@ -177,6 +177,9 @@ export default function Friends() {
   // Who the flying envelope is addressed to; null when nothing is in flight.
   const [sentTo, setSentTo] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+  // Lulyssia is on stage until the player waves her off. Per visit, not
+  // persisted: she is a greeter, so she should greet again next time.
+  const [lulysHere, setLulysHere] = useState(true);
 
   const { data: friends, isLoading, error } = useQuery({
     queryKey: ['friends'],
@@ -338,30 +341,42 @@ export default function Friends() {
 
   return (
     <div className="relative min-h-screen bg-background">
-      {/* Lulys slides in from the right to present the page.
-          BEHIND the content (z-0 against the header and list's z-10), so she
-          can be large enough to read as a character without ever covering a
-          friend card — the page's content column is left-aligned and capped at
-          max-w-5xl, so she occupies the gap that leaves rather than fighting
-          it. Hidden below lg, where there is no such gap and she would sit on
-          top of the list.
+      {/* Lulys slides in from the right to present the page, and stays on TOP
+          of it (z-20 over the content's z-10) rather than behind.
+          That makes her a real obstacle rather than a backdrop, so she has to
+          come with a way out: clicking her slides her back off to the right.
+          Which in turn makes her a CONTROL, not decoration — hence a real
+          <button> with a label, reachable by keyboard, instead of the
+          aria-hidden image this was when it sat harmlessly behind everything.
           FIXED, so she stays put while the list scrolls instead of sliding
           away from the hand she is presenting with.
-          aria-hidden and pointer-events-none: she is decoration, and must not
-          land in the tab order or swallow clicks meant for the cards. */}
+          Hidden below lg: on a narrow window she has no room of her own and
+          would land squarely on the list. */}
+      <AnimatePresence>
+        {lulysHere && (
       <motion.div
-        className="pointer-events-none fixed bottom-0 right-0 z-0 hidden select-none lg:block"
+        className="pointer-events-none fixed bottom-0 right-0 z-20 hidden select-none lg:block"
         initial={{ x: '100%', opacity: 0 }}
         animate={{ x: '0%', opacity: 1 }}
+        exit={{ x: '100%', opacity: 0, transition: { duration: 0.45, ease: 'easeIn' } }}
         transition={{ type: 'spring', stiffness: 55, damping: 14, delay: 0.1 }}
       >
-        <img
-          src="/assets/Character/lulys_presenting.webp"
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          className="h-[50vh] w-auto"
-        />
+        <button
+          type="button"
+          onClick={() => setLulysHere(false)}
+          // pointer-events-auto only HERE: the wrapper stays transparent to
+          // clicks so the bubble above her never eats one meant for a card.
+          className="pointer-events-auto block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          aria-label="Lulyssia is presenting your friends. Click to send her away."
+        >
+          <img
+            src="/assets/Character/lulys_presenting.webp"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="h-[50vh] w-auto"
+          />
+        </button>
 
         {/* Her line, in the same pixel bubble the welcome letter and the
             friends plaque use — same gesture, so it reads as the game
@@ -384,15 +399,25 @@ export default function Friends() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.75 }}
         >
+          {/* Purple-white rather than the letter's brown-and-cream: this is
+              LULYSSIA speaking, not the cafe's stationery, and she wears the
+              app's purple. Same pixel box, different voice. */}
           <span
             className="block"
-            style={{ clipPath: PIXEL_CORNERS('6px'), background: '#7a5230', padding: '3px' }}
+            style={{ clipPath: PIXEL_CORNERS('6px'), background: '#6b46b2', padding: '3px' }}
           >
             <span
-              className="block px-3 py-1.5 font-pixel text-[11px]"
-              style={{ clipPath: PIXEL_CORNERS('6px'), background: '#e8cf9e', color: '#6b4a26' }}
+              className="block px-3 py-1.5 text-center font-pixel"
+              style={{ clipPath: PIXEL_CORNERS('6px'), background: '#f3ecff', color: '#4a2d7f' }}
             >
-              {'Here is your list of friends<3'}
+              <span className="block text-[11px]">{'Here is your list of friends<3'}</span>
+              {/* The clue. Without it, an obstacle you can dismiss is just an
+                  obstacle — nobody clicks a character to make her leave unless
+                  told. Dimmer and smaller so it reads as an aside rather than
+                  a second announcement. */}
+              <span className="mt-1 block text-[9px] opacity-70">
+                (click me and I&apos;ll step aside)
+              </span>
             </span>
           </span>
 
@@ -404,11 +429,13 @@ export default function Friends() {
             style={{
               borderLeft: '7px solid transparent',
               borderRight: '7px solid transparent',
-              borderTop: '8px solid #7a5230',
+              borderTop: '8px solid #6b46b2',
             }}
           />
         </motion.div>
       </motion.div>
+        )}
+      </AnimatePresence>
 
       <header
         className="relative z-10 flex items-center gap-3 px-4 py-3 border-b border-border/30"
