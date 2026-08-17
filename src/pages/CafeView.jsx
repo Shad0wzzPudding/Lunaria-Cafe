@@ -642,7 +642,7 @@ export default function CafeView() {
     const popupIsOpen = !!(popupRef.current && !popupRef.current.closed);
     if (!popupIsOpen && !document.hidden && document.hasFocus()) return false;
     try {
-      const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.svg' });
+      const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.png' });
       notif.onclick = () => { window.focus(); };
       return true;
     } catch { /* mobile without a service worker */ return false; }
@@ -922,7 +922,7 @@ export default function CafeView() {
 
       // Try OS notification
       if (NOTIF_SUPPORTED && Notification.permission === 'granted') {
-        const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.svg' });
+        const notif = new Notification('Lunaria Cafe ☕', { body, icon: '/favicon.png' });
         notif.onclick = () => { window.focus(); openStatusPopup(); };
       }
 
