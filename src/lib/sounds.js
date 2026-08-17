@@ -35,15 +35,21 @@ function unlock() {
   unlocked = true;
   FILES.forEach((f) => {
     const a = getAudio(f);
-    // Skip anything already claimed by a real play(), BEFORE muting it. The
-    // guard inside the .then() only protects the cleanup; the mute here is
-    // synchronous, so an element mid-playback when the first pointerdown lands
-    // would be silenced on the spot — and then skipped by that same guard, so
-    // nothing would ever unmute it and the clip would finish inaudibly.
-    // Reachable whenever the first sound is not started by a mouse: Enter on
-    // Start Session, or the phone warning firing off a timer, with the
-    // player's first click landing while it plays.
-    if (claimed.has(a)) return;
+    // Leave anything that is CURRENTLY PLAYING alone. The mute below is
+    // synchronous, so a clip already sounding when the first gesture lands
+    // would be silenced mid-word. Reachable whenever the first sound is not
+    // started by a mouse: Enter on Start Session, or the phone warning firing
+    // off a timer, with the player's first click arriving during it.
+    //
+    // Tested against `paused`, NOT against `claimed`: claimed is permanent and
+    // set before every play() including ones that fail, so keying on it
+    // excluded an element from priming for the rest of the page load after a
+    // single early rejected play. On engines that unlock per element rather
+    // than per document, that is a clip which never sounds again — a worse
+    // failure than the one this guard exists to prevent, and it took the
+    // opposite form: the first version silenced a sound, this one would have
+    // silenced a file.
+    if (!a.paused) return;
     a.muted = true;
     a.play().then(() => {
       // The priming play resolves ASYNCHRONOUSLY, once the file has buffered.
@@ -59,7 +65,13 @@ function unlock() {
   });
 }
 if (typeof window !== 'undefined') {
+  // Both gestures, matching cafeAudioEngine's own unlock. pointerdown alone
+  // meant a keyboard-only player never primed anything — and the guard above
+  // reasons explicitly about Enter on Start Session, which is precisely the
+  // path that could not get here. A later timer-fired sound (the phone
+  // warning) would then be rejected by autoplay policy and simply not happen.
   window.addEventListener('pointerdown', unlock, { once: true });
+  window.addEventListener('keydown', unlock, { once: true });
 }
 
 function play(filename, sfxVolume = 0.7, masterVolume = 0.8, enabled = true) {
@@ -92,10 +104,10 @@ export const Sounds = {
   debugToolOpen:     (sfx, master, enabled) => play('debugtool_open.mp3', sfx, master, enabled),
   letterOpen:        (sfx, master, enabled) => play('letter_opening.mp3', sfx, master, enabled),
   slideIn:           (sfx, master, enabled) => play('slide_in.mp3', sfx, master, enabled),
-  // Her line on the friends page. Shares the "Lulys Greeting" toggle with
-  // slideIn rather than adding a second switch that means the same thing —
-  // that toggle was already in Settings and already called this, and until now
-  // nothing played through it at all.
+  // Her two lines on the friends page. They share the "Lulys Voice" toggle
+  // (sfxSlideIn) with slideIn rather than adding switches that mean the same
+  // thing — that toggle already existed in Settings and drove nothing at all
+  // until these landed.
   lulysPresenting:   (sfx, master, enabled) => play('lulys_presenting.mp3', sfx, master, enabled),
   lulysDismiss:      (sfx, master, enabled) => play('lulys_dismiss.mp3', sfx, master, enabled),
 };
