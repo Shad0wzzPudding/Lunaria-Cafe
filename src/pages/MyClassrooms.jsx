@@ -205,10 +205,16 @@ export default function MyClassrooms() {
           Tokens rather than black, so it follows the active theme instead of
           forcing a dark page under a light one. */}
       <div className="fixed inset-0 z-0" aria-hidden="true">
+        {/* A single pixel of blur: enough to take the edge off, not enough to
+            stop it being the cafe. This is PIXEL art, so it softens far faster
+            than a photograph would — 2px already smears the jar labels and the
+            menu board, which is why this is 1 and not "a small blur".
+            scale-105 hides the transparent fringe a blur leaves at the edges
+            of the element. */}
         <img
           src="/assets/Backdrop/cafe_interior.webp"
           alt=""
-          className="w-full h-full object-cover object-center select-none"
+          className="w-full h-full object-cover object-center select-none blur-[1px] scale-105"
           draggable={false}
         />
         {/* The two branches veil the art from OPPOSITE ends, which is the
