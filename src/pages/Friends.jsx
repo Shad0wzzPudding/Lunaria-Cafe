@@ -195,13 +195,7 @@ export default function Friends() {
   useEffect(() => {
     if (!window.matchMedia?.('(min-width: 1024px)').matches) return;
     const a = state.audio ?? {};
-    // Matches her spring: she is on her way in by 150ms, and the line lands
-    // with her rather than announcing an empty corner.
-    const t = setTimeout(
-      () => Sounds.lulysPresenting(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true),
-      150,
-    );
-    return () => clearTimeout(t);
+    Sounds.lulysPresenting(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
