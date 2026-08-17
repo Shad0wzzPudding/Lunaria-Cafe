@@ -25,7 +25,7 @@ import { FRIEND_NOTICES_KEY } from '@/lib/friends/notices';
 import SentLetterFlight from '@/components/friends/SentLetterFlight';
 import ArrivedFriendLetter from '@/components/friends/ArrivedFriendLetter';
 import StudyRoomPanel from '@/components/friends/StudyRoomPanel';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // The online flag is derived from a 30s heartbeat, so a page left open goes
 // stale within a minute. Refetching on this cadence keeps the dots honest
@@ -336,9 +336,31 @@ export default function Friends() {
   const onlineCount = (friends ?? []).filter((f) => f.is_online).length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      {/* Lulys slides in from the right to present the page.
+          BEHIND the content (z-0 against the header and list's z-10), so she
+          can be large enough to read as a character without ever covering a
+          friend card — the page's content column is left-aligned and capped at
+          max-w-5xl, so she occupies the gap that leaves rather than fighting
+          it. Hidden below lg, where there is no such gap and she would sit on
+          top of the list.
+          FIXED, so she stays put while the list scrolls instead of sliding
+          away from the hand she is presenting with.
+          aria-hidden and pointer-events-none: she is decoration, and must not
+          land in the tab order or swallow clicks meant for the cards. */}
+      <motion.img
+        src="/assets/Character/lulys_presenting.webp"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="pointer-events-none fixed bottom-0 right-0 z-0 hidden h-[62vh] w-auto select-none lg:block"
+        initial={{ x: '100%', opacity: 0 }}
+        animate={{ x: '0%', opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 55, damping: 14, delay: 0.1 }}
+      />
+
       <header
-        className="flex items-center gap-3 px-4 py-3 border-b border-border/30"
+        className="relative z-10 flex items-center gap-3 px-4 py-3 border-b border-border/30"
         style={{ background: PANEL_BRIGHT_BG }}
       >
         <Button
@@ -430,7 +452,7 @@ export default function Friends() {
         </Dialog>
       </header>
 
-      <div className="max-w-5xl p-6 space-y-8">
+      <div className="relative z-10 max-w-5xl p-6 space-y-8">
         {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Loading friends…</p>}
         {error && (
           <p className="text-sm text-amber-400 text-center py-10">
