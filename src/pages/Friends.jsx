@@ -26,6 +26,7 @@ import SentLetterFlight from '@/components/friends/SentLetterFlight';
 import ArrivedFriendLetter from '@/components/friends/ArrivedFriendLetter';
 import StudyRoomPanel from '@/components/friends/StudyRoomPanel';
 import { AnimatePresence, motion } from 'framer-motion';
+import { PIXEL_CORNERS } from '@/components/letter/pixelBox';
 
 // The online flag is derived from a 30s heartbeat, so a page left open goes
 // stale within a minute. Refetching on this cadence keeps the dots honest
@@ -348,16 +349,66 @@ export default function Friends() {
           away from the hand she is presenting with.
           aria-hidden and pointer-events-none: she is decoration, and must not
           land in the tab order or swallow clicks meant for the cards. */}
-      <motion.img
-        src="/assets/Character/lulys_presenting.webp"
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className="pointer-events-none fixed bottom-0 right-0 z-0 hidden h-[62vh] w-auto select-none lg:block"
+      <motion.div
+        className="pointer-events-none fixed bottom-0 right-0 z-0 hidden select-none lg:block"
         initial={{ x: '100%', opacity: 0 }}
         animate={{ x: '0%', opacity: 1 }}
         transition={{ type: 'spring', stiffness: 55, damping: 14, delay: 0.1 }}
-      />
+      >
+        <img
+          src="/assets/Character/lulys_presenting.webp"
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="h-[50vh] w-auto"
+        />
+
+        {/* Her line, in the same pixel bubble the welcome letter and the
+            friends plaque use — same gesture, so it reads as the game
+            speaking rather than a second design.
+            Positioned against HER, not the screen: it rides the same slide-in
+            and keeps its aim if her size changes. It fades in after she has
+            arrived, so she is not talking before she is on stage.
+            Not aria-hidden, unlike the art: it is the one part of this with
+            something to say, and it costs a screen reader nothing to hear it. */}
+        <motion.div
+          // Above her head and inside her own column, not beside her. Both
+          // matter: the page's cards sit at z-10 and she is at z-0, so a
+          // bubble reaching left into the grid would be COVERED by the next
+          // row of friends — the one element here with something to say is
+          // the one that must never be behind anything. Percentages of her
+          // box rather than fixed offsets, so it keeps its aim at any height.
+          className="absolute right-[13%] top-[-8%] whitespace-nowrap"
+          style={{ clipPath: PIXEL_CORNERS('6px') }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.75 }}
+        >
+          <span
+            className="block"
+            style={{ clipPath: PIXEL_CORNERS('6px'), background: '#7a5230', padding: '3px' }}
+          >
+            <span
+              className="block px-3 py-1.5 font-pixel text-[11px]"
+              style={{ clipPath: PIXEL_CORNERS('6px'), background: '#e8cf9e', color: '#6b4a26' }}
+            >
+              {'Here is your list of friends<3'}
+            </span>
+          </span>
+
+          {/* Tail centred on the bubble's underside, pointing straight down
+              at her hat. */}
+          <span
+            aria-hidden
+            className="absolute top-full left-1/2 -translate-x-1/2 -mt-px h-0 w-0"
+            style={{
+              borderLeft: '7px solid transparent',
+              borderRight: '7px solid transparent',
+              borderTop: '8px solid #7a5230',
+            }}
+          />
+        </motion.div>
+      </motion.div>
 
       <header
         className="relative z-10 flex items-center gap-3 px-4 py-3 border-b border-border/30"
