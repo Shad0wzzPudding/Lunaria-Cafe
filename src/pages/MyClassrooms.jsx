@@ -214,15 +214,22 @@ export default function MyClassrooms() {
         {/* The two branches veil the art from OPPOSITE ends, which is the
             whole reason they cannot share numbers.
 
-            Focus washes toward WHITE. Its --background is a near-black purple,
-            so every token-based scrim darkened the room — the long way round
-            through 90/70/95, 70/40/80, 40/12/50 and 60/30/70 was really an
-            argument about how much shadow was tolerable, when what the page
-            wanted was light. White lifts the art instead of dimming it and
-            reads as daylight through the window, which is what the art shows.
+            Focus washes toward WHITE, flat. Its --background is a near-black
+            purple, so every token-based scrim darkened the room — the long way
+            round through 90/70/95, 70/40/80, 40/12/50 and 60/30/70 was really
+            an argument about how much shadow was tolerable, when what the page
+            wanted was light. White lifts the art instead of dimming it.
+
+            Flat rather than a gradient, and that turned out to be the source
+            of the "hazy" look rather than the colour: a scrim that varies down
+            the page reads as fog drifting over the art, where an even one
+            simply reads as light. A single opacity is also honest about what
+            it does — nothing here needs more cover at the top than the bottom,
+            since every heading and card carries its own background.
 
             Immersive stays on --background, because there it IS the light
-            tone: the same values give a warm sepia wash rather than a shadow.
+            tone: the same values give a warm sepia wash rather than a shadow,
+            and it keeps its gradient.
 
             White has one cost, and it is paid next to this: the section
             headings are light text with nothing behind them, so a pale
@@ -234,7 +241,7 @@ export default function MyClassrooms() {
         <div
           className={
             isFocusTheme
-              ? 'absolute inset-0 bg-gradient-to-b from-white/60 via-white/30 to-white/70'
+              ? 'absolute inset-0 bg-white/55'
               : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
           }
         />
