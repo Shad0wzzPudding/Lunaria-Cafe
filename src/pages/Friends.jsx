@@ -182,6 +182,12 @@ export default function Friends() {
   // persisted: she is a greeter, so she should greet again next time.
   const [lulysHere, setLulysHere] = useState(true);
 
+  const sendLulysAway = () => {
+    const a = state.audio ?? {};
+    Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
+    setLulysHere(false);
+  };
+
   // Her voice line, timed to the entrance.
   //
   // Gated on the same 1440px breakpoint that decides whether she is rendered
@@ -392,11 +398,7 @@ export default function Friends() {
             destructive one is a bug. The full box swallows instead. */}
         <button
           type="button"
-          onClick={() => {
-            const a = state.audio ?? {};
-            Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
-            setLulysHere(false);
-          }}
+          onClick={sendLulysAway}
           // pointer-events-auto only HERE: the wrapper stays transparent to
           // clicks so the bubble above her never eats one meant for a card.
           className="pointer-events-auto block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
@@ -407,7 +409,17 @@ export default function Friends() {
             alt=""
             aria-hidden="true"
             draggable={false}
-            className="h-[50vh] w-auto"
+            // Bounded on BOTH axes, and the width bound is the load-bearing
+            // one. Sizing from height alone (h-[50vh]) meant her width grew
+            // with the window's height while the breakpoint that was supposed
+            // to keep her clear of the grid watched its WIDTH: at 1440x1200
+            // she measured 565px wide, her left edge landed at 875, and with
+            // a long enough friends list she covered two Remove buttons — the
+            // exact bug the breakpoint was added to close, at a height it was
+            // never measured at. Capping width in vw makes the clearance hold
+            // at any height, because the content column is a fixed max-w-5xl
+            // pinned left: 26vw always leaves it room from 1440px up.
+            className="max-h-[50vh] max-w-[26vw] h-auto w-auto"
           />
         </button>
 
@@ -419,18 +431,25 @@ export default function Friends() {
             arrived, so she is not talking before she is on stage.
             Not aria-hidden, unlike the art: it is the one part of this with
             something to say, and it costs a screen reader nothing to hear it. */}
-        <motion.div
-          // Above her head and inside her own column, not beside her. Both
-          // matter: the page's cards sit at z-10 and she is at z-0, so a
-          // bubble reaching left into the grid would be COVERED by the next
-          // row of friends — the one element here with something to say is
-          // the one that must never be behind anything. Percentages of her
-          // box rather than fixed offsets, so it keeps its aim at any height.
+        <motion.button
+          type="button"
+          onClick={sendLulysAway}
+          // A real button, because it SAYS "click me" — and it said that while
+          // being pointer-events-none, so the instruction did nothing and the
+          // click carried on through to whatever card sat beneath. An
+          // invitation that fires someone else's Remove button is worse than
+          // no invitation. pointer-events-auto both honours the words and
+          // stops the click travelling.
+          //
+          // Above her head and inside her own column, not beside her, so it
+          // never reaches into the grid. Percentages of her box rather than
+          // fixed offsets, so it keeps its aim at any size.
+          //
           // No clipPath on THIS element: clip-path clips descendants, and the
           // tail hangs below it at top-full, so an outer clip cut the tail off
-          // entirely — it has been invisible since it was written. The inner
-          // span carries its own identical clip, so the corners are unchanged.
-          className="absolute right-[13%] top-[-8%] whitespace-nowrap"
+          // entirely — it was invisible until a6cd47f. The inner span carries
+          // its own identical clip, so the corners are unchanged.
+          className="pointer-events-auto absolute right-[13%] top-[-8%] cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.75 }}
@@ -468,7 +487,7 @@ export default function Friends() {
               borderTop: '8px solid #6b46b2',
             }}
           />
-        </motion.div>
+        </motion.button>
       </motion.div>
         )}
       </AnimatePresence>
