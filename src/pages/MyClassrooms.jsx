@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ArrowLeft, Users, KeyRound, LogOut, GraduationCap, Trophy, Radio, Hash, MailOpen, Lock, Plus } from 'lucide-react';
-import { PANEL_BRIGHT_BG } from '@/lib/theme/themeDeriver';
+import { PANEL_BRIGHT_BG, getThemeMode } from '@/lib/theme/themeDeriver';
 import { ROOM_GRID } from '@/lib/ui/cardGrid';
 
 async function fetchClassrooms() {
@@ -177,6 +177,11 @@ export default function MyClassrooms() {
   }, [rooms, search]);
   const availableTotal = (rooms ?? []).filter((r) => !r.is_member).length;
 
+  // 'classic' is the focus theme and the default. Read at render like
+  // getFocusPanelStyle does — the mode only changes from Settings, which
+  // remounts this page on the way back.
+  const isFocusTheme = getThemeMode() !== 'custom';
+
   const startJoin = (roomId) => {
     setJoiningId(roomId);
     setPin('');
@@ -206,7 +211,23 @@ export default function MyClassrooms() {
           className="w-full h-full object-cover object-center select-none"
           draggable={false}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95" />
+        {/* The focus (classic) theme's --background is a near-black purple, so
+            the same opacities that read as "atmospheric" in the immersive theme
+            came out muddy there — dark enough that the room stopped looking
+            like a room. Classic gets a lighter scrim and leans on the cards'
+            own panel background for contrast instead; custom keeps the heavier
+            one, because its tinted background is already light enough to wash
+            the art out if piled on.
+
+            Both strings are written out in full rather than composed, so
+            Tailwind's scanner can see the class names. */}
+        <div
+          className={
+            isFocusTheme
+              ? 'absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background/80'
+              : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
+          }
+        />
       </div>
 
       {/* Everything else rides above it. Explicit z-10 against the backdrop's
@@ -407,9 +428,17 @@ export default function MyClassrooms() {
                 </h2>
                 <div className={ROOM_GRID}>
                   {invites.map((inv) => (
+                    // Lit, not loud. bg-primary/5 alone was a 5% tint with no
+                    // blur, so against the backdrop an invitation read FAINTER
+                    // than the enrolled rooms below it — backwards, since this
+                    // is the only card waiting on the student. It now sits on
+                    // the same card base as the others (so it stays legible
+                    // over the art) with a primary wash and a soft ring over
+                    // the top: same family, visibly picked out. No animation —
+                    // this waits for them, it shouldn't nag.
                     <div
                       key={inv.invite_id}
-                      className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3"
+                      className="rounded-xl border border-primary/50 bg-card/60 bg-gradient-to-br from-primary/15 to-transparent backdrop-blur-sm ring-1 ring-primary/25 shadow-lg shadow-primary/10 p-4 space-y-3"
                     >
                       <div className="min-w-0">
                         <p
