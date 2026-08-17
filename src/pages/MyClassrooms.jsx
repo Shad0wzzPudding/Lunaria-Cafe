@@ -211,20 +211,27 @@ export default function MyClassrooms() {
           className="w-full h-full object-cover object-center select-none"
           draggable={false}
         />
-        {/* The focus (classic) theme's --background is a near-black purple, so
-            the same opacities that read as "atmospheric" in the immersive theme
-            came out muddy there — dark enough that the room stopped looking
-            like a room. Classic gets a lighter scrim and leans on the cards'
-            own panel background for contrast instead; custom keeps the heavier
-            one, because its tinted background is already light enough to wash
-            the art out if piled on.
+        {/* The two themes need opposite numbers, because --background is a
+            near-black purple in Focus and a light warm tone in Immersive. The
+            SAME opacity therefore darkens one and merely washes the other:
+            90/70/95 reads as gentle sepia in Immersive but buried the room in
+            Focus, twice over — the first pass at this was still shadowed.
+
+            So Focus runs very light (40/12/50) and lets the art carry the
+            page, leaning on each card's own bg-card/60 and blur for contrast
+            rather than on the scrim. Immersive keeps the heavier values.
+            Both picked by eye against the real page, not derived.
+
+            The one place this is tight is a section heading crossing the
+            bright window — readable, but the first thing to give if these go
+            lower. Give the headings their own backing before doing that.
 
             Both strings are written out in full rather than composed, so
             Tailwind's scanner can see the class names. */}
         <div
           className={
             isFocusTheme
-              ? 'absolute inset-0 bg-gradient-to-b from-background/70 via-background/40 to-background/80'
+              ? 'absolute inset-0 bg-gradient-to-b from-background/40 via-background/12 to-background/50'
               : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
           }
         />
