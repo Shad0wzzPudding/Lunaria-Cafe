@@ -182,6 +182,16 @@ export default function MyClassrooms() {
   // remounts this page on the way back.
   const isFocusTheme = getThemeMode() !== 'custom';
 
+  // Focus derives everything from #6b46b2, so the heading icons were already
+  // "purple" — just quietly so, a thin glyph against a card the same family of
+  // colour. The chip is what makes it read as purple rather than merely be it.
+  // Immersive is left alone: its palette is the player's own, and stamping a
+  // primary-coloured badge into it would fight whatever they picked.
+  // Defined once so the two headings cannot drift apart.
+  const HEADING_ICON_CHIP = isFocusTheme
+    ? 'inline-flex items-center justify-center rounded-md bg-primary/25 p-1 ring-1 ring-primary/40'
+    : 'inline-flex items-center justify-center';
+
   const startJoin = (roomId) => {
     setJoiningId(roomId);
     setPin('');
@@ -451,7 +461,10 @@ export default function MyClassrooms() {
                     bright enough to erase it. Carrying its own background
                     means the heading reads whatever the art is doing behind. */}
                 <h2 className="font-display text-base text-foreground flex w-fit items-center gap-2 rounded-lg bg-card/70 px-2.5 py-1 backdrop-blur-sm">
-                  <MailOpen className="w-4 h-4 text-primary" /> Invitations
+                  <span className={HEADING_ICON_CHIP}>
+                    <MailOpen className="w-4 h-4 text-primary" />
+                  </span>
+                  Invitations
                 </h2>
                 <div className={ROOM_GRID}>
                   {invites.map((inv) => (
@@ -506,7 +519,10 @@ export default function MyClassrooms() {
             <section className="space-y-4">
               {/* Same reason as the Invitations heading above. */}
               <h2 className="font-display text-base text-foreground flex w-fit items-center gap-2 rounded-lg bg-card/70 px-2.5 py-1 backdrop-blur-sm">
-                <GraduationCap className="w-4 h-4 text-primary" /> Enrolled
+                <span className={HEADING_ICON_CHIP}>
+                  <GraduationCap className="w-4 h-4 text-primary" />
+                </span>
+                Enrolled
               </h2>
               {enrolled.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
