@@ -217,21 +217,22 @@ export default function MyClassrooms() {
             90/70/95 reads as gentle sepia in Immersive but buried the room in
             Focus, twice over — the first pass at this was still shadowed.
 
-            So Focus runs very light (40/12/50) and lets the art carry the
-            page, leaning on each card's own bg-card/60 and blur for contrast
-            rather than on the scrim. Immersive keeps the heavier values.
-            Both picked by eye against the real page, not derived.
+            Focus settled at 60/30/70 after walking both ways past it: 90/70/95
+            and 70/40/80 were still shadowed, 40/12/50 was too bright and the
+            art started competing with the page. This is a touch lighter than
+            the second, which is where it wanted to be. Immersive keeps the
+            heavier values. All picked by eye against the real page.
 
-            The one place this is tight is a section heading crossing the
-            bright window — readable, but the first thing to give if these go
-            lower. Give the headings their own backing before doing that.
+            If these ever go lower, the first thing to give is a section
+            heading crossing the bright window — give the headings their own
+            backing before trying it.
 
             Both strings are written out in full rather than composed, so
             Tailwind's scanner can see the class names. */}
         <div
           className={
             isFocusTheme
-              ? 'absolute inset-0 bg-gradient-to-b from-background/40 via-background/12 to-background/50'
+              ? 'absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70'
               : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
           }
         />
