@@ -35,6 +35,15 @@ function unlock() {
   unlocked = true;
   FILES.forEach((f) => {
     const a = getAudio(f);
+    // Skip anything already claimed by a real play(), BEFORE muting it. The
+    // guard inside the .then() only protects the cleanup; the mute here is
+    // synchronous, so an element mid-playback when the first pointerdown lands
+    // would be silenced on the spot — and then skipped by that same guard, so
+    // nothing would ever unmute it and the clip would finish inaudibly.
+    // Reachable whenever the first sound is not started by a mouse: Enter on
+    // Start Session, or the phone warning firing off a timer, with the
+    // player's first click landing while it plays.
+    if (claimed.has(a)) return;
     a.muted = true;
     a.play().then(() => {
       // The priming play resolves ASYNCHRONOUSLY, once the file has buffered.

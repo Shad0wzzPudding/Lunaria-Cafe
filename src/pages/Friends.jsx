@@ -184,16 +184,16 @@ export default function Friends() {
 
   // Her voice line, timed to the entrance.
   //
-  // Gated on the same lg breakpoint that decides whether she is rendered at
-  // all: `hidden lg:block` keeps her in the DOM on a narrow window, so without
-  // this check a phone would hear her greet from behind a display:none — a
-  // voice with nobody on stage.
+  // Gated on the same 1440px breakpoint that decides whether she is rendered
+  // at all: the `hidden min-[1440px]:block` class keeps her in the DOM on a
+  // narrower window, so without this check a laptop would hear her greet from
+  // behind a display:none — a voice with nobody on stage.
   //
   // Runs once on mount, and deliberately NOT when lulysHere flips — she has
   // her own line for leaving, played from the click handler. Re-greeting on
   // the way out would be the opposite of the point.
   useEffect(() => {
-    if (!window.matchMedia?.('(min-width: 1024px)').matches) return;
+    if (!window.matchMedia?.('(min-width: 1440px)').matches) return;
     const a = state.audio ?? {};
     Sounds.lulysPresenting(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,51 +368,48 @@ export default function Friends() {
           aria-hidden image this was when it sat harmlessly behind everything.
           FIXED, so she stays put while the list scrolls instead of sliding
           away from the hand she is presenting with.
-          Hidden below lg: on a narrow window she has no room of her own and
-          would land squarely on the list. */}
+          Shown only at 1440px and up, which is MEASURED rather than a tidy
+          breakpoint: below it her box reaches into the card grid, and since
+          she swallows every click inside it, a friend's Remove or Visit
+          button stops responding. At 1400 one control was still covered; at
+          1440 none is. Tailwind's lg/xl both sit inside the broken range,
+          which is why this is an arbitrary value. */}
       <AnimatePresence>
         {lulysHere && (
       <motion.div
-        className="pointer-events-none fixed bottom-0 right-0 z-20 hidden select-none lg:block"
+        className="pointer-events-none fixed bottom-0 right-0 z-20 hidden select-none min-[1440px]:block"
         initial={{ x: '100%', opacity: 0 }}
         animate={{ x: '0%', opacity: 1 }}
         exit={{ x: '100%', opacity: 0, transition: { duration: 0.45, ease: 'easeIn' } }}
         transition={{ type: 'spring', stiffness: 55, damping: 14, delay: 0.1 }}
       >
-        <div className="relative">
+        {/* Her whole box is the target, deliberately.
+            A hotspot confined to her body was tried and was WORSE: it left her
+            opaque hair and presenting hand click-through, so a click on the
+            character the bubble invites you to click landed on whatever was
+            underneath — measured reaching "Remove" on a friend card the player
+            could not see. A swallowed click is a nuisance; a hidden
+            destructive one is a bug. The full box swallows instead. */}
+        <button
+          type="button"
+          onClick={() => {
+            const a = state.audio ?? {};
+            Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
+            setLulysHere(false);
+          }}
+          // pointer-events-auto only HERE: the wrapper stays transparent to
+          // clicks so the bubble above her never eats one meant for a card.
+          className="pointer-events-auto block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          aria-label="Lulyssia is presenting your friends. Click to send her away."
+        >
           <img
             src="/assets/Character/lulys_presenting.webp"
             alt=""
             aria-hidden="true"
             draggable={false}
-            // Click-through. She is drawn on top of the page, but her PICTURE
-            // must not be what receives clicks: her bounding box is a rectangle
-            // and she is not, so the transparent corners — her outstretched
-            // hand, the sweep of her hair — would swallow clicks meant for
-            // whatever is behind them.
-            className="pointer-events-none h-[50vh] w-auto"
+            className="h-[50vh] w-auto"
           />
-          {/* The real target: her body, not her box.
-              Measured, not guessed — with the whole image clickable she covered
-              two Remove buttons at 1024px, one at 1280px, and one even at
-              1400px, so a friend card's own control silently dismissed her
-              instead of firing. Her figure sits to the RIGHT of that overlap
-              (she presents with her left hand, which is what reaches into the
-              page), so a hotspot anchored right keeps every card clickable
-              while still covering the part of her anyone would aim at.
-              Inset from the bottom too: the very bottom strip is skirt and
-              empty air, and it is the band most likely to sit over a card. */}
-          <button
-            type="button"
-            onClick={() => {
-              const a = state.audio ?? {};
-              Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
-              setLulysHere(false);
-            }}
-            className="pointer-events-auto absolute bottom-[6%] right-0 top-[10%] w-[52%] cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            aria-label="Lulyssia is presenting your friends. Click to send her away."
-          />
-        </div>
+        </button>
 
         {/* Her line, in the same pixel bubble the welcome letter and the
             friends plaque use — same gesture, so it reads as the game
