@@ -189,9 +189,9 @@ export default function Friends() {
   // this check a phone would hear her greet from behind a display:none — a
   // voice with nobody on stage.
   //
-  // Runs once on mount, deliberately not when lulysHere flips: sending her
-  // away should be quiet, and re-greeting on the way out would be the opposite
-  // of the point.
+  // Runs once on mount, and deliberately NOT when lulysHere flips — she has
+  // her own line for leaving, played from the click handler. Re-greeting on
+  // the way out would be the opposite of the point.
   useEffect(() => {
     if (!window.matchMedia?.('(min-width: 1024px)').matches) return;
     const a = state.audio ?? {};
@@ -381,7 +381,11 @@ export default function Friends() {
       >
         <button
           type="button"
-          onClick={() => setLulysHere(false)}
+          onClick={() => {
+            const a = state.audio ?? {};
+            Sounds.lulysDismiss(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true);
+            setLulysHere(false);
+          }}
           // pointer-events-auto only HERE: the wrapper stays transparent to
           // clicks so the bubble above her never eats one meant for a card.
           className="pointer-events-auto block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"

@@ -11,6 +11,7 @@ const FILES = [
   'letter_opening.mp3',
   'slide_in.mp3',
   'lulys_presenting.mp3',
+  'lulys_dismiss.mp3',
 ];
 
 const cache = {};
@@ -42,6 +43,14 @@ function play(filename, sfxVolume = 0.7, masterVolume = 0.8, enabled = true) {
   if (!enabled) return;
   try {
     const audio = getAudio(filename);
+    // Unmute explicitly. unlock() above mutes every cached element, plays it,
+    // and only unmutes again when that promise resolves — so any sound fired
+    // inside that window plays silently. It is a narrow window but a reachable
+    // one: unlock runs on the first pointerdown of a page load, so a player
+    // whose first click IS the thing that makes a noise (opening the friends
+    // page, for one) hears nothing at all. An intentional play should never
+    // inherit the unlock trick's muting.
+    audio.muted = false;
     audio.volume = Math.min(1, sfxVolume * masterVolume);
     audio.currentTime = 0;
     audio.play().catch((err) => console.warn(`[Sound] "${filename}":`, err));
@@ -67,4 +76,5 @@ export const Sounds = {
   // that toggle was already in Settings and already called this, and until now
   // nothing played through it at all.
   lulysPresenting:   (sfx, master, enabled) => play('lulys_presenting.mp3', sfx, master, enabled),
+  lulysDismiss:      (sfx, master, enabled) => play('lulys_dismiss.mp3', sfx, master, enabled),
 };
