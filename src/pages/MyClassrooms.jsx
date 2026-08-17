@@ -184,7 +184,35 @@ export default function MyClassrooms() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    // No bg-background here: the backdrop below is what fills the page now, and
+    // an opaque root would simply cover it.
+    <div className="relative min-h-screen">
+      {/* The cafe, behind everything.
+          FIXED rather than absolute so the room stays put while the list
+          scrolls — an absolute image would only cover the first viewport and
+          then scroll away, leaving bare background under a long list.
+          The scrim is what keeps text readable. Heaviest at the top, which is
+          where the header and the first row of cards land; lightest across the
+          middle, where the room's empty floor shows through and there is
+          usually nothing to read; heavy again at the bottom, over the busy
+          counter. Verified with a ten-room grid: cards crossing the light band
+          still read, because they carry their own bg-card/60 and blur.
+          Tokens rather than black, so it follows the active theme instead of
+          forcing a dark page under a light one. */}
+      <div className="fixed inset-0 z-0" aria-hidden="true">
+        <img
+          src="/assets/Backdrop/cafe_interior.webp"
+          alt=""
+          className="w-full h-full object-cover object-center select-none"
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95" />
+      </div>
+
+      {/* Everything else rides above it. Explicit z-10 against the backdrop's
+          z-0 rather than a negative z-index, which would sit behind the app
+          shell's own background in some stacking contexts. */}
+      <div className="relative z-10">
       <header
         className="flex items-center gap-3 px-4 py-3 border-b border-border/30"
         style={{ background: PANEL_BRIGHT_BG }}
@@ -516,6 +544,7 @@ export default function MyClassrooms() {
             </section>
           </>
         )}
+      </div>
       </div>
     </div>
   );
