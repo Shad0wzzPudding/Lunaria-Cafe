@@ -27,6 +27,7 @@ import ArrivedFriendLetter from '@/components/friends/ArrivedFriendLetter';
 import StudyRoomPanel from '@/components/friends/StudyRoomPanel';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PIXEL_CORNERS } from '@/components/letter/pixelBox';
+import { Sounds } from '@/lib/sounds';
 
 // The online flag is derived from a 30s heartbeat, so a page left open goes
 // stale within a minute. Refetching on this cadence keeps the dots honest
@@ -166,7 +167,7 @@ function FriendCard({ friend, onRemove, removePending, onVisit }) {
 }
 
 export default function Friends() {
-  const { dispatch } = useGame();
+  const { state, dispatch } = useGame();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
@@ -180,6 +181,29 @@ export default function Friends() {
   // Lulyssia is on stage until the player waves her off. Per visit, not
   // persisted: she is a greeter, so she should greet again next time.
   const [lulysHere, setLulysHere] = useState(true);
+
+  // Her voice line, timed to the entrance.
+  //
+  // Gated on the same lg breakpoint that decides whether she is rendered at
+  // all: `hidden lg:block` keeps her in the DOM on a narrow window, so without
+  // this check a phone would hear her greet from behind a display:none — a
+  // voice with nobody on stage.
+  //
+  // Runs once on mount, deliberately not when lulysHere flips: sending her
+  // away should be quiet, and re-greeting on the way out would be the opposite
+  // of the point.
+  useEffect(() => {
+    if (!window.matchMedia?.('(min-width: 1024px)').matches) return;
+    const a = state.audio ?? {};
+    // Matches her spring: she is on her way in by 150ms, and the line lands
+    // with her rather than announcing an empty corner.
+    const t = setTimeout(
+      () => Sounds.lulysPresenting(a.sfxVolume, a.masterVolume, a.sfxSlideIn ?? true),
+      150,
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: friends, isLoading, error } = useQuery({
     queryKey: ['friends'],

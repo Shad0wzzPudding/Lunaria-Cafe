@@ -10,6 +10,7 @@ const FILES = [
   'debugtool_open.mp3',
   'letter_opening.mp3',
   'slide_in.mp3',
+  'lulys_presenting.mp3',
 ];
 
 const cache = {};
@@ -61,4 +62,9 @@ export const Sounds = {
   debugToolOpen:     (sfx, master, enabled) => play('debugtool_open.mp3', sfx, master, enabled),
   letterOpen:        (sfx, master, enabled) => play('letter_opening.mp3', sfx, master, enabled),
   slideIn:           (sfx, master, enabled) => play('slide_in.mp3', sfx, master, enabled),
+  // Her line on the friends page. Shares the "Lulys Greeting" toggle with
+  // slideIn rather than adding a second switch that means the same thing —
+  // that toggle was already in Settings and already called this, and until now
+  // nothing played through it at all.
+  lulysPresenting:   (sfx, master, enabled) => play('lulys_presenting.mp3', sfx, master, enabled),
 };
