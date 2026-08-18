@@ -264,13 +264,10 @@ export default function PetShopPanel({ onClose }) {
             )}
           </div>
 
-          {/* Coins indicator */}
-          <div
-            className="absolute flex items-center justify-center gap-1"
-            style={{ left: '55.5%', top: '84%', width: '27%', height: '5%' }}
-          >
-            <span className="font-pixel text-[14px] text-[#7a5535]">{state.coins} coins</span>
-          </div>
+          {/* The balance used to be repeated here. It is already in the cafe
+              HUD, which stays visible behind this panel, so the shop was
+              showing the same number twice — and the prices on the tiles are
+              what a buyer is actually comparing against. */}
 
         </div>
       </div>
