@@ -338,9 +338,17 @@ export default function Friends() {
 
   // Unfriending, withdrawing a request you sent, and clearing one you declined
   // are all this same row delete — the RLS policy lets either party do it.
+  // Goes through the RPC rather than deleting the row directly. Withdraw and
+  // unfriend look the same from here, but they are not: a row this player was
+  // DECLINED on is the block itself, and deleting it would lift it. The RPC
+  // marks that one withdrawn — gone from their Sent list, still in force — and
+  // deletes in every other case, exactly as the old DELETE policy allowed.
+  // A direct delete could not tell the two apart, and RLS would have silently
+  // refused the declined one, leaving a Withdraw button that did nothing and a
+  // row that reappeared on the next refetch.
   const removeMutation = useMutation({
     mutationFn: async (rowId) => {
-      const { error: err } = await supabase.from('friendships').delete().eq('id', rowId);
+      const { error: err } = await supabase.rpc('withdraw_or_remove_friendship', { _id: rowId });
       if (err) throw err;
     },
     onSuccess: refresh,
