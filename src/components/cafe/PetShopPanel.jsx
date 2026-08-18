@@ -264,10 +264,17 @@ export default function PetShopPanel({ onClose }) {
             )}
           </div>
 
-          {/* The balance used to be repeated here. It is already in the cafe
-              HUD, which stays visible behind this panel, so the shop was
-              showing the same number twice — and the prices on the tiles are
-              what a buyer is actually comparing against. */}
+          {/* The balance, sitting in the slot the panel art draws for it: a
+              paw medallion and a recessed strip beside the Adopt button.
+              The number alone — the medallion already says what the number
+              counts, so spelling out "coins" beside it said it twice and
+              crowded a strip only wide enough for the figure. */}
+          <div
+            className="absolute flex items-center justify-center gap-1"
+            style={{ left: '55.5%', top: '84%', width: '27%', height: '5%' }}
+          >
+            <span className="font-pixel text-[14px] text-[#7a5535]">{state.coins}</span>
+          </div>
 
         </div>
       </div>
