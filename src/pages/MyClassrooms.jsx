@@ -264,27 +264,27 @@ export default function MyClassrooms() {
             Immersive keeps its gradient. There --background is a LIGHT warm
             tone, so the same idea gives a sepia wash rather than a shadow, and
             it reads as part of that theme rather than as protection. */}
-        {isFocusTheme ? (
-          /* Glass over the art, rather than the flat scrims that came before.
-             backdrop-blur is what makes it glass instead of paint: it blurs
-             the CAFE rather than covering it, so the room stays underneath
-             while everything in front gains a surface to sit on.
+        {/* One glass pane, both themes.
 
-             THIN on purpose — 3px, not the 8 or 12 that read as "proper"
-             frosted glass. The effect works by destroying what is behind it,
-             so the more convincing the glass, the less of the cafe survives;
-             8px left colour and light, 12px left shapes. At 3 the cup, the
-             book, the bell and the Welcome sign all still read, and the glass
-             is a sheen over a room rather than a room turned into weather.
+            backdrop-blur is what makes it glass rather than paint: it blurs
+            the CAFE instead of covering it, so the room stays underneath and
+            the content in front gains a surface to sit on. That is a physical
+            effect, not a palette one, which is why it works for both themes
+            where the old tinted washes could not — Focus's --background is a
+            near-black purple and Immersive's is a light warm tone, so the same
+            overlay darkened one and washed the other.
 
-             The white is a GRADIENT, brighter at the top, not a flat fill.
-             Real glass catches more light along one edge, and a single opacity
-             read as a sheet of fog — the same complaint the flat white scrim
-             earned before it. */
-          <div className="absolute inset-0 backdrop-blur-[3px] bg-gradient-to-b from-white/28 via-white/10 to-white/18" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95" />
-        )}
+            THIN on purpose — 3px, not the 8 or 12 that read as "proper"
+            frosted glass. The effect works by destroying what is behind it, so
+            the more convincing the glass, the less of the cafe survives; 8px
+            left colour and light, 12px left shapes. At 3 the cup, the book,
+            the bell and the Welcome sign all still read.
+
+            The white is a GRADIENT, brighter at the top, not a flat fill. Real
+            glass catches more light along one edge, and a single opacity read
+            as a sheet of fog — the same complaint the flat white scrim earned
+            before it. */}
+        <div className="absolute inset-0 backdrop-blur-[3px] bg-gradient-to-b from-white/28 via-white/10 to-white/18" />
       </div>
 
       {/* Everything else rides above it. Explicit z-10 against the backdrop's
