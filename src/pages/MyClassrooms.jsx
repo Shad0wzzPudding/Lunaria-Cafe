@@ -249,16 +249,22 @@ export default function MyClassrooms() {
         {/* The two branches veil the art from OPPOSITE ends, which is the
             whole reason they cannot share numbers.
 
-            Focus washes toward WHITE, flat. Its --background is a near-black
-            purple, so every token-based scrim darkened the room — the long way
-            round through 90/70/95, 70/40/80, 40/12/50 and 60/30/70 was really
-            an argument about how much shadow was tolerable, when what the page
-            wanted was light. White lifts the art instead of dimming it.
+            Focus dims with FLAT BLACK. It went the long way to get here:
+            token-based scrims (90/70/95, 70/40/80, 60/30/70) read as muddy,
+            because --background is a near-black PURPLE and tinted everything
+            it covered; white read as light but hazy; flat white was clean but
+            washed the room out. Plain black at 40% just dims — no tint of its
+            own, so the lantern glow and the bottles keep their colour.
+
+            What made black workable was raising the cards to bg-card/85. At
+            /60 they were competing with the room and needed the scrim to do
+            their job for them, which is why every earlier dark attempt had to
+            be too heavy. Solid cards mean the scrim only has to dim.
 
             Flat rather than a gradient, and that turned out to be the source
             of the "hazy" look rather than the colour: a scrim that varies down
             the page reads as fog drifting over the art, where an even one
-            simply reads as light. A single opacity is also honest about what
+            simply reads as shade. A single opacity is also honest about what
             it does — nothing here needs more cover at the top than the bottom,
             since every heading and card carries its own background.
 
@@ -276,7 +282,7 @@ export default function MyClassrooms() {
         <div
           className={
             isFocusTheme
-              ? 'absolute inset-0 bg-white/55'
+              ? 'absolute inset-0 bg-black/40'
               : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
           }
         />
