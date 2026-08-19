@@ -254,33 +254,41 @@ export default function MyClassrooms() {
           className="w-full h-full object-cover object-center select-none blur-[1px] scale-105"
           draggable={false}
         />
-        {/* Focus puts GLASS over the art; Immersive keeps its tinted wash.
+        {/* Immersive only: the tinted wash, back by request.
 
-            It had one for a while and went a long way round: token-based
-            washes (90/70/95, 70/40/80, 60/30/70) read as muddy rather than
-            dark, because --background is a near-black PURPLE and tinted
-            whatever it covered; white lifted the room but hazed it; flat white
-            was clean but drained it; flat black dimmed it honestly. All of
-            them were doing the same job — protecting content that could not
-            protect itself.
+            It sits UNDER the glass rather than over it, so the colour belongs
+            to the room and the pane in front stays the same surface in both
+            themes — the one property worth keeping from making the glass
+            unconditional.
 
-            That job is now done by the content. The cards carry bg-card/85,
-            the section headings carry their own pill, and the status
-            paragraphs carry one too. With nothing left needing cover, a scrim
-            is just a filter over the artwork, so it is gone.
+            Focus does not get one. The long way round was already walked
+            there: token washes (90/70/95, 70/40/80, 60/30/70) read as muddy
+            rather than dark because its --background is a near-black PURPLE
+            that tinted whatever it covered, white lifted the room but hazed
+            it, flat white drained it. Immersive has no such problem — its
+            --background is a LIGHT warm tone, so the same idea gives a sepia
+            wash that reads as part of the theme rather than as protection.
 
-            Immersive keeps its gradient. There --background is a LIGHT warm
-            tone, so the same idea gives a sepia wash rather than a shadow, and
-            it reads as part of that theme rather than as protection. */}
-        {/* One glass pane, both themes.
+            HALF the old strength. The original 90/70/95 was tuned when the
+            wash was the ONLY layer over the art; it now sits under the glass
+            as well, and the two together buried the room — the cup, the book
+            and the bell all went, which is the one outcome every round of
+            this has rejected. 45/25/50 puts the colour back and still leaves
+            a cafe to tint. */}
+        {!isFocusTheme && (
+          <div className="absolute inset-0 bg-gradient-to-b from-background/45 via-background/25 to-background/50" />
+        )}
+        {/* The glass, both themes.
 
             backdrop-blur is what makes it glass rather than paint: it blurs
             the CAFE instead of covering it, so the room stays underneath and
             the content in front gains a surface to sit on. That is a physical
             effect, not a palette one, which is why it works for both themes
-            where the old tinted washes could not — Focus's --background is a
-            near-black purple and Immersive's is a light warm tone, so the same
-            overlay darkened one and washed the other.
+            where a single tinted wash could not — Focus's --background is a
+            near-black purple and Immersive's is a light warm tone, so one
+            overlay value darkened one theme and washed the other. Immersive's
+            wash above is tuned for Immersive alone, which is why it can exist
+            again now that it is not being asked to serve both.
 
             THIN on purpose — 3px, not the 8 or 12 that read as "proper"
             frosted glass. The effect works by destroying what is behind it, so
