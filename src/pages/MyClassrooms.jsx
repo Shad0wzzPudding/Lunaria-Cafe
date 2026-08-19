@@ -28,7 +28,7 @@ async function fetchClassrooms() {
 
 function RoomCard({ room, children }) {
   return (
-    <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/30 p-4 space-y-3">
+    <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border/40 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
@@ -218,7 +218,7 @@ export default function MyClassrooms() {
           middle, where the room's empty floor shows through and there is
           usually nothing to read; heavy again at the bottom, over the busy
           counter. Verified with a ten-room grid: cards crossing the light band
-          still read, because they carry their own bg-card/60 and blur.
+          still read, because they carry their own bg-card/85 and blur.
           Tokens rather than black, so it follows the active theme instead of
           forcing a dark page under a light one. */}
       <div className="fixed inset-0 z-0" aria-hidden="true">
@@ -487,7 +487,7 @@ export default function MyClassrooms() {
                     // this waits for them, it shouldn't nag.
                     <div
                       key={inv.invite_id}
-                      className="rounded-xl border border-primary/50 bg-card/60 bg-gradient-to-br from-primary/15 to-transparent backdrop-blur-sm ring-1 ring-primary/25 shadow-lg shadow-primary/10 p-4 space-y-3"
+                      className="rounded-xl border border-primary/50 bg-card/85 bg-gradient-to-br from-primary/15 to-transparent backdrop-blur-sm ring-1 ring-primary/25 shadow-lg shadow-primary/10 p-4 space-y-3"
                     >
                       <div className="min-w-0">
                         <p
