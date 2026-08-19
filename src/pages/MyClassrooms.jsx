@@ -182,31 +182,39 @@ export default function MyClassrooms() {
   // remounts this page on the way back.
   const isFocusTheme = getThemeMode() !== 'custom';
 
-  // Focus derives everything from #6b46b2, so the heading icons were already
-  // "purple" — just quietly so, a thin glyph against a card the same family of
-  // colour. The chip is what makes it read as purple rather than merely be it.
-  // Immersive is left alone: its palette is the player's own, and stamping a
-  // primary-coloured badge into it would fight whatever they picked.
-  // Defined once so the two headings cannot drift apart.
-  // Bare status text needs the same protection the headings got. Everything
-  // else on this page is a card with its own background; these paragraphs sit
-  // straight on the backdrop, and the Focus scrim is now near-white, so light
-  // muted text on top of it is barely there. The empty state in particular is
-  // what EVERY new student sees before they have joined anything.
+  // Bare status text needs its own backing. Everything else on this page is a
+  // card; these paragraphs sit straight on the backdrop, and the glass only
+  // blurs the cafe rather than covering it, so light muted text on top of it
+  // is barely there. The empty state in particular is what EVERY new student
+  // sees before they have joined anything.
   const ON_BACKDROP_TEXT = 'rounded-lg bg-card/70 px-3 py-2 backdrop-blur-sm';
 
-  // Focus only. Its scrim washes toward WHITE, so a 40%-transparent card
-  // stands on cafe art and stops reading as a panel; it needs to be solid.
-  // Immersive keeps the original values — its scrim is a warm tint over the
-  // same art, the contrast was already fine there, and making cards heavier
-  // would flatten a palette the player chose.
-  const CARD_SURFACE = isFocusTheme
-    ? 'bg-card/85 border-border/40'
-    : 'bg-card/60 border-border/30';
+  // Both themes now. A 40%-transparent card stands on cafe art and stops
+  // reading as a panel, so it has to be solid enough to be one.
+  //
+  // Immersive used to be exempt, and the exemption was real at the time: a
+  // tinted wash sat between the art and the cards and did half their work.
+  // Removing that wash for the glass pane removed the reason, and left the
+  // invitation subtitle — muted foreground, the lowest-contrast text here —
+  // sitting almost directly on the cafe. Card weight and backdrop treatment
+  // were never independent; the wash was just hiding that they were not.
+  //
+  // The worry about heavier cards flattening a palette the player chose does
+  // not really apply: bg-card IS their colour, and this only asks for more of
+  // it. What would flatten the palette is a card so thin that the cafe behind
+  // shows through it, which is what /60 had become.
+  const CARD_SURFACE = 'bg-card/85 border-border/40';
   // Invitations take the background but keep their own primary border, which
   // is what marks them out from an enrolled room.
-  const CARD_BG = isFocusTheme ? 'bg-card/85' : 'bg-card/60';
+  const CARD_BG = 'bg-card/85';
 
+  // The one thing still worth branching on, and for a palette reason rather
+  // than a contrast one. Focus derives everything from #6b46b2, so the heading
+  // icons were already "purple" — just quietly so, a thin glyph against a card
+  // the same family of colour. The chip is what makes it read as purple rather
+  // than merely be it. Immersive is left alone: its palette is the player's
+  // own, and stamping a primary-coloured badge into it would fight whatever
+  // they picked. Defined once so the two headings cannot drift apart.
   const HEADING_ICON_CHIP = isFocusTheme
     ? 'inline-flex items-center justify-center rounded-md bg-primary/25 p-1 ring-1 ring-primary/40'
     : 'inline-flex items-center justify-center';
