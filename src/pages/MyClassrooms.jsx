@@ -237,18 +237,16 @@ export default function MyClassrooms() {
         {/* A single pixel of blur: enough to take the edge off, not enough to
             stop it being the cafe. This is PIXEL art, so it softens far faster
             than a photograph would — 2px already smears the jar labels and the
-            menu board, which is why this is measured in single pixels rather
-            than being "a small blur" — 1.5 now, raised from 1 once the scrim
-            was removed and the art had nothing else softening it.
+            menu board, which is why this is 1 and not "a small blur".
             scale-105 hides the transparent fringe a blur leaves at the edges
             of the element. */}
         <img
           src="/assets/Backdrop/cafe_interior.webp"
           alt=""
-          className="w-full h-full object-cover object-center select-none blur-[1.5px] scale-105"
+          className="w-full h-full object-cover object-center select-none blur-[1px] scale-105"
           draggable={false}
         />
-        {/* NO scrim in Focus — the art is shown as drawn.
+        {/* Focus puts GLASS over the art; Immersive keeps its tinted wash.
 
             It had one for a while and went a long way round: token-based
             washes (90/70/95, 70/40/80, 60/30/70) read as muddy rather than
@@ -266,7 +264,25 @@ export default function MyClassrooms() {
             Immersive keeps its gradient. There --background is a LIGHT warm
             tone, so the same idea gives a sepia wash rather than a shadow, and
             it reads as part of that theme rather than as protection. */}
-        {!isFocusTheme && (
+        {isFocusTheme ? (
+          /* Glass over the art, rather than the flat scrims that came before.
+             backdrop-blur is what makes it glass instead of paint: it blurs
+             the CAFE rather than covering it, so the room stays underneath
+             while everything in front gains a surface to sit on.
+
+             THIN on purpose — 3px, not the 8 or 12 that read as "proper"
+             frosted glass. The effect works by destroying what is behind it,
+             so the more convincing the glass, the less of the cafe survives;
+             8px left colour and light, 12px left shapes. At 3 the cup, the
+             book, the bell and the Welcome sign all still read, and the glass
+             is a sheen over a room rather than a room turned into weather.
+
+             The white is a GRADIENT, brighter at the top, not a flat fill.
+             Real glass catches more light along one edge, and a single opacity
+             read as a sheet of fog — the same complaint the flat white scrim
+             earned before it. */
+          <div className="absolute inset-0 backdrop-blur-[3px] bg-gradient-to-b from-white/28 via-white/10 to-white/18" />
+        ) : (
           <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95" />
         )}
       </div>
