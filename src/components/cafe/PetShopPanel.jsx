@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from '@/lib/gameState/useGame';
-import { PET_LIST, RARITY_CONFIG } from '@/lib/cafe/petCatalog.js';
+import { PET_LIST, RARITY_CONFIG, petTypeForNpc } from '@/lib/cafe/petCatalog.js';
 import { Coins, PawPrint, Cat, Rabbit, Heart, X } from 'lucide-react';
 
 const PET_SHOP_ART = '/assets/UI/pet-shop.png';
@@ -19,14 +19,28 @@ export default function PetShopPanel({ onClose }) {
   const [selectedPet, setSelectedPet] = useState(PET_LIST[0]);
   const [notification, setNotification] = useState(null);
 
-  const ownedCounts = {};
-  for (const rabbit of state.npcs.rabbits) {
-    const type = rabbit.mood === 'happy' ? 'happy_rabbit' : rabbit.mood === 'sleepy' ? 'sleepy_rabbit' : null;
-    if (type) ownedCounts[type] = (ownedCounts[type] ?? 0) + 1;
+  // Two tallies, because a pet can be owned without being out. inCafe comes
+  // from the NPCs actually wandering the room; stored comes from the ones put
+  // away. Owning is the sum — read either alone and a napping pet either
+  // disappears from the shop or looks like it is still on the floor.
+  const inCafeCounts = {};
+  for (const npc of state.npcs.rabbits) {
+    const type = petTypeForNpc('rabbit', npc.mood);
+    if (type) inCafeCounts[type] = (inCafeCounts[type] ?? 0) + 1;
   }
-  for (const cat of state.npcs.cats) {
-    const type = cat.mood === 'curious' ? 'curious_cat' : cat.mood === 'lazy' ? 'lazy_cat' : null;
-    if (type) ownedCounts[type] = (ownedCounts[type] ?? 0) + 1;
+  for (const npc of state.npcs.cats) {
+    const type = petTypeForNpc('cat', npc.mood);
+    if (type) inCafeCounts[type] = (inCafeCounts[type] ?? 0) + 1;
+  }
+
+  const storedCounts = {};
+  for (const p of state.pets?.stored ?? []) {
+    storedCounts[p.type] = (storedCounts[p.type] ?? 0) + 1;
+  }
+
+  const ownedCounts = {};
+  for (const type of new Set([...Object.keys(inCafeCounts), ...Object.keys(storedCounts)])) {
+    ownedCounts[type] = (inCafeCounts[type] ?? 0) + (storedCounts[type] ?? 0);
   }
 
   const filteredPets = PET_LIST.filter((pet) => {
@@ -47,6 +61,16 @@ export default function PetShopPanel({ onClose }) {
     setTimeout(() => setNotification(null), 2500);
   };
 
+  const putAway = () => {
+    if (!selectedPet || inCafeCount === 0) return;
+    dispatch({ type: 'STORE_PET', payload: { petType: selectedPet.type } });
+  };
+
+  const bringOut = () => {
+    if (!selectedPet || storedCount === 0) return;
+    dispatch({ type: 'DEPLOY_PET', payload: { petType: selectedPet.type } });
+  };
+
   const handleBuy = () => {
     if (!selectedPet) return;
     if (!canAfford) { showNotif("Not enough coins!"); return; }
@@ -54,7 +78,9 @@ export default function PetShopPanel({ onClose }) {
   };
 
   const canAfford  = selectedPet ? state.coins >= selectedPet.price : false;
-  const ownedCount = selectedPet ? (ownedCounts[selectedPet.type] ?? 0) : 0;
+  const ownedCount   = selectedPet ? (ownedCounts[selectedPet.type] ?? 0) : 0;
+  const inCafeCount  = selectedPet ? (inCafeCounts[selectedPet.type] ?? 0) : 0;
+  const storedCount  = selectedPet ? (storedCounts[selectedPet.type] ?? 0) : 0;
   const rarity     = selectedPet ? RARITY_CONFIG[selectedPet.rarity] : null;
 
   return (
@@ -147,7 +173,9 @@ export default function PetShopPanel({ onClose }) {
                     </span>
                     {activeTab === 'owned' ? (
                       <span className="font-pixel text-[8px]" style={{ color: rar.color }}>
-                        Owned: {count}
+                        {/* "2/3" reads as out-of-owned. A single number here
+                            would hide the fact that some are napping. */}
+                        {(inCafeCounts[pet.type] ?? 0)}/{count}
                       </span>
                     ) : (
                       <>
@@ -212,9 +240,39 @@ export default function PetShopPanel({ onClose }) {
                   <span className="font-pixel text-[13px] text-[#5c3620]">{selectedPet.price}</span>
                 </div>
                 {ownedCount > 0 && (
-                  <span className="font-body text-[10px] text-[#8f6a40]">
-                    In cafe: {ownedCount}
-                  </span>
+                  <>
+                    {/* Both figures, because they answer different questions:
+                        how many you own, and how many are actually out. They
+                        were the same number until pets could be put away. */}
+                    <span className="font-body text-[10px] text-[#8f6a40]">
+                      In cafe: {inCafeCount}
+                      {storedCount > 0 && ` · napping: ${storedCount}`}
+                    </span>
+
+                    {/* Put away / bring out. Shown only for a pet you own, and
+                        each side disabled when there is none of that kind on
+                        that side — with a count of 0 the action has nothing to
+                        act on, and a button that silently does nothing is
+                        worse than one that looks unavailable. */}
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={putAway}
+                        disabled={inCafeCount === 0}
+                        className="rounded border border-[#c4956a]/60 bg-[#f5e4c8]/60 px-2 py-0.5 font-pixel text-[8px] text-[#5c3620] transition-colors hover:bg-[#e8cf9e] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Put away
+                      </button>
+                      <button
+                        type="button"
+                        onClick={bringOut}
+                        disabled={storedCount === 0}
+                        className="rounded border border-[#c4956a]/60 bg-[#f5e4c8]/60 px-2 py-0.5 font-pixel text-[8px] text-[#5c3620] transition-colors hover:bg-[#e8cf9e] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Bring out
+                      </button>
+                    </div>
+                  </>
                 )}
               </>
             ) : (

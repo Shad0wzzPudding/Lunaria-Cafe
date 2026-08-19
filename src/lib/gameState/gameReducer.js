@@ -1,7 +1,7 @@
 import { getChaosStage, generateChaosEvent } from '@/lib/ai/aiIntegration';
 import { pushPopup } from '@/lib/gameState/feedbackHelpers';
 import { FURNITURE_CATALOG } from '@/lib/cafe/furnitureCatalog.js';
-import { PET_CATALOG } from '@/lib/cafe/petCatalog.js';
+import { PET_CATALOG, npcListKey } from '@/lib/cafe/petCatalog.js';
 import { UPGRADE_BY_ID, VIP_PAY_MULTIPLIER } from '@/lib/cafe/upgrades.js';
 import { WARNING_DURATION_MS, CLEAR_CONDITION_MS, BOOST_MULTIPLIER, BOOST_WINDOW_SECONDS, BOOST_MAX_GAIN_DELTA } from './constants';
 import { initialState } from './initialState';
@@ -875,6 +875,68 @@ export function gameReducer(state, action) {
           [npcKey]: [...state.npcs[npcKey], newNpc],
         },
         ui: pushPopup(state, { icon: 'coins', message: `${pet.name} joined your cafe!`, amount: -pet.price }),
+      };
+    }
+
+    // Putting a pet away and bringing it back. Ownership is not what changes —
+    // the NPC is. A pet in the cafe exists as an entry in npcs.rabbits/cats; a
+    // pet put away exists as an entry in pets.stored, holding just enough to
+    // put the same one back: its id, so it keeps its identity, and its type,
+    // which fixes its kind and mood.
+    //
+    // Deliberately keyed by TYPE rather than by a specific animal. Two happy
+    // rabbits are indistinguishable to a player, so asking which one to put
+    // away would be a choice without a difference.
+    //
+    // This also works for the two rabbits a new cafe starts with, which were
+    // never bought and have no pets.owned row: the NPC is the thing being
+    // moved, so there is nothing to look up.
+    case 'STORE_PET': {
+      const { petType } = action.payload;
+      const pet = PET_CATALOG[petType];
+      if (!pet) return state;
+      const key = npcListKey(petType);
+      const list = state.npcs[key];
+      const idx = list.findIndex((n) => n.mood === pet.mood);
+      if (idx === -1) return state; // none of that kind is out
+      return {
+        ...state,
+        npcs: { ...state.npcs, [key]: [...list.slice(0, idx), ...list.slice(idx + 1)] },
+        pets: {
+          ...state.pets,
+          stored: [...(state.pets?.stored ?? []), { id: list[idx].id, type: petType }],
+        },
+        ui: pushPopup(state, { message: `${pet.name} is having a nap.` }),
+      };
+    }
+
+    case 'DEPLOY_PET': {
+      const { petType } = action.payload;
+      const pet = PET_CATALOG[petType];
+      if (!pet) return state;
+      const stored = state.pets?.stored ?? [];
+      const idx = stored.findIndex((p) => p.type === petType);
+      if (idx === -1) return state; // none of that kind is put away
+      const key = npcListKey(petType);
+      return {
+        ...state,
+        npcs: {
+          ...state.npcs,
+          // Same id it left with, so it is the same animal returning rather
+          // than a copy. A fresh position, because the spot it used to stand
+          // in may now be under a sofa.
+          [key]: [...state.npcs[key], {
+            id: stored[idx].id,
+            x: 100 + Math.random() * 500,
+            y: 100 + Math.random() * 300,
+            mood: pet.mood,
+          }],
+        },
+        pets: {
+          ...state.pets,
+          stored: [...stored.slice(0, idx), ...stored.slice(idx + 1)],
+        },
+        ui: pushPopup(state, { message: `${pet.name} is back in the cafe!` }),
       };
     }
 

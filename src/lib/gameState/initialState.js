@@ -177,6 +177,9 @@ export const initialState = {
   },
   pets: {
     owned: [],
+    // Pets the player has put away. They are not in the cafe, but they are
+    // still theirs — this is what lets one come back without being re-bought.
+    stored: [],
   },
   settings: {
     // False until the player ticks the acknowledgement inside the welcome

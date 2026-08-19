@@ -71,6 +71,9 @@ export function serializeGameState(state) {
     },
     pets: {
       owned: state.pets?.owned ?? [],
+      // Without this a pet put away would be gone on the next load: it is not
+      // in npcs.* any more, so nothing else records that it exists.
+      stored: state.pets?.stored ?? [],
     },
     boosts: {
       starterPackClaimed: Boolean(state.boosts?.starterPackClaimed),
@@ -212,6 +215,11 @@ export function mergeLoadedSave(loaded, initialState) {
       owned: Array.isArray(loaded.pets?.owned)
         ? loaded.pets.owned.filter((p) => p && typeof p.type === 'string')
         : initialState.pets.owned,
+      // Same shape check as owned: a half-written entry would be put back into
+      // the cafe as an animal with no kind.
+      stored: Array.isArray(loaded.pets?.stored)
+        ? loaded.pets.stored.filter((p) => p && typeof p.type === 'string')
+        : initialState.pets.stored,
     },
     phase: 'menu',
     focus: { ...initialState.focus },
