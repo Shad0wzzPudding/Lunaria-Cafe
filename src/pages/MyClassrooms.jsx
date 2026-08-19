@@ -26,9 +26,9 @@ async function fetchClassrooms() {
 }
 
 
-function RoomCard({ room, children }) {
+function RoomCard({ room, children, surface }) {
   return (
-    <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border/40 p-4 space-y-3">
+    <div className={`${surface} backdrop-blur-sm rounded-xl border p-4 space-y-3`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
@@ -195,6 +195,18 @@ export default function MyClassrooms() {
   // what EVERY new student sees before they have joined anything.
   const ON_BACKDROP_TEXT = 'rounded-lg bg-card/70 px-3 py-2 backdrop-blur-sm';
 
+  // Focus only. Its scrim washes toward WHITE, so a 40%-transparent card
+  // stands on cafe art and stops reading as a panel; it needs to be solid.
+  // Immersive keeps the original values — its scrim is a warm tint over the
+  // same art, the contrast was already fine there, and making cards heavier
+  // would flatten a palette the player chose.
+  const CARD_SURFACE = isFocusTheme
+    ? 'bg-card/85 border-border/40'
+    : 'bg-card/60 border-border/30';
+  // Invitations take the background but keep their own primary border, which
+  // is what marks them out from an enrolled room.
+  const CARD_BG = isFocusTheme ? 'bg-card/85' : 'bg-card/60';
+
   const HEADING_ICON_CHIP = isFocusTheme
     ? 'inline-flex items-center justify-center rounded-md bg-primary/25 p-1 ring-1 ring-primary/40'
     : 'inline-flex items-center justify-center';
@@ -218,7 +230,7 @@ export default function MyClassrooms() {
           middle, where the room's empty floor shows through and there is
           usually nothing to read; heavy again at the bottom, over the busy
           counter. Verified with a ten-room grid: cards crossing the light band
-          still read, because they carry their own bg-card/85 and blur.
+          still read, because they carry their own card background and blur.
           Tokens rather than black, so it follows the active theme instead of
           forcing a dark page under a light one. */}
       <div className="fixed inset-0 z-0" aria-hidden="true">
@@ -387,7 +399,7 @@ export default function MyClassrooms() {
                 ) : (
                   <div className={ROOM_GRID}>
                     {available.map((room) => (
-                      <RoomCard key={room.id} room={room}>
+                      <RoomCard key={room.id} room={room} surface={CARD_SURFACE}>
                         {joiningId === room.id ? (
                           <form
                             className="space-y-2"
@@ -487,7 +499,7 @@ export default function MyClassrooms() {
                     // this waits for them, it shouldn't nag.
                     <div
                       key={inv.invite_id}
-                      className="rounded-xl border border-primary/50 bg-card/85 bg-gradient-to-br from-primary/15 to-transparent backdrop-blur-sm ring-1 ring-primary/25 shadow-lg shadow-primary/10 p-4 space-y-3"
+                      className={`rounded-xl border border-primary/50 ${CARD_BG} bg-gradient-to-br from-primary/15 to-transparent backdrop-blur-sm ring-1 ring-primary/25 shadow-lg shadow-primary/10 p-4 space-y-3`}
                     >
                       <div className="min-w-0">
                         <p
@@ -540,7 +552,7 @@ export default function MyClassrooms() {
               ) : (
                 <div className={ROOM_GRID}>
                 {enrolled.map((room) => (
-                  <RoomCard key={room.id} room={room}>
+                  <RoomCard key={room.id} room={room} surface={CARD_SURFACE}>
                     {leavingId === room.id ? (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground flex-1">Leave this classroom?</span>
