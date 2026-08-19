@@ -237,13 +237,15 @@ export default function MyClassrooms() {
         {/* A single pixel of blur: enough to take the edge off, not enough to
             stop it being the cafe. This is PIXEL art, so it softens far faster
             than a photograph would — 2px already smears the jar labels and the
-            menu board, which is why this is 1 and not "a small blur".
+            menu board, which is why this is measured in single pixels rather
+            than being "a small blur" — 1.5 now, raised from 1 once the scrim
+            was removed and the art had nothing else softening it.
             scale-105 hides the transparent fringe a blur leaves at the edges
             of the element. */}
         <img
           src="/assets/Backdrop/cafe_interior.webp"
           alt=""
-          className="w-full h-full object-cover object-center select-none blur-[1px] scale-105"
+          className="w-full h-full object-cover object-center select-none blur-[1.5px] scale-105"
           draggable={false}
         />
         {/* NO scrim in Focus — the art is shown as drawn.
