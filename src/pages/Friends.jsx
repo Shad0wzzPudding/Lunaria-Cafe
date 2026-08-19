@@ -307,16 +307,36 @@ export default function Friends() {
       return Array.isArray(data) ? data[0] : data;
     },
     onSuccess: (result) => {
+      // Did this person ALREADY have a request from us before this click?
+      // Answered from the Sent list the client already holds, deliberately —
+      // not from anything the server said. The server cannot distinguish these
+      // cases for us without becoming an oracle: a request sitting unanswered
+      // and one silently refused inside a decline cooldown reply identically,
+      // by design. But both appear in Sent, so the client can see "you already
+      // have one out to them" without ever being told which it is.
+      const alreadyOutstanding =
+        !!result?.friend_id && outgoing.some((r) => r.profile_id === result.friend_id);
+
       setCodeInput('');
       setAddError('');
-      setAddOpen(false);
+
       // Sending to someone who had already asked YOU completes the friendship
       // outright, so the confirmation has to say which of the two happened —
       // and an "on its way" envelope would be a lie for that case, since
       // nothing is in flight and there is no reply to wait for.
       if (result?.status === 'accepted') {
+        setAddOpen(false);
         toast.success(`You and ${result.display_name} are now friends!`);
+      } else if (alreadyOutstanding) {
+        // The envelope used to fly on every send, including sends that changed
+        // nothing, so a player could post the same request over and over with
+        // the same little ceremony each time and no idea it was going nowhere.
+        // The dialog stays OPEN so the answer lands where they typed.
+        setAddError(
+          `You have already sent ${result?.display_name ?? 'them'} a request — it is waiting in your Sent list.`,
+        );
       } else {
+        setAddOpen(false);
         setSentTo(result?.display_name ?? 'them');
       }
       refresh();
