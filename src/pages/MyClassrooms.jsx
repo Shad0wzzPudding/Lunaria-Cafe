@@ -246,46 +246,27 @@ export default function MyClassrooms() {
           className="w-full h-full object-cover object-center select-none blur-[1px] scale-105"
           draggable={false}
         />
-        {/* The two branches veil the art from OPPOSITE ends, which is the
-            whole reason they cannot share numbers.
+        {/* NO scrim in Focus — the art is shown as drawn.
 
-            Focus dims with FLAT BLACK. It went the long way to get here:
-            token-based scrims (90/70/95, 70/40/80, 60/30/70) read as muddy,
-            because --background is a near-black PURPLE and tinted everything
-            it covered; white read as light but hazy; flat white was clean but
-            washed the room out. Plain black at 40% just dims — no tint of its
-            own, so the lantern glow and the bottles keep their colour.
+            It had one for a while and went a long way round: token-based
+            washes (90/70/95, 70/40/80, 60/30/70) read as muddy rather than
+            dark, because --background is a near-black PURPLE and tinted
+            whatever it covered; white lifted the room but hazed it; flat white
+            was clean but drained it; flat black dimmed it honestly. All of
+            them were doing the same job — protecting content that could not
+            protect itself.
 
-            What made black workable was raising the cards to bg-card/85. At
-            /60 they were competing with the room and needed the scrim to do
-            their job for them, which is why every earlier dark attempt had to
-            be too heavy. Solid cards mean the scrim only has to dim.
+            That job is now done by the content. The cards carry bg-card/85,
+            the section headings carry their own pill, and the status
+            paragraphs carry one too. With nothing left needing cover, a scrim
+            is just a filter over the artwork, so it is gone.
 
-            Flat rather than a gradient, and that turned out to be the source
-            of the "hazy" look rather than the colour: a scrim that varies down
-            the page reads as fog drifting over the art, where an even one
-            simply reads as shade. A single opacity is also honest about what
-            it does — nothing here needs more cover at the top than the bottom,
-            since every heading and card carries its own background.
-
-            Immersive stays on --background, because there it IS the light
-            tone: the same values give a warm sepia wash rather than a shadow,
-            and it keeps its gradient.
-
-            White has one cost, and it is paid next to this: the section
-            headings are light text with nothing behind them, so a pale
-            backdrop erases them. They carry their own bg-card/70 pill now,
-            which is why the scrim is free to go this bright.
-
-            Both strings are written out in full rather than composed, so
-            Tailwind's scanner can see the class names. */}
-        <div
-          className={
-            isFocusTheme
-              ? 'absolute inset-0 bg-black/40'
-              : 'absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95'
-          }
-        />
+            Immersive keeps its gradient. There --background is a LIGHT warm
+            tone, so the same idea gives a sepia wash rather than a shadow, and
+            it reads as part of that theme rather than as protection. */}
+        {!isFocusTheme && (
+          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background/95" />
+        )}
       </div>
 
       {/* Everything else rides above it. Explicit z-10 against the backdrop's
