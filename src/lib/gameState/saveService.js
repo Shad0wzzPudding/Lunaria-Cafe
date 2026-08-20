@@ -82,6 +82,11 @@ export function serializeGameState(state) {
   };
 }
 
+// A saved NPC list that is ABSENT means an old save from before the field
+// existed, so it takes the starters. One that is present but EMPTY means the
+// player emptied it, so it stays empty. See the note at the call site.
+const restoreNpcList = (saved, fallback) => (Array.isArray(saved) ? saved : fallback);
+
 export function mergeLoadedSave(loaded, initialState) {
   if (!loaded || typeof loaded !== 'object') return null;
 
@@ -198,18 +203,26 @@ export function mergeLoadedSave(loaded, initialState) {
     npcs: {
       ...initialState.npcs,
       customers: [],
-      rabbits:
-        loaded.npcs?.rabbits?.length > 0
-          ? loaded.npcs.rabbits
-          : initialState.npcs.rabbits,
-      cats:
-        loaded.npcs?.cats?.length > 0
-          ? loaded.npcs.cats
-          : initialState.npcs.cats,
-      major:
-        loaded.npcs?.major?.length > 0
-          ? loaded.npcs.major
-          : initialState.npcs.major,
+      // ABSENT falls back to the starters; deliberately EMPTY stays empty.
+      //
+      // The old test was `.length > 0`, which read an empty list as "a save
+      // from before this field existed". That was true right up until
+      // STORE_PET made an empty list reachable on purpose: put both starter
+      // rabbits away and reload, and the pair came BACK while still sitting
+      // in pets.stored — bring them out and you had four, ids rabbit-1 and
+      // rabbit-2 duplicated, repeatable for as many free pets as you liked.
+      //
+      // Array.isArray is the whole fix: it separates "the key is missing"
+      // from "the list is empty", which is the distinction the old test could
+      // not make. A non-array (corrupt save) also falls back, as before.
+      //
+      // Applied to all three, not just rabbits. cats was only ever safe
+      // because initialState.npcs.cats happens to be empty, which is a
+      // coincidence rather than a decision, and major would resurrect the
+      // three regulars the same way if anything ever removed them.
+      rabbits: restoreNpcList(loaded.npcs?.rabbits, initialState.npcs.rabbits),
+      cats:    restoreNpcList(loaded.npcs?.cats,    initialState.npcs.cats),
+      major:   restoreNpcList(loaded.npcs?.major,   initialState.npcs.major),
     },
     pets: {
       owned: Array.isArray(loaded.pets?.owned)
