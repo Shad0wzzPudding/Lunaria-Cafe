@@ -1,4 +1,6 @@
+<p align="center">
 <img width="501" height="327" alt="ภาพถ่ายหน้าจอ 2569-09-06 เวลา 18 34 51" src="https://github.com/user-attachments/assets/b4317c11-88a6-45a7-b9e6-b78e6df2ab63" />
+</p>
 
 <br> *A letter appear out of nowhere...*
 
