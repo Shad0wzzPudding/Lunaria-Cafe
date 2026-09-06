@@ -1,16 +1,15 @@
-# React + Vite
+<img width="501" height="327" alt="ภาพถ่ายหน้าจอ 2569-09-06 เวลา 18 34 51" src="https://github.com/user-attachments/assets/b4317c11-88a6-45a7-b9e6-b78e6df2ab63" />
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<br> *A letter appear out of nowhere...*
 
-Currently, two official plugins are available:
+Dear cafe owner — before you settle in, a small formality from the world outside ours:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This software is a work developed by Thanita Thitakan, Sawastachod Siriphatum, and Pisitpong Srisuthangkul from Mahidol University Salaya Campus under the provision of "Dr. Punyanuch Borwarnginn" under "Lunaria Cafe", which has been supported by the National Science and Technology Development Agency (NSTDA), in order to encourage pupils and students to learn and practice their skills in developing software.
 
-## React Compiler
+Therefore, the intellectual property of this software shall belong to the developer and the developer gives NSTDA a permission to distribute this software as an "as is" and non-modified software for a temporary and non-exclusive use without remuneration to anyone for his or her own purpose or academic purpose, which are not commercial purposes.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+In this connection, NSTDA shall not be responsible to the user for taking care, maintaining, training, or developing the efficiency of this software. Moreover, NSTDA shall not be liable for any error, software efficiency and damages in connection with or arising out of the use of the software.
 
-## Expanding the ESLint configuration
+Thank you for reading. The kettle is already on. ☕
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+— Lulyssia & the development team 🌙
