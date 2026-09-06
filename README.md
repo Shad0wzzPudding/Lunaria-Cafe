@@ -1,8 +1,10 @@
+<img width="3125" height="975" alt="Lunaria Banner (with logo)" src="https://github.com/user-attachments/assets/29aad93d-6605-4051-b719-06b2b59f1799" />
+
+<br><br>
 <p align="center">
 <img width="501" height="327" alt="ภาพถ่ายหน้าจอ 2569-09-06 เวลา 18 34 51" src="https://github.com/user-attachments/assets/b4317c11-88a6-45a7-b9e6-b78e6df2ab63" />
 </p>
-
-<br> *A letter appear out of nowhere...*
+<p align = "center" font-style = "italic"> A letter appear out of nowhere... </p>
 
 Dear cafe owner — before you settle in, a small formality from the world outside ours:
 
@@ -14,4 +16,5 @@ In this connection, NSTDA shall not be responsible to the user for taking care, 
 
 Thank you for reading. The kettle is already on. ☕
 
-— Lulyssia & the development team 🌙
+— Lulyssia & the development team 🌙 <br>
+*Ps. Development on this project has been paused, meaning that the sign up and login not functional now; however you can still check out on our project via the guest mode. We hope you have some fun and inspiration!* 
