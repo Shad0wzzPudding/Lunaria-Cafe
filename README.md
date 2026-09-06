@@ -1,13 +1,15 @@
-<img width="3125" height="975" alt="Lunaria Banner (with logo)" src="https://github.com/user-attachments/assets/29aad93d-6605-4051-b719-06b2b59f1799" />
-
+<img width="3125" height="975" alt="Lunaria Banner (with logo)" src="https://github.com/user-attachments/assets/5092cb0b-513c-42b4-8e23-524f7449f243" />
 <br><br>
+<p align="center">
+$$\color{#e8cf9e}{\textit{A letter appear out of nowhere...}}$$
+</p>
 <p align="center">
 <img width="501" height="327" alt="ภาพถ่ายหน้าจอ 2569-09-06 เวลา 18 34 51" src="https://github.com/user-attachments/assets/b4317c11-88a6-45a7-b9e6-b78e6df2ab63" />
 </p>
-<p align = "center" font-style = "italic"> A letter appear out of nowhere... </p>
 
-Dear cafe owner — before you settle in, a small formality from the world outside ours:
-
+<p>
+$$\color{#7e5fde}{\textit{Dear cafe owner — before you settle in, a small formality from the world outside ours:}}$$
+</p>
 This software is a work developed by Thanita Thitakan, Sawastachod Siriphatum, and Pisitpong Srisuthangkul from Mahidol University Salaya Campus under the provision of "Dr. Punyanuch Borwarnginn" under "Lunaria Cafe", which has been supported by the National Science and Technology Development Agency (NSTDA), in order to encourage pupils and students to learn and practice their skills in developing software.
 
 Therefore, the intellectual property of this software shall belong to the developer and the developer gives NSTDA a permission to distribute this software as an "as is" and non-modified software for a temporary and non-exclusive use without remuneration to anyone for his or her own purpose or academic purpose, which are not commercial purposes.
@@ -17,4 +19,5 @@ In this connection, NSTDA shall not be responsible to the user for taking care, 
 Thank you for reading. The kettle is already on. ☕
 
 — Lulyssia & the development team 🌙 <br>
-*Ps. Development on this project has been paused, meaning that the sign up and login not functional now; however you can still check out on our project via the guest mode. We hope you have some fun and inspiration!* 
+*Ps. Development on this project has been paused, meaning that the sign up and login not functional now; however you can still check out on our project via the guest mode. We hope you have some fun and inspiration!* <br><br>
+*REPRODUCTION, MODIFICATION, OR DOWNLOADING OF THIS PROJECT IS STRICTLY PROHIBITED.*
